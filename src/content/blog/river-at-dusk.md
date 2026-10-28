@@ -3,7 +3,7 @@ title: '江边的傍晚'
 description: '沿着江堤走了很久，风里有秋天的味道，落日把水面煮成了一锅橙色。'
 pubDate: 2026-10-12
 tags: ['生活', '风景']
-featured: false
+featured: true
 draft: false
 ---
 那天下午临时起意，没有目的地，就从桥头一路往东走。

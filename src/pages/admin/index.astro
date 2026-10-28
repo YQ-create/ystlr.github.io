@@ -156,10 +156,16 @@ import { SITE_TITLE } from '../../consts';
 						</label>
 					</div>
 
-					<label class="field">
-						<span>正文（Markdown）</span>
-						<textarea data-field="body" rows="16" spellcheck="false"></textarea>
-					</label>
+					<div class="adm-editor-body">
+						<label class="field">
+							<span>正文（Markdown 源码）</span>
+							<textarea data-field="body" rows="16" spellcheck="false"></textarea>
+						</label>
+						<div class="adm-preview">
+							<span class="adm-preview__label">实时预览</span>
+							<div class="adm-preview__box prose" data-preview></div>
+						</div>
+					</div>
 
 					<div class="adm-row">
 						<button class="btn" type="submit" data-post-save>保存到 main</button>
@@ -351,6 +357,56 @@ import { SITE_TITLE } from '../../consts';
 		min-height: 260px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 		font-size: 0.92rem;
+	}
+
+	/* 正文编辑器：左源码、右实时预览 */
+	.adm-editor-body {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.9rem;
+		align-items: start;
+	}
+	.adm-editor-body .field {
+		min-width: 0;
+	}
+	.adm-preview {
+		display: grid;
+		gap: 0.4rem;
+		min-width: 0;
+	}
+	.adm-preview__label {
+		font-size: 0.76rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted));
+	}
+	.adm-preview__box {
+		min-height: 260px;
+		max-height: 640px;
+		overflow-y: auto;
+		padding: 0.9rem 1.1rem;
+		border: 1px solid rgba(var(--line), 1);
+		border-radius: var(--r-md);
+		background: var(--glass-bg-strong);
+	}
+	.adm-preview__box:empty::before {
+		content: '在左侧写 Markdown，这里会实时渲染出来。';
+		color: rgb(var(--muted-light));
+		font-size: 0.85rem;
+	}
+	.adm-preview__box > :first-child {
+		margin-top: 0;
+	}
+	.adm-preview__box > :last-child {
+		margin-bottom: 0;
+	}
+	@media (max-width: 760px) {
+		.adm-editor-body {
+			grid-template-columns: 1fr;
+		}
+		.adm-preview__box {
+			min-height: 160px;
+			max-height: 420px;
+		}
 	}
 
 	.adm-file {

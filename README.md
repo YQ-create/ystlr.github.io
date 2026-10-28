@@ -91,7 +91,7 @@ Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
 | `AcidSquares.astro` | 首页 Hero 的方格地面（WebGL2，透视凸块 + 波纹 + 指针按压） | `color`/`accentColor`/`secondaryColor`（可传 `--token`）、`tileSize`、`gap`、`roundness`、`bulge`、`rotation`、`gloss`、`speed`、`lighting`、`grain`、`fade`、`opacity`、`detail` |
-| `TechText.astro` | 首页大标题（canvas 逐字绘制，虚线线框 + 尺寸标注 + 入场动画） | `text`、`color`/`accentColor`（可传 `--token`）、`align`、`strokeWidth`、`lineStyle`、`reveal`、`labels`、`selection`、`sweep`、`intro`、`draggable` |
+| `TechText.astro` | canvas 线框字（虚线线框 + 尺寸标注 + 入场动画；目前未被页面引用，留着备用） | `text`、`color`/`accentColor`（可传 `--token`）、`align`、`strokeWidth`、`lineStyle`、`reveal`、`labels`、`selection`、`sweep`、`intro`、`draggable` |
 | `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
 | `DepthCarousel.astro` | 3D 纵深照片轮播（首页、照片墙） | `items`、`depth`、`spread`、`tilt`、`tiltDirection`、`visibleCards`、`falloff`、`blur`、`autoplay`、`loop` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
@@ -99,7 +99,7 @@ Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投
 | `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
 | `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
 | `FadeContent.astro` | 滚动进场包装器（照片墙照片用；React Bits `FadeContent` 原生移植） | `effect`（fade/focus/develop/dissolve/mist/pixel）、`blur`、`duration`、`stagger`、`trigger`（scroll/mount）、`scrub`、`exit`、`disappearAfter` |
-| `SplitText.astro` | 逐字/逐词拆分进场（首页副标题用；React Bits `SplitText` 原生移植） | `text`、`splitType`、`effect`（rise/fade/blur/flip/pop/skew/wave）、`delay`、`mask`、`trigger`（view/load/hover/click）、`loop`、`hoverEffect` |
+| `SplitText.astro` | 逐字/逐词拆分进场（首页主标题 + 副标题用；React Bits `SplitText` 原生移植） | `text`、`splitType`、`effect`（rise/fade/blur/flip/pop/skew/wave）、`delay`、`mask`、`trigger`（view/load/hover/click）、`loop`、`hoverEffect` |
 
 `AcidSquares`、`TechText`、`FadeContent`、`SplitText` 都是 React Bits 同名组件的原生移植（不引入 React）。`AcidSquares`/`TechText` 的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`；`FadeContent`/`SplitText` 依赖 GSAP（`gsap` + `ScrollTrigger` + `SplitText` 插件，纯 JS，不含 React），逻辑放在 `src/scripts/fade-content.ts` 与 `src/scripts/split-text.ts`。Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
 

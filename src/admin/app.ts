@@ -92,6 +92,145 @@ function formatSize(bytes: number): string {
 	return `${bytes} B`;
 }
 
+// ---------------------------------------------------------------- Markdown 预览
+// 一个覆盖常用语法的轻量渲染器（不引入重量级依赖）：标题、加粗、斜体、行内码、
+// 链接、图片、列表、引用、代码块、分割线、表格。输出经过 HTML 转义后再套行内语法，
+// 避免把正文里的原始标签当成 HTML。
+
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+function inlineMarkdown(text: string): string {
+	// 顺序敏感：先处理行内码（吃掉内部的 * _ 等），再处理图片/链接，最后加粗斜体
+	return escapeHtml(text)
+		.replace(/`([^`]+)`/g, '<code>$1</code>')
+		.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />')
+		.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+		.replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<em>$2</em>')
+		.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+}
+
+function renderMarkdown(source: string): string {
+	const lines = source.replace(/\r\n/g, '\n').split('\n');
+	const html: string[] = [];
+	let i = 0;
+
+	while (i < lines.length) {
+		const line = lines[i];
+
+		// 代码块 ```lang ... ```
+		if (/^```/.test(line.trim())) {
+			html.push('<pre><code>');
+			i += 1;
+			while (i < lines.length && !/^```/.test(lines[i].trim())) {
+				html.push(escapeHtml(lines[i]));
+				html.push('\n');
+				i += 1;
+			}
+			html.push('</code></pre>');
+			i += 1;
+			continue;
+		}
+
+		// 引用块（连续 > 行合并）
+		if (/^\s*>/.test(line)) {
+			const quote: string[] = [];
+			while (i < lines.length && /^\s*>/.test(lines[i])) {
+				quote.push(lines[i].replace(/^\s*>\s?/, ''));
+				i += 1;
+			}
+			html.push(`<blockquote>${quote.map(inlineMarkdown).join('<br />')}</blockquote>`);
+			continue;
+		}
+
+		// 无序/有序列表（连续项合并）
+		if (/^\s*[-*+]\s+/.test(line)) {
+			const items: string[] = [];
+			while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+				items.push(`<li>${inlineMarkdown(lines[i].replace(/^\s*[-*+]\s+/, ''))}</li>`);
+				i += 1;
+			}
+			html.push(`<ul>${items.join('')}</ul>`);
+			continue;
+		}
+		if (/^\s*\d+[.)]\s+/.test(line)) {
+			const items: string[] = [];
+			while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+				items.push(`<li>${inlineMarkdown(lines[i].replace(/^\s*\d+[.)]\s+/, ''))}</li>`);
+				i += 1;
+			}
+			html.push(`<ol>${items.join('')}</ol>`);
+			continue;
+		}
+
+		// 标题
+		const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+		if (heading) {
+			const level = heading[1].length;
+			html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+			i += 1;
+			continue;
+		}
+
+		// 分割线
+		if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+			html.push('<hr />');
+			i += 1;
+			continue;
+		}
+
+		// 表格（简单支持：| a | b | 分隔行 | c | d |）
+		if (/^\s*\|.*\|\s*$/.test(line)) {
+			const table: string[] = [];
+			while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+				table.push(lines[i].trim());
+				i += 1;
+			}
+			if (table.length >= 2) {
+				const cells = (row: string) =>
+					row
+						.replace(/^\||\|$/g, '')
+						.split('|')
+						.map((cell) => cell.trim());
+				const header = cells(table[0]);
+				// 第二行是 |---|:---| 分隔行
+				const bodyRows = table.slice(2).map(cells);
+				html.push(
+					'<table><thead><tr>' +
+						header.map((h) => `<th>${inlineMarkdown(h)}</th>`).join('') +
+						'</tr></thead><tbody>' +
+						bodyRows
+							.map((row) => `<tr>${row.map((cell) => `<td>${inlineMarkdown(cell)}</td>`).join('')}</tr>`)
+							.join('') +
+						'</tbody></table>',
+				);
+				continue;
+			}
+		}
+
+		// 空行 → 段落分隔
+		if (!line.trim()) {
+			i += 1;
+			continue;
+		}
+
+		// 普通段落：连续非空行合并成一个 <p>
+		const para: string[] = [];
+		while (i < lines.length && lines[i].trim()) {
+			para.push(lines[i]);
+			i += 1;
+		}
+		html.push(`<p>${para.map(inlineMarkdown).join('<br />')}</p>`);
+	}
+
+	return html.join('\n');
+}
+
 function todayStr(): string {
 	const now = new Date();
 	const pad = (n: number) => String(n).padStart(2, '0');
@@ -341,6 +480,7 @@ export function boot(): void {
 	const saveBtn = q<HTMLButtonElement>(root, '[data-post-save]');
 	const deleteBtn = q<HTMLButtonElement>(root, '[data-post-delete]');
 	const closeBtn = q<HTMLButtonElement>(root, '[data-post-close]');
+	const previewBox = q<HTMLElement>(root, '[data-preview]');
 
 	// ---- 照片 ----
 	const photoForm = q<HTMLFormElement>(root, '[data-photo-form]');
@@ -654,6 +794,13 @@ export function boot(): void {
 		(editorField(name) as HTMLInputElement | null)?.focus();
 	}
 
+	/** 把正文 Markdown 渲染进右侧预览框 */
+	function renderPreview(): void {
+		if (!previewBox) return;
+		const bodyEl = editorField('body') as HTMLTextAreaElement | null;
+		previewBox.innerHTML = renderMarkdown(bodyEl?.value ?? '');
+	}
+
 	function resetDeleteArm(): void {
 		deleteArmed = false;
 		window.clearTimeout(deleteTimer);
@@ -693,6 +840,7 @@ export function boot(): void {
 		setFieldChecked('featured', asBool(data.featured));
 		setFieldChecked('draft', asBool(data.draft));
 		setFieldText('body', body.replace(/^\n+/, ''));
+		renderPreview();
 		if (editorPath) editorPath.textContent = target.sha ? target.path : `${target.path}（新建，保存后创建）`;
 		resetDeleteArm();
 		showEditor(true);
@@ -1083,6 +1231,8 @@ export function boot(): void {
 	on(editor, 'submit', (event) => {
 		void savePost(event);
 	});
+	// 正文输入实时刷新预览
+	on(editorField('body'), 'input', renderPreview);
 	on(deleteBtn, 'click', () => {
 		void removePost();
 	});

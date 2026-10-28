@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AcidSquares from '../components/AcidSquares.astro';
-import TechText from '../components/TechText.astro';
 import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import DepthCarousel from '../components/DepthCarousel.astro';
@@ -115,28 +114,16 @@ const latest = posts[0]?.data.pubDate;
 
 				<div class="hero-head">
 					<h1 class="hero-title">
-						<span class="sr-only">在这里记录日常</span>
-						<TechText
+						<SplitText
 							text="在这里记录日常"
-							color="--ink"
-							accentColor="--accent"
-							align="left"
-							fontWeight={600}
-							letterSpacing={-0.04}
-							strokeWidth={1.7}
-							dashLength={4}
-							dashGap={2.4}
-							lineStyle="dashed"
-							reveal="letter"
-							labels
-							selection
-							sweep={false}
-							clickKick
-							draggable={false}
-							speed={1}
-							reach={170}
-							intro="assemble"
-							introDuration={1.6}
+							tag="span"
+							effect="blur"
+							duration={0.9}
+							delay={45}
+							staggerFrom="start"
+							trigger="load"
+							mask
+							class="hero-title__text"
 						/>
 					</h1>
 					<p class="hero-sub">
@@ -493,20 +480,22 @@ const latest = posts[0]?.data.pubDate;
 		}
 	}
 
-	/* 标题由 TechText 用 canvas 绘制，样式要 :global 才能穿进子组件 */
+	/* 标题由 SplitText 逐字拆分，样式要 :global 才能穿进子组件 */
 	.hero-head {
 		display: grid;
 		gap: 1.4rem;
 		margin: 0 0 1.7rem;
 	}
 	:global(.hero-title) {
-		/* TechText 按容器宽高自适应字号，这里给的是一个画布高度 */
-		height: clamp(4.2rem, 10.5vw, 8.6rem);
-		max-width: 15em;
 		margin: 0;
 		color: rgb(var(--ink));
-		/* 组件内 align=left 时留了 5% 摆幅，这里抵掉，跟上面的眉标对齐 */
-		transform: translateX(-5%);
+	}
+	:global(.hero-title__text) {
+		font-size: clamp(2.5rem, 7vw, 5rem);
+		line-height: 1.12;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		text-wrap: balance;
 	}
 	.hero-sub {
 		margin: 0;
@@ -991,8 +980,8 @@ const latest = posts[0]?.data.pubDate;
 		.hero-head {
 			gap: 0.85rem;
 		}
-		:global(.hero-title) {
-			height: clamp(3.3rem, 14.5vw, 4.4rem);
+		:global(.hero-title__text) {
+			font-size: clamp(2.1rem, 11.5vw, 2.9rem);
 		}
 		.hero-stats {
 			gap: 1.6rem;

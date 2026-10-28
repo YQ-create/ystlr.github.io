@@ -1,0 +1,154 @@
+---
+/**
+ * AcidSquares — 酸性方格地面（React Bits 的 AcidSquares 原生移植，不引入 React）。
+ *
+ * 一块透视铺开的方格地面：顶点着色器用距离场把格子挤成方形/圆形两种「凸块」，
+ * 片元着色器算每格的倒角、圆顶、高光与朝向，再叠上波纹、指针按压与胶片颗粒。
+ * 颜色默认取站点 token（--bg-deep / --accent / --sage），深浅色自动跟随；
+ * 主题切换时重建一次（释放旧上下文），不残留 WebGL 资源。
+ *
+ * 浏览器不支持 WebGL2 时 canvas 留空，不抛错。
+ */
+interface Props {
+	/** 底色；CSS 颜色，或 "--token" 形式（读 CSS 变量） */
+	color?: string;
+	accentColor?: string;
+	secondaryColor?: string;
+	tileSize?: number;
+	gap?: number;
+	roundness?: number;
+	softness?: number;
+	bulge?: number;
+	rotation?: number;
+	gloss?: number;
+	waves?: number;
+	waveScale?: number;
+	speed?: number;
+	shape?: 'square' | 'round';
+	pulse?: number;
+	pulseSpeed?: number;
+	pulseSpacing?: number;
+	pulseWidth?: number;
+	pulseOrigin?: 'center' | 'random';
+	brightness?: number;
+	lighting?: 'split' | 'backlit' | 'overhead';
+	tilt?: number;
+	zoom?: number;
+	depth?: number;
+	grain?: number;
+	fade?: number;
+	opacity?: number;
+	intro?: boolean;
+	mouseInteraction?: boolean;
+	hoverEffect?: 'press' | 'lift' | 'none';
+	mouseStrength?: number;
+	mouseRadius?: number;
+	pulseOnClick?: boolean;
+	detail?: 'low' | 'medium' | 'high';
+	class?: string;
+}
+
+const {
+	color = '--bg-deep',
+	accentColor = '--accent',
+	secondaryColor = '--sage',
+	tileSize = 1,
+	gap = 0.12,
+	roundness = 0.25,
+	softness = 0.5,
+	bulge = 0.3,
+	rotation = 35,
+	gloss = 0.6,
+	waves = 1,
+	waveScale = 1,
+	speed = 0.6,
+	shape = 'square',
+	pulse = 1,
+	pulseSpeed = 0.45,
+	pulseSpacing = 1,
+	pulseWidth = 1,
+	pulseOrigin = 'center',
+	brightness = 1,
+	lighting = 'split',
+	tilt = 0.7,
+	zoom = 1,
+	depth = 10,
+	grain = 0.12,
+	fade = 0,
+	opacity = 1,
+	intro = true,
+	mouseInteraction = true,
+	hoverEffect = 'press',
+	mouseStrength = 1,
+	mouseRadius = 0.35,
+	pulseOnClick = true,
+	detail = 'medium',
+	class: className = '',
+} = Astro.props;
+---
+
+<div
+	class:list={['acid-squares', className]}
+	data-acid-squares
+	data-color={color}
+	data-accent-color={accentColor}
+	data-secondary-color={secondaryColor}
+	data-tile-size={tileSize}
+	data-gap={gap}
+	data-roundness={roundness}
+	data-softness={softness}
+	data-bulge={bulge}
+	data-rotation={rotation}
+	data-gloss={gloss}
+	data-waves={waves}
+	data-wave-scale={waveScale}
+	data-speed={speed}
+	data-shape={shape}
+	data-pulse={pulse}
+	data-pulse-speed={pulseSpeed}
+	data-pulse-spacing={pulseSpacing}
+	data-pulse-width={pulseWidth}
+	data-pulse-origin={pulseOrigin}
+	data-brightness={brightness}
+	data-lighting={lighting}
+	data-tilt={tilt}
+	data-zoom={zoom}
+	data-depth={depth}
+	data-grain={grain}
+	data-fade={fade}
+	data-opacity={opacity}
+	data-intro={intro ? '1' : '0'}
+	data-mouse-interaction={mouseInteraction ? '1' : '0'}
+	data-hover-effect={hoverEffect}
+	data-mouse-strength={mouseStrength}
+	data-mouse-radius={mouseRadius}
+	data-pulse-on-click={pulseOnClick ? '1' : '0'}
+	data-detail={detail}
+	aria-hidden="true"
+>
+	<canvas class="acid-squares__canvas" data-acid-canvas></canvas>
+</div>
+
+<style>
+	.acid-squares {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+	.acid-squares__canvas {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>
+
+<script>
+	import { bootAllAcid } from '../scripts/acid-squares';
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAllAcid, { once: true });
+	else bootAllAcid();
+	document.addEventListener('astro:page-load', bootAllAcid);
+</script>

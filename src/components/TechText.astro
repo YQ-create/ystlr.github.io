@@ -1,0 +1,130 @@
+---
+/**
+ * TechText — 技术标注风格的标题文字（React Bits 的 TechText 原生移植，不引入 React）。
+ *
+ * canvas 逐字绘制：按字符切分、measureText 量出包围盒，再用「虚线描边 + 挖空」
+ * 做成线框字，叠上 x-height / cap height / baseline 标注线、选框、扫描光与
+ * 入场动画（type / assemble / metrics）。字号按容器宽高自动 fit，中文按字符切分。
+ *
+ * color / accentColor 默认取 currentColor，直接跟随外层 CSS 颜色，
+ * 所以深浅色切换只需重绘，不用重建实例。
+ */
+interface Props {
+	text?: string;
+	fontFamily?: string;
+	fontWeight?: number;
+	fontSize?: number;
+	letterSpacing?: number;
+	color?: string;
+	accentColor?: string;
+	align?: 'left' | 'center' | 'right';
+	reach?: number;
+	softness?: number;
+	dashLength?: number;
+	dashGap?: number;
+	strokeWidth?: number;
+	lineStyle?: 'dashed' | 'solid';
+	reveal?: 'area' | 'letter' | 'off';
+	specks?: number;
+	selection?: boolean;
+	labels?: boolean;
+	draggable?: boolean;
+	bounce?: number;
+	sweep?: boolean;
+	speed?: number;
+	clickKick?: boolean;
+	intro?: 'none' | 'type' | 'assemble' | 'metrics';
+	introDuration?: number;
+	guides?: boolean;
+	class?: string;
+}
+
+const {
+	text = 'React Bits',
+	fontFamily = '',
+	fontWeight = 600,
+	fontSize = 150,
+	letterSpacing = -0.05,
+	color = 'currentColor',
+	accentColor = 'currentColor',
+	align = 'center',
+	reach = 200,
+	softness = 0.7,
+	dashLength = 4,
+	dashGap = 2,
+	strokeWidth = 1.5,
+	lineStyle = 'dashed',
+	reveal = 'letter',
+	specks = 15,
+	selection = true,
+	labels = true,
+	draggable = true,
+	bounce = 0.4,
+	sweep = true,
+	speed = 1,
+	clickKick = true,
+	intro = 'none',
+	introDuration = 2,
+	guides = false,
+	class: className = '',
+} = Astro.props;
+---
+
+<div
+	class:list={['tech-text', className]}
+	data-tech-text
+	data-text={text}
+	data-font-family={fontFamily}
+	data-font-weight={fontWeight}
+	data-font-size={fontSize}
+	data-letter-spacing={letterSpacing}
+	data-color={color}
+	data-accent-color={accentColor}
+	data-align={align}
+	data-reach={reach}
+	data-softness={softness}
+	data-dash-length={dashLength}
+	data-dash-gap={dashGap}
+	data-stroke-width={strokeWidth}
+	data-line-style={lineStyle}
+	data-reveal-mode={reveal}
+	data-specks={specks}
+	data-selection={selection ? '1' : '0'}
+	data-labels={labels ? '1' : '0'}
+	data-draggable={draggable ? '1' : '0'}
+	data-bounce={bounce}
+	data-sweep={sweep ? '1' : '0'}
+	data-speed={speed}
+	data-click-kick={clickKick ? '1' : '0'}
+	data-intro={intro}
+	data-intro-duration={introDuration}
+	data-guides={guides ? '1' : '0'}
+	role="img"
+	aria-label={text}
+>
+	<canvas class="tech-text__canvas" data-tech-canvas></canvas>
+</div>
+
+<style>
+	.tech-text {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		touch-action: pan-y;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+	.tech-text__canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>
+
+<script>
+	import { bootAllTech } from '../scripts/tech-text';
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAllTech, { once: true });
+	else bootAllTech();
+	document.addEventListener('astro:page-load', bootAllTech);
+</script>

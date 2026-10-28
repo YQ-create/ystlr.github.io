@@ -1,11 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SpectralDrape from '../components/SpectralDrape.astro';
+import AcidSquares from '../components/AcidSquares.astro';
+import TechText from '../components/TechText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import DepthCarousel from '../components/DepthCarousel.astro';
-import MaskedHeading from '../components/MaskedHeading.astro';
 import CountUp from '../components/CountUp.astro';
-import heroFillImage from '../assets/blog/hero-01.jpg';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
@@ -78,16 +77,32 @@ const latest = posts[0]?.data.pubDate;
 		<!-- ============ Hero ============ -->
 		<section class="hero">
 			<div class="hero-waves" aria-hidden="true">
-				<SpectralDrape
-					preset="ember"
-					density={96}
-					rows={40}
-					speed={0.8}
-					amp={0.95}
-					dotSize={1.5}
-					opacity={0.78}
-					pointer
-					pointerStrength={1}
+				<AcidSquares
+					color="--bg-deep"
+					accentColor="--accent"
+					secondaryColor="--sage"
+					tileSize={1.05}
+					gap={0.14}
+					roundness={0.2}
+					softness={0.55}
+					bulge={0.34}
+					rotation={30}
+					gloss={0.55}
+					waves={0.9}
+					waveScale={0.9}
+					speed={0.4}
+					pulse={1}
+					pulseSpeed={0.3}
+					pulseSpacing={1.1}
+					pulseWidth={1.1}
+					lighting="split"
+					tilt={0.62}
+					zoom={1}
+					depth={9}
+					grain={0.1}
+					fade={0.6}
+					opacity={0.86}
+					detail="medium"
 				/>
 			</div>
 
@@ -98,24 +113,32 @@ const latest = posts[0]?.data.pubDate;
 				</p>
 
 				<div class="hero-head">
-				<MaskedHeading
-					class="hero-title"
-					text="在这里记录日常"
-					src={heroFillImage.src}
-					fillScale={1.4}
-					parallax={42}
-					spotlight
-					spotlightRadius={220}
-				/>
-				<MaskedHeading
-					class="hero-sub"
-					tag="div"
-					text="想法与读过的东西"
-					outline
-					strokeWidth={0.052}
-					strokeColor="rgba(var(--accent-deep), 0.88)"
-					parallax={18}
-				/>
+					<h1 class="hero-title">
+						<span class="sr-only">在这里记录日常</span>
+						<TechText
+							text="在这里记录日常"
+							color="--ink"
+							accentColor="--accent"
+							align="left"
+							fontWeight={600}
+							letterSpacing={-0.04}
+							strokeWidth={1.7}
+							dashLength={4}
+							dashGap={2.4}
+							lineStyle="dashed"
+							reveal="letter"
+							labels
+							selection
+							sweep={false}
+							clickKick
+							draggable={false}
+							speed={1}
+							reach={170}
+							intro="assemble"
+							introDuration={1.6}
+						/>
+					</h1>
+					<p class="hero-sub">想法与读过的东西</p>
 				</div>
 
 				<p class="hero-lede">{HERO.tagline2}。</p>
@@ -399,10 +422,11 @@ const latest = posts[0]?.data.pubDate;
 	}
 	.hero-waves {
 		position: absolute;
-		inset: -16% -12% -10%;
+		inset: 0;
 		z-index: -1;
-		opacity: 1;
-		transform: scale(1.08);
+		/* 方格地面往下渐隐，避免和后面的卡片抢注意力 */
+		-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+		mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
 	}
 	/* 让整屏像一张连续的画：底部压暗、左上角留一层暖雾 */
 	.hero::after {
@@ -457,29 +481,27 @@ const latest = posts[0]?.data.pubDate;
 		}
 	}
 
-	/* 标题在子组件里，样式要 :global 才能命中 */
+	/* 标题由 TechText 用 canvas 绘制，样式要 :global 才能穿进子组件 */
 	.hero-head {
 		display: grid;
-		gap: 1.9rem;
+		gap: 1.4rem;
 		margin: 0 0 1.7rem;
 	}
 	:global(.hero-title) {
-		font-size: clamp(2.35rem, 7.1vw, 5.7rem);
-		max-width: 14ch;
+		/* TechText 按容器宽高自适应字号，这里给的是一个画布高度 */
+		height: clamp(4.2rem, 10.5vw, 8.6rem);
+		max-width: 15em;
+		margin: 0;
+		color: rgb(var(--ink));
+		/* 组件内 align=left 时留了 5% 摆幅，这里抵掉，跟上面的眉标对齐 */
+		transform: translateX(-5%);
 	}
-	/* 照片填充先转灰再上暖色：保留「字里透出照片」的质感，
-	   又不会把绿/紫直接怼进整站唯一的暖色画面里 */
-	:global(.hero-title .masked__text) {
-		filter: grayscale(1) sepia(0.95) saturate(1.9) brightness(1.04) contrast(1.05);
-	}
-	/* 浅色纸上要压深，不然金色字会糊在同色背景里 */
-	:root[data-theme='light'] :global(.hero-title .masked__text) {
-		filter: grayscale(1) sepia(1) saturate(2.1) brightness(0.58) contrast(1.2);
-	}
-	:global(.hero-sub) {
-		font-size: clamp(1.28rem, 3vw, 2.15rem);
+	.hero-sub {
+		margin: 0;
+		font-size: clamp(1.02rem, 1.7vw, 1.32rem);
 		font-weight: 600;
-		letter-spacing: 0.01em;
+		letter-spacing: 0.16em;
+		color: rgb(var(--accent));
 	}
 
 	.hero-lede {
@@ -951,7 +973,10 @@ const latest = posts[0]?.data.pubDate;
 			padding-top: clamp(5rem, 20vh, 7rem);
 		}
 		.hero-head {
-			gap: 1.3rem;
+			gap: 0.85rem;
+		}
+		:global(.hero-title) {
+			height: clamp(3.3rem, 14.5vw, 4.4rem);
 		}
 		.hero-stats {
 			gap: 1.6rem;

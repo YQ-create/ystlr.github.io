@@ -18,4 +18,17 @@ const blog = defineCollection({
 		}),
 });
 
-export const collections = { blog };
+// 照片墙：每一张照片对应一条记录，date 为拍摄日期，用于按年、月分组排版。
+const gallery = defineCollection({
+	loader: glob({ base: './src/content/gallery', pattern: '**/*.md' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string().optional(),
+			date: z.coerce.date(),
+			image: image(),
+			caption: z.string().optional(),
+			tags: z.array(z.string()).default([]),
+		}),
+});
+
+export const collections = { blog, gallery };

@@ -16,10 +16,7 @@ export default defineConfig({
 	},
 	integrations: [
 		mdx(),
-		sitemap({
-			// 管理后台不进 sitemap
-			filter: (page) => !page.includes('/admin'),
-		}),
+		sitemap(),
 	],
 	fonts: [
 		{

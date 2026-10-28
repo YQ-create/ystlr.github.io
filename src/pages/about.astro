@@ -2,33 +2,7 @@
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { Image } from 'astro:assets';
 import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
-import avatar from '../assets/portfolio/avatar.jpg';
-
-// 占位经历条目：替换成你自己的教育、工作或项目经历。
-const timeline = [
-	{
-		period: '2025 — 至今',
-		title: '视觉设计 / 自由创作',
-		desc: '占位条目：在这里记录当前方向、正在承接的项目或持续探索的主题。',
-	},
-	{
-		period: '2024 — 2025',
-		title: '设计学习与实验',
-		desc: '占位条目：系统学习品牌视觉、3D 渲染与数字艺术，完成一系列个人练习作品。',
-	},
-	{
-		period: '2023',
-		title: '开始接触设计',
-		desc: '占位条目：写下你最初接触设计、摄影或编程的起点故事。',
-	},
-];
-
-const skills = [
-	{ label: '擅长方向', items: ['品牌视觉', '3D 图形', '插画概念', '产品渲染'] },
-	{ label: '常用工具', items: ['Figma', 'Blender', 'AI 图像工作流', 'Astro / 前端'] },
-];
 ---
 
 <!doctype html>
@@ -40,71 +14,45 @@ const skills = [
 		<Header />
 		<main class="about-main">
 			<section class="intro">
-				<p class="section-kicker">ABOUT ME ↓</p>
-				<div class="intro-grid">
-					<figure class="avatar-card">
-						<Image src={avatar} alt={`${AUTHOR_NAME} 的头像`} width={520} height={520} />
-					</figure>
-					<div class="intro-text">
-						<p class="tag">ABOUT ME</p>
-						<h1>你好，我是 {AUTHOR_NAME}</h1>
-						<p class="bio">
-							这里是一段占位简介：介绍你是谁、专注什么方向、用什么样的方式创作。例如：喜欢把抽象想法转译成视觉画面，
-							习惯用 AI 工作流提高探索效率，在品牌、3D 与摄影之间寻找统一的视觉语言。
-						</p>
-						<p class="bio">
-							本站用来沉淀自己的设计作品与思考；想看具体产出可以浏览{' '}
-							<a href="/projects">作品</a>页面。
-						</p>
-					</div>
-				</div>
+				<p class="section-kicker">ABOUT</p>
+				<h1>你好，我是 {AUTHOR_NAME}</h1>
+				<p class="bio">
+					这里是一段占位简介：介绍你是谁、在记录什么、关注哪些方向。本站用来沉淀日常随笔、阅读笔记与生活照片，
+					慢慢整理成属于自己的记录空间。
+				</p>
+				<p class="bio">
+					写作偏随性，不追求产量；照片用来留住那些容易被遗忘的瞬间。想看看最近写了什么，可以前往{' '}
+					<a href="/blog">文章</a>；想看看最近拍了什么，可以前往 <a href="/gallery">照片墙</a>。
+				</p>
 			</section>
 
 			<section class="info">
-				{skills.map((group) => (
-					<div class="info-col">
-						<h2>{group.label}</h2>
-						<ul>
-							{group.items.map((item) => <li>{item}</li>)}
-						</ul>
-					</div>
-				))}
-			</section>
-
-			<section class="experience">
-				<p class="section-kicker">WORK EXPERIENCE ↓</p>
-				<h2 class="section-title">经历与轨迹</h2>
-				<div class="timeline">
-					{timeline.map((entry) => (
-						<div class="timeline-item">
-							<span class="period">{entry.period}</span>
-							<div class="entry-body">
-								<h3>{entry.title}</h3>
-								<p>{entry.desc}</p>
-							</div>
-						</div>
-					))}
+				<div class="info-col">
+					<h2>在这里记录什么</h2>
+					<ul>
+						<li>日常随笔</li>
+						<li>阅读笔记</li>
+						<li>生活片段</li>
+						<li>随想与思考</li>
+					</ul>
 				</div>
-			</section>
-
-			<section class="contact">
-				<h2>保持联系</h2>
-				<ul class="contact-list">
-					{SOCIAL_LINKS.email && (
-						<li>
-							<span>邮箱</span>
-							<a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>
-						</li>
-					)}
-					{SOCIAL_LINKS.github && (
-						<li>
-							<span>GitHub</span>
-							<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">
-								YQ-create
-							</a>
-						</li>
-					)}
-				</ul>
+				<div class="info-col">
+					<h2>保持联系</h2>
+					<ul class="contact-list">
+						{SOCIAL_LINKS.email && (
+							<li>
+								<span>邮箱</span>
+								<a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>
+							</li>
+						)}
+						{SOCIAL_LINKS.github && (
+							<li>
+								<span>GitHub</span>
+								<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">YQ-create</a>
+							</li>
+						)}
+					</ul>
+				</div>
 			</section>
 		</main>
 		<Footer />
@@ -118,9 +66,12 @@ const skills = [
 		padding: 0;
 	}
 	section {
-		max-width: 1120px;
+		max-width: 1040px;
 		margin: 0 auto;
-		padding: 4em 1.5em;
+		padding: 3.5em 1.5em;
+	}
+	.intro {
+		border-bottom: 1px solid rgb(var(--line));
 	}
 	.section-kicker {
 		color: rgb(var(--accent));
@@ -129,53 +80,19 @@ const skills = [
 		text-transform: uppercase;
 		margin: 0 0 1em;
 	}
-
-	/* 简介：头像 + 文字 */
-	.intro-grid {
-		display: grid;
-		grid-template-columns: 340px 1fr;
-		gap: 3em;
-		align-items: start;
-	}
-	.avatar-card {
-		margin: 0;
-		border-radius: 24px;
-		overflow: hidden;
-		border: 1px solid rgb(var(--line));
-		background: rgb(var(--bg-soft));
-	}
-	.avatar-card img {
-		display: block;
-		width: 100%;
-		aspect-ratio: 1;
-		object-fit: cover;
-		border-radius: 24px;
-	}
-	.tag {
-		display: inline-block;
-		color: rgb(var(--accent));
-		border: 1px solid rgba(var(--accent), 30%);
-		border-radius: 999px;
-		padding: 0.1em 0.9em;
-		font-size: 0.8rem;
-		letter-spacing: 0.15em;
-		margin: 0 0 1.2em;
-	}
-	.intro-text h1 {
-		font-size: clamp(2rem, 4vw, 2.8rem);
+	.intro h1 {
+		font-size: clamp(2rem, 4vw, 2.6rem);
 		margin: 0 0 0.8em;
 	}
 	.bio {
 		color: rgb(var(--muted));
-		max-width: 560px;
+		max-width: 620px;
+		margin-bottom: 1em;
 	}
-
-	/* 两栏信息 */
 	.info {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 3em;
-		border-top: 1px solid rgb(var(--line));
 	}
 	.info-col h2 {
 		font-size: 1.1rem;
@@ -197,83 +114,15 @@ const skills = [
 		color: rgb(var(--muted));
 		font-size: 0.9rem;
 	}
-
-	/* 时间线 */
-	.experience {
-		border-top: 1px solid rgb(var(--line));
-	}
-	.section-title {
-		font-size: 1.8rem;
-		margin: 0 0 2em;
-	}
-	.timeline {
-		position: relative;
-		padding-left: 1.5em;
-	}
-	.timeline::before {
-		content: '';
-		position: absolute;
-		left: 4px;
-		top: 4px;
-		bottom: 4px;
-		width: 1px;
-		background: rgb(var(--line));
-	}
-	.timeline-item {
-		position: relative;
-		display: grid;
-		grid-template-columns: 160px 1fr;
-		gap: 1.5em;
-		padding-bottom: 2.4em;
-	}
-	.timeline-item:last-child {
-		padding-bottom: 0;
-	}
-	.timeline-item::before {
-		content: '';
-		position: absolute;
-		left: -1.5em;
-		top: 7px;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background: rgb(var(--accent));
-		box-shadow: 0 0 10px rgba(var(--accent), 0.6);
-	}
-	.period {
-		color: rgb(var(--muted-light));
-		font-size: 0.9rem;
-		font-variant-numeric: tabular-nums;
-	}
-	.entry-body h3 {
-		margin: 0 0 0.4em;
-		font-size: 1.1rem;
-	}
-	.entry-body p {
-		margin: 0;
-		color: rgb(var(--muted));
-	}
-
-	/* 联系 */
-	.contact {
-		border-top: 1px solid rgb(var(--line));
-	}
-	.contact h2 {
-		font-size: 1.5rem;
-		margin-bottom: 1.2em;
-	}
 	.contact-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
 		flex-direction: column;
-		gap: 0.8em;
+		gap: 0.7em;
 	}
 	.contact-list li {
 		display: flex;
-		gap: 1.2em;
-		align-items: baseline;
+		gap: 1em;
+		border: none;
+		padding: 0;
 	}
 	.contact-list span {
 		color: rgb(var(--muted-light));
@@ -282,14 +131,9 @@ const skills = [
 	}
 
 	@media (max-width: 720px) {
-		.intro-grid,
 		.info {
 			grid-template-columns: 1fr;
 			gap: 2em;
-		}
-		.timeline-item {
-			grid-template-columns: 1fr;
-			gap: 0.3em;
 		}
 	}
 </style>

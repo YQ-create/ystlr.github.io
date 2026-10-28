@@ -9,36 +9,108 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 const posts = (await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
+
+// 汇总全站标签，供顶部标签筛选展示
+const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 ---
 
 <!doctype html>
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={`博客 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+		<BaseHead title={`文章 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
 	</head>
 	<body>
 		<Header />
 		<main>
 			<header class="page-head">
-				<h1>博客</h1>
-				<p>写作、学习笔记与随想，按时间倒序排列。</p>
+				<h1>文章</h1>
+				<p>记录日常、想法与读过的东西，按时间倒序排列。</p>
 			</header>
-			<ul class="post-list">
-				{posts.map((post) => <PostListItem post={post} />)}
+
+			<div class="toolbar">
+				<input
+					id="post-search"
+					type="search"
+					placeholder="搜索标题、摘要或标签…"
+					aria-label="搜索文章"
+				/>
+				<div class="tag-filter" id="tag-filter">
+					<button class="tag-chip active" data-tag="">全部</button>
+					{allTags.map((tag) => (
+						<button class="tag-chip" data-tag={tag}>{tag}</button>
+					))}
+				</div>
+			</div>
+
+			<p class="result-count" id="result-count" aria-live="polite"></p>
+
+			<ul class="post-list" id="post-list">
+				{posts.map((post) => (
+					<PostListItem
+						post={post}
+						tags={post.data.tags}
+					/>
+				))}
 			</ul>
+
+			<div class="empty-state" id="empty-state" hidden>
+				<p>没有匹配的文章，换个关键词试试。</p>
+			</div>
 		</main>
 		<Footer />
 	</body>
 </html>
+
+<script>
+	const searchInput = document.getElementById('post-search') as HTMLInputElement;
+	const tagButtons = Array.from(
+		document.querySelectorAll<HTMLButtonElement>('#tag-filter .tag-chip'),
+	);
+	const list = document.getElementById('post-list')!;
+	const items = Array.from(list.querySelectorAll<HTMLElement>('.post-item'));
+	const emptyState = document.getElementById('empty-state')!;
+	const resultCount = document.getElementById('result-count')!;
+
+	let activeTag = '';
+
+	function applyFilter() {
+		const q = searchInput.value.trim().toLowerCase();
+		let visible = 0;
+
+		items.forEach((item) => {
+			const text = item.textContent?.toLowerCase() ?? '';
+			const matchTag = !activeTag || item.dataset.tags?.includes(activeTag);
+			const matchQuery = !q || text.includes(q);
+			const show = matchTag && matchQuery;
+			item.style.display = show ? '' : 'none';
+			if (show) visible++;
+		});
+
+		resultCount.textContent = visible > 0 ? `共 ${visible} 篇` : '';
+		emptyState.hidden = visible !== 0;
+	}
+
+	searchInput?.addEventListener('input', applyFilter);
+
+	tagButtons.forEach((btn) => {
+		btn.addEventListener('click', () => {
+			activeTag = btn.dataset.tag ?? '';
+			tagButtons.forEach((b) => b.classList.toggle('active', b === btn));
+			applyFilter();
+		});
+	});
+
+	applyFilter();
+</script>
 
 <style>
 	main {
 		max-width: 720px;
 	}
 	.page-head {
-		padding: 1em 0 1.5em;
+		padding: 1em 0 1.2em;
 		border-bottom: 1px solid rgb(var(--line));
-		margin-bottom: 0.5em;
+		margin-bottom: 1.2em;
 	}
 	.page-head h1 {
 		font-size: 2rem;
@@ -48,9 +120,60 @@ const posts = (await getCollection('blog')).sort(
 		color: rgb(var(--muted));
 		margin: 0;
 	}
+	.toolbar {
+		display: flex;
+		flex-direction: column;
+		gap: 0.8em;
+		margin-bottom: 1.4em;
+	}
+	#post-search {
+		width: 100%;
+		padding: 0.7em 1em;
+		border-radius: 12px;
+		border: 1px solid rgb(var(--line));
+		background: rgb(var(--paper));
+	}
+	#post-search:focus {
+		outline: 2px solid rgba(var(--accent), 0.25);
+		border-color: rgb(var(--accent));
+	}
+	.tag-filter {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5em;
+	}
+	.tag-chip {
+		font-size: 0.82rem;
+		padding: 0.25em 0.85em;
+		border-radius: 999px;
+		border: 1px solid rgb(var(--line));
+		background: transparent;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+	.tag-chip:hover {
+		color: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+	}
+	.tag-chip.active {
+		background: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+		color: rgb(var(--paper));
+	}
+	.result-count {
+		font-size: 0.85rem;
+		color: rgb(var(--muted));
+		margin: 0 0 0.8em;
+	}
 	.post-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
+	}
+	.empty-state {
+		margin-top: 2em;
+		text-align: center;
+		color: rgb(var(--muted));
 	}
 </style>

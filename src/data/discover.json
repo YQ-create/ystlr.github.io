@@ -1,0 +1,49 @@
+{
+  "collections": [
+    {
+      "category": "设计与灵感",
+      "links": [
+        {
+          "title": "探索设计灵感",
+          "url": "https://dribbble.com",
+          "description": "设计师作品合集，寻找配色与排版参考。"
+        },
+        {
+          "title": "图库与插画",
+          "url": "https://unsplash.com",
+          "description": "高质量免费摄影图片，写作配图常用。"
+        }
+      ]
+    },
+    {
+      "category": "写作与阅读",
+      "links": [
+        {
+          "title": "长文与随笔",
+          "url": "https://medium.com",
+          "description": "各领域作者的深度长文，适合静心阅读。"
+        },
+        {
+          "title": "文字记录",
+          "url": "https://write.as",
+          "description": "极简写作空间，专注表达本身。"
+        }
+      ]
+    },
+    {
+      "category": "开发者工具",
+      "links": [
+        {
+          "title": "文档与工具",
+          "url": "https://github.com",
+          "description": "开源项目与代码收藏仓库。"
+        },
+        {
+          "title": "站点生成器",
+          "url": "https://astro.build",
+          "description": "本站使用的现代静态站点框架。"
+        }
+      ]
+    }
+  ]
+}

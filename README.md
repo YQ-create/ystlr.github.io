@@ -1,6 +1,6 @@
-# ystlr.com 个人作品集网站
+# ystlr.com 个人博客
 
-基于 [Astro](https://astro.build) 构建的暗色荧光绿风格个人作品集：沉浸式首页 Hero、作品大图网格、关于页章节式布局，并保留轻量博客。自动部署到 GitHub Pages，绑定自有域名 **ystlr.com**。
+基于 [Astro](https://astro.build) 构建的纯静态个人博客：米白暖调杂志纸张风，包含文章发布、照片墙、发现书签与关于页。自动部署到 GitHub Pages，绑定自有域名 **ystlr.com**。
 
 ## 技术栈
 
@@ -30,76 +30,49 @@ npm run preview
 
 ```text
 ├── public/                  # 静态资源，原样复制到产物；CNAME 为自定义域名配置
-│   └── audio/               # 顶部播放器的音频文件（后台可上传）
 ├── src/
-│   ├── assets/
-│   │   ├── blog/            # 文章题图（后台可上传）
-│   │   ├── portfolio/       # 首页 Hero 背景、关于页头像
-│   │   └── works/           # 作品封面图（后台可上传）
-│   ├── admin/               # 管理后台前端逻辑（GitHub API 客户端 + 界面）
-│   ├── components/          # 页头、页脚、音乐播放器、作品卡片、文章列表项等组件
-│   ├── content/blog/        # 所有博客文章（一篇文章一个 Markdown 文件）
+│   ├── components/          # 页头、页脚、音乐播放器、文章列表项、Giscus 评论等组件
+│   ├── content/
+│   │   ├── blog/           # 所有博客文章（一篇文章一个 Markdown 文件）
+│   │   └── gallery/        # 照片墙记录（每条一张照片，按 date 分组到年、月）
 │   ├── data/
-│   │   ├── projects.json    # 作品数据（后台写入，页面读取）
-│   │   ├── projects.ts      # 读取 projects.json 并匹配封面图，输出给页面
-│   │   └── playlist.json    # 播放器曲目列表（后台写入）
-│   ├── layouts/             # 文章详情布局
-│   ├── pages/               # 路由：/、/projects、/about、/blog、/admin（后台）
-│   ├── styles/global.css    # 全局配色与排版变量（暗色主题 token 在顶部）
-│   └── consts.ts            # 站点标题、Hero 文案、作者、社交链接、后台仓库信息
+│   │   ├── discover.json   # 发现页收藏书签与推荐站点分组
+│   │   └── playlist.json   # 顶部悬浮播放器曲目列表
+│   ├── layouts/            # 文章详情布局
+│   ├── pages/              # 路由：/、/blog、/gallery、/discover、/about、/404
+│   ├── styles/global.css   # 全局配色与排版变量（米白暖调 token 在顶部）
+│   └── consts.ts           # 站点标题、Hero 文案、作者、社交链接
 ├── .github/workflows/deploy.yml   # GitHub Pages 自动部署流程
 └── astro.config.mjs         # 站点域名与集成配置
 ```
+
+## 页面与功能
+
+| 页面 | 路由 | 说明 |
+| --- | --- | --- |
+| 首页 | `/` | Hero 文案、最新文章、照片墙速览 |
+| 文章 | `/blog` | 文章列表，支持关键词搜索与标签筛选 |
+| 照片墙 | `/gallery` | 照片按年、月分组的瀑布网格 |
+| 发现 | `/discover` | 收藏书签与推荐站点卡片，数据来自 `src/data/discover.json` |
+| 关于 | `/about` | 个人简介、记录方向与联系方式 |
+
+文章详情页底部接入 Giscus 评论；未配置 `repoId` / `categoryId` 时不渲染评论区，不影响其他内容。
 
 ## 常用修改位置
 
 | 想改什么 | 改哪里 |
 | --- | --- |
 | 站点标题、Hero 头衔与两行副标题、邮箱、GitHub 链接 | `src/consts.ts` |
-| 作品（增删改、换封面） | 后台 `/admin` → 作品；数据在 `src/data/projects.json` |
-| 博客文章（写作、发布、删除） | 后台 `/admin` → 博客；文件在 `src/content/blog/` |
-| 顶部播放器曲目（上传音乐） | 后台 `/admin` → 音乐；曲目在 `src/data/playlist.json` |
-| 首页 Hero 背景图、横滑作品条、简介区块 | `src/pages/index.astro` |
-| 作品页大图网格 | `src/pages/projects/index.astro` + `src/components/WorkCard.astro` |
-| 关于页简介、擅长方向、工具、经历时间线 | `src/pages/about.astro` |
-| 暗色配色（荧光绿、背景、文字、边框） | `src/styles/global.css` 顶部 CSS 变量 |
-| 导航菜单项、播放器位置 | `src/components/Header.astro` |
+| 博客文章（写作、发布、删除） | `src/content/blog/`，frontmatter 格式见下文 |
+| 照片墙照片与说明 | `src/content/gallery/`，`date` 决定所属年月 |
+| 发现页书签、推荐站点 | `src/data/discover.json` |
+| 顶部播放器曲目 | `src/data/playlist.json`，音频文件放入 `public/audio/` |
+| 首页 Hero、最新文章与照片墙区块 | `src/pages/index.astro` |
+| 文章列表搜索框、标签筛选 | `src/pages/blog/index.astro` |
+| 照片墙年、月分组与网格 | `src/pages/gallery/index.astro` |
+| 全局配色（米白背景、纸面、赭石强调色、墨色文字） | `src/styles/global.css` 顶部 CSS 变量 |
+| 导航菜单项 | `src/components/Header.astro` |
 | 站点域名 | `astro.config.mjs` 的 `site` 与 `public/CNAME` |
-
-### 替换占位内容
-
-上线前需要把当前占位文案换成真实信息：
-
-1. `src/consts.ts`：`HERO.role`、两行 `tagline`、社交链接；
-2. `src/data/projects.json`（或直接在 `/admin` 后台里改）：六条作品的标题、描述、标签、年份与封面图；
-3. `src/pages/about.astro`：头像、个人简介、两栏擅长方向与工具、`timeline` 经历条目；
-4. 头像替换：新图放进 `src/assets/portfolio/avatar.jpg`（保持同名覆盖即可）；Hero 背景替换 `src/assets/portfolio/hero-bg.jpg`。
-
-## 管理后台（/admin）
-
-浏览器打开 https://ystlr.com/admin/ （本地开发是 http://localhost:4321/admin/ ），用 GitHub Token 登录后即可：
-
-- **作品**：新建 / 编辑 / 删除，上传封面图（构建时自动转成 webp）；
-- **博客**：写 Markdown 正文、上传题图、发布或删除文章；
-- **音乐**：上传音频，立刻出现在顶部播放器里。
-
-原理：页面直接用 GitHub API 把改动提交到 `main` 分支（一次保存 = 一个 commit），GitHub Actions 随即重新构建发布，通常 1–2 分钟后线上生效。误操作时在 GitHub 上 revert 那次 commit 即可回滚。
-
-### 准备 Token（只需一次）
-
-1. 打开 https://github.com/settings/personal-access-tokens/new ；
-2. Repository access → **Only select repositories** → 勾选 `ystlr.github.io`；
-3. Permissions → Repository permissions → **Contents: Read and write**；
-4. 生成后复制 `github_pat_…`，粘贴到 `/admin` 的登录框，有效期建议 1 年。
-
-Token 存在浏览器本地存储里，等同于仓库写入权限：不要在公共电脑勾选「记住登录」；怀疑泄露时到 GitHub 撤销并重新生成即可。
-
-登录失败时页面会逐项列出体检结果（Token 是否有效 / 仓库能否访问 / Contents 读写权限 / 分支是否存在）。最常见的两种：
-
-- `Resource not accessible by personal access token`：Token 没有该仓库的写权限。回 Token 设置把 Repository access 改成 **Only select repositories** 并勾选 `ystlr.github.io`，Contents 设为 **Read and write**，保存后重新登录（权限变更后旧登录会失效）。
-- `Bad credentials`：Token 复制不完整或已过期，重新生成一个。
-
-音乐支持 mp3 / m4a / aac / flac / wav / ogg，单曲 40MB 以内；mp3 兼容性最好，flac 在个别手机浏览器上可能无法播放。
 
 ## 写一篇新文章
 
@@ -118,7 +91,31 @@ tags: ['标签一', '标签二']
 正文从这里开始，使用 Markdown 语法。
 ```
 
-3. 保存后 `npm run dev` 即可在本地预览；推送代码后会自动上线。
+3. 保存后 `npm run dev` 即可在本地预览；提交并推送代码后，GitHub Actions 自动构建上线。
+
+## 照片墙记录格式
+
+每条照片记录放在 `src/content/gallery/`，`date` 为拍摄日期，页面按年、月自动分组：
+
+```yaml
+---
+title: "江边的傍晚"
+date: 2026-10-22
+image: ../../assets/gallery/g-01.jpg
+caption: "落日把江面染成暖橙色，风里有秋天的味道。"
+tags: ["生活", "风景"]
+---
+```
+
+## 评论系统（Giscus）
+
+文章评论基于 Giscus，评论内容存储在仓库的 GitHub Discussions 中。接入步骤：
+
+1. 在 https://giscus.app 输入公开仓库 `YQ-create/ystlr.github.io`，生成 `repoId` 与 `categoryId`；
+2. 仓库开启 GitHub Discussions，并安装 Giscus GitHub App；
+3. 将参数回填到 `src/components/Giscus.astro` 的 `GISCUS_CONFIG`。
+
+未配置前评论区不会渲染，站点其余功能不受影响。
 
 ## 上线部署（GitHub Pages + ystlr.com）
 
@@ -167,7 +164,7 @@ git remote add origin https://github.com/YQ-create/ystlr.github.io.git
 
 ```bash
 git add .
-git commit -m "更新作品集"
+git commit -m "更新博客"
 git push
 ```
 

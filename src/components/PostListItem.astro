@@ -5,21 +5,22 @@ import FormattedDate from './FormattedDate.astro';
 interface Props {
 	post: CollectionEntry<'blog'>;
 	excerpt?: boolean;
+	tags?: string[];
 }
 
-const { post, excerpt = true } = Astro.props;
+const { post, excerpt = true, tags = post.data.tags } = Astro.props;
 ---
 
-<li class="post-item">
+<li class="post-item" data-tags={tags.join(',')}>
 	<div class="post-date">
 		<FormattedDate date={post.data.pubDate} />
 	</div>
 	<div class="post-body">
 		<a href={`/blog/${post.id}/`} class="post-title">{post.data.title}</a>
 		{excerpt && <p class="post-desc">{post.data.description}</p>}
-		{post.data.tags.length > 0 && (
+		{tags.length > 0 && (
 			<div class="post-tags">
-				{post.data.tags.map((tag) => <span class="tag">{tag}</span>)}
+				{tags.map((tag) => <span class="tag">{tag}</span>)}
 			</div>
 		)}
 	</div>

@@ -1,0 +1,106 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import discoverData from '../../data/discover.json';
+
+const collections = discoverData.collections;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`发现 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<header class="page-head">
+				<h1>发现</h1>
+				<p>收藏的书签、推荐站点与常逛的角落。</p>
+			</header>
+
+			{collections.map((group) => (
+				<section class="group">
+					<h2 class="group-title">{group.category}</h2>
+					<div class="link-grid">
+						{group.links.map((link) => (
+							<a class="link-card" href={link.url} target="_blank" rel="noopener">
+								<h3>{link.title}</h3>
+								<p>{link.description}</p>
+								<span class="arrow">↗</span>
+							</a>
+						))}
+					</div>
+				</section>
+			))}
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 860px;
+	}
+	.page-head {
+		padding: 1em 0 1.2em;
+		border-bottom: 1px solid rgb(var(--line));
+		margin-bottom: 1.5em;
+	}
+	.page-head h1 {
+		font-size: 2rem;
+		margin-bottom: 0.3em;
+	}
+	.page-head p {
+		color: rgb(var(--muted));
+		margin: 0;
+	}
+	.group {
+		margin-bottom: 2.2em;
+	}
+	.group-title {
+		font-size: 1.1rem;
+		color: rgb(var(--muted));
+		margin-bottom: 1em;
+		font-weight: 600;
+	}
+	.link-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 1em;
+	}
+	.link-card {
+		position: relative;
+		display: block;
+		background: rgb(var(--paper));
+		border: 1px solid rgb(var(--line));
+		border-radius: 14px;
+		padding: 1.2em 1.3em;
+		text-decoration: none;
+		color: rgb(var(--ink));
+		transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+	}
+	.link-card:hover {
+		transform: translateY(-3px);
+		box-shadow: var(--box-shadow);
+		border-color: rgba(var(--accent), 0.4);
+	}
+	.link-card h3 {
+		font-size: 1.05rem;
+		margin-bottom: 0.4em;
+	}
+	.link-card p {
+		font-size: 0.9rem;
+		color: rgb(var(--muted));
+		margin: 0;
+	}
+	.arrow {
+		position: absolute;
+		top: 1.1em;
+		right: 1.1em;
+		color: rgb(var(--accent));
+		font-size: 1rem;
+	}
+</style>

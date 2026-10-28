@@ -1,6 +1,5 @@
 ---
-// 顶部音乐播放器：曲目来自 src/data/playlist.json，音频文件放在 public/audio/。
-// 后台 /admin → 「音乐」可以上传音频并自动写入 playlist.json。
+// 顶部悬浮音乐播放器：曲目来自 src/data/playlist.json，音频文件放在 public/audio/。
 
 import playlist from '../data/playlist.json';
 
@@ -60,7 +59,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		</ol>
 
 		<p class="hint" data-music-empty hidden>
-			后台还没有曲目。登录 <a href="/admin/">/admin</a> → 「音乐」上传一首即可。
+			还没有曲目，在 playlist.json 中添加后即可播放。
 		</p>
 
 		<audio data-music-audio transition:persist preload="metadata"></audio>
@@ -371,8 +370,8 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		padding: 0.95em 1em 0.8em;
 		border-radius: 16px;
 		border: 1px solid rgb(var(--line));
-		background: rgba(20, 23, 21, 0.97);
-		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+		background: rgb(var(--paper));
+		box-shadow: 0 12px 30px rgba(90, 70, 45, 18%);
 		backdrop-filter: blur(14px);
 		z-index: 40;
 	}

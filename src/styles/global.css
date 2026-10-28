@@ -1,32 +1,32 @@
 /*
-  全局基础样式 · 暗色作品集主题。
+  全局基础样式 · 米白暖调 / 杂志纸张感主题。
   色彩以 RGB 三元组存放在 :root，组件内用 rgb(var(--token)) 引用。
 */
 
 :root {
-	/* 品牌强调：荧光绿 */
-	--accent: 182, 255, 60;
-	--accent-dark: 140, 214, 42;
+	/* 强调：赭石陶土棕（杂志刊头气质，低饱和暖色） */
+	--accent: 150, 84, 52;
+	--accent-soft: 184, 120, 86;
 
-	/* 背景与表面 */
-	--bg: 13, 15, 14;
-	--bg-soft: 20, 23, 21;
-	--surface: 27, 30, 28;
-	--line: 43, 47, 44;
+	/* 背景与纸面 */
+	--bg: 246, 240, 229;
+	--paper: 253, 250, 244;
+	--surface: 255, 253, 248;
+	--line: 228, 216, 196;
 
 	/* 文字 */
-	--ink: 240, 243, 238;
-	--muted: 154, 163, 155;
-	--muted-light: 104, 112, 105;
+	--ink: 46, 39, 32;
+	--muted: 122, 110, 95;
+	--muted-light: 158, 146, 130;
 
 	/* 小面积点缀 */
-	--ochre: 220, 184, 96;
+	--ochre: 176, 134, 68;
 
-	--box-shadow: 0 1px 2px rgba(0, 0, 0, 30%), 0 12px 32px rgba(0, 0, 0, 45%);
+	--box-shadow: 0 1px 2px rgba(90, 70, 45, 12%), 0 10px 28px rgba(90, 70, 45, 12%);
 }
 
 html {
-	color-scheme: dark;
+	color-scheme: light;
 }
 
 body {
@@ -87,7 +87,7 @@ a {
 	text-underline-offset: 3px;
 }
 a:hover {
-	color: rgb(var(--accent-dark));
+	color: rgb(var(--accent-soft));
 }
 
 p {
@@ -101,7 +101,7 @@ p {
 textarea,
 input {
 	font-size: 16px;
-	background: rgb(var(--bg-soft));
+	background: rgb(var(--paper));
 	color: rgb(var(--ink));
 	border: 1px solid rgb(var(--line));
 }
@@ -118,7 +118,7 @@ img {
 
 code {
 	padding: 2px 6px;
-	background-color: rgb(var(--bg-soft));
+	background-color: rgb(var(--paper));
 	border: 1px solid rgb(var(--line));
 	border-radius: 5px;
 	font-size: 0.88em;
@@ -128,7 +128,7 @@ code {
 pre {
 	padding: 1.2em 1.4em;
 	border-radius: 12px;
-	background: rgb(8, 10, 9);
+	background: rgb(50, 43, 36);
 	border: 1px solid rgb(var(--line));
 	overflow-x: auto;
 }
@@ -136,7 +136,7 @@ pre > code {
 	all: unset;
 	background: transparent;
 	border: none;
-	color: rgb(var(--ink));
+	color: rgb(var(--paper));
 	padding: 0;
 }
 
@@ -158,7 +158,7 @@ hr {
 	display: inline-block;
 	font-size: 0.78rem;
 	color: rgb(var(--accent));
-	border: 1px solid rgba(var(--accent), 30%);
+	border: 1px solid rgba(var(--accent), 28%);
 	border-radius: 999px;
 	padding: 0.05em 0.7em;
 	margin-right: 0.4em;

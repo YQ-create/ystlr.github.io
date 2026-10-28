@@ -1,7 +1,6 @@
-# ystlr.com 个人博客
+# ystlr.com 个人作品集网站
 
-基于 [Astro](https://astro.build) 构建的静态个人站点：博客文章 + 作品展示 + 关于页，
-自动部署到 GitHub Pages，绑定自有域名 **ystlr.com**。
+基于 [Astro](https://astro.build) 构建的暗色荧光绿风格个人作品集：沉浸式首页 Hero、作品大图网格、关于页章节式布局，并保留轻量博客。自动部署到 GitHub Pages，绑定自有域名 **ystlr.com**。
 
 ## 技术栈
 
@@ -17,7 +16,7 @@
 # 安装依赖（首次）
 npm install
 
-# 启动本地预览，默认 http://localhost:4321
+# 启动本地开发，默认 http://localhost:4321
 npm run dev
 
 # 构建生产产物到 dist/
@@ -32,21 +31,46 @@ npm run preview
 ```text
 ├── public/                  # 静态资源，原样复制到产物；CNAME 为自定义域名配置
 ├── src/
-│   ├── components/          # 页头、页脚、文章卡片、作品卡片等组件
+│   ├── assets/
+│   │   ├── portfolio/      # 首页 Hero 背景、关于页头像
+│   │   └── works/          # 作品封面图（work-1 ~ work-6）
+│   ├── components/         # 页头、页脚、作品卡片、文章列表项等组件
 │   ├── content/blog/       # 所有博客文章（一篇文章一个 Markdown 文件）
-│   ├── data/projects.ts    # 作品列表，新增项目在这里追加
-│   ├── layouts/             # 文章详情布局
-│   ├── pages/               # 页面路由：首页、博客、作品、关于
-│   ├── styles/global.css    # 全局配色与排版变量
-│   └── consts.ts            # 站点标题、简介、作者、社交链接
+│   ├── data/projects.ts    # 作品列表：标题、简介、标签、年份、封面
+│   ├── layouts/            # 文章详情布局
+│   ├── pages/             # 路由：首页 /、作品 /projects、关于 /about、博客 /blog
+│   ├── styles/global.css   # 全局配色与排版变量（暗色主题 token 在顶部）
+│   └── consts.ts           # 站点标题、Hero 文案、作者、社交链接
 ├── .github/workflows/deploy.yml   # GitHub Pages 自动部署流程
 └── astro.config.mjs        # 站点域名与集成配置
 ```
 
+## 常用修改位置
+
+| 想改什么 | 改哪里 |
+| --- | --- |
+| 站点标题、Hero 头衔与两行副标题、邮箱、GitHub 链接 | `src/consts.ts` |
+| 作品标题、简介、标签、年份、封面、跳转链接 | `src/data/projects.ts` |
+| 首页 Hero 背景图、横滑作品条、简介区块 | `src/pages/index.astro` |
+| 作品页大图网格 | `src/pages/projects/index.astro` + `src/components/WorkCard.astro` |
+| 关于页简介、擅长方向、工具、经历时间线 | `src/pages/about.astro` |
+| 暗色配色（荧光绿、背景、文字、边框） | `src/styles/global.css` 顶部 CSS 变量 |
+| 导航菜单项 | `src/components/Header.astro` |
+| 站点域名 | `astro.config.mjs` 的 `site` 与 `public/CNAME` |
+
+### 替换占位内容
+
+上线前需要把当前占位文案换成真实信息：
+
+1. `src/consts.ts`：`HERO.role`、两行 `tagline`、社交链接；
+2. `src/data/projects.ts`：六条作品的标题、描述、标签、年份与封面图；把新封面放进 `src/assets/works/` 并修改文件顶部 import；
+3. `src/pages/about.astro`：头像、个人简介、两栏擅长方向与工具、`timeline` 经历条目；
+4. 头像替换：新图放进 `src/assets/portfolio/avatar.jpg`（保持同名覆盖即可）；Hero 背景替换 `src/assets/portfolio/hero-bg.jpg`。
+
 ## 写一篇新文章
 
 1. 在 `src/content/blog/` 下新建一个 `.md` 文件，文件名即文章网址，例如 `my-note.md`；
-2. 按下面的格式填写开头的 frontmatter：
+2. 按下面格式填写开头的 frontmatter：
 
 ```yaml
 ---
@@ -62,55 +86,27 @@ tags: ['标签一', '标签二']
 
 3. 保存后 `npm run dev` 即可在本地预览；推送代码后会自动上线。
 
-## 常用修改位置
-
-| 想改什么 | 改哪里 |
-| --- | --- |
-| 站点标题、简介、作者名、邮箱、GitHub / X 链接 | `src/consts.ts` |
-| 作品 / 项目卡片 | `src/data/projects.ts` |
-| 配色、字体、全局间距 | `src/styles/global.css` 顶部的 CSS 变量 |
-| 导航菜单项 | `src/components/Header.astro` |
-| 站点域名 | `astro.config.mjs` 的 `site` 与 `public/CNAME` |
-
 ## 上线部署（GitHub Pages + ystlr.com）
 
-### 1. 在 GitHub 创建仓库
+### 1. 仓库与远程
 
-- 登录 GitHub，新建一个空仓库（不要勾选初始化 README）；
-- 仓库名若正好是 `<你的GitHub用户名>.github.io`，站点挂在域名根路径；否则是「项目站点」，
-  默认地址为 `https://你的用户名.github.io/仓库名/`。本仓库属于后者（`YQ-create/ystlr.github.io`），
-  绑定自有域名 `ystlr.com` 后同样从域名根路径访问，站内以 `/` 开头的链接才有效；
-- 记下仓库地址，例如 `https://github.com/你的用户名/你的用户名.github.io.git`。
-
-### 2. 关联远程仓库并推送
-
-首次使用 Git 先配置身份（只需执行一次，换成你自己的名字和邮箱）：
+本仓库为 `https://github.com/YQ-create/ystlr.github.io`，仓库名即 `<用户名>.github.io`，站点挂在域名根路径；绑定自有域名 `ystlr.com` 后从域名根路径访问。首次关联远程：
 
 ```bash
 git config --global user.name "你的名字"
 git config --global user.email "你的邮箱"
+git remote add origin https://github.com/YQ-create/ystlr.github.io.git
 ```
 
-然后在本目录执行：
+### 2. 开启 GitHub Pages
 
-```bash
-git add .
-git commit -m "初始化 ystlr 个人博客"
-git branch -M main
-git remote add origin https://github.com/你的用户名/你的用户名.github.io.git
-git push -u origin main
-```
+进入仓库 **Settings → Pages**，**Build and deployment → Source** 选择 **GitHub Actions**（仓库已自带 `.github/workflows/deploy.yml`，推送 `main` 分支后自动构建发布）。
 
-### 3. 开启 GitHub Pages
+### 3. 配置域名 DNS
 
-进入仓库 **Settings → Pages**，在 **Build and deployment → Source** 选择
-**GitHub Actions**（本仓库已自带 `.github/workflows/deploy.yml`，推送 main 分支后会自动构建发布）。
+在域名服务商解析后台添加：
 
-### 4. 配置域名 DNS
-
-在你购买 ystlr.com 的域名服务商控制台（域名解析后台）添加以下记录：
-
-**根域名（A 记录，指向 GitHub Pages）**
+**根域名 A 记录**
 
 | 主机记录 | 记录类型 | 记录值 |
 | --- | --- | --- |
@@ -119,7 +115,7 @@ git push -u origin main
 | `@` | A | `185.199.110.153` |
 | `@` | A | `185.199.111.153` |
 
-**www 子域名（CNAME）**
+**www 子域名 CNAME**
 
 | 主机记录 | 记录类型 | 记录值 |
 | --- | --- | --- |
@@ -127,21 +123,17 @@ git push -u origin main
 
 注意事项：
 
-- ystlr.com 在 **Spaceship**（NS：`launch1.spaceship.net` / `launch2.spaceship.net`）。
-  新域名默认开着「停放页」，解析里会有一条指向 `54.149.79.189`、`34.216.117.25` 的 A 记录，
-  **必须先删掉这些停放记录**，否则上面 4 条 GitHub IP 不会生效；
-- 自定义域名还需要在仓库 **Settings → Pages → Custom domain** 里填写 `ystlr.com` 并 Save
-  （用 GitHub Actions 发布时，`public/CNAME` 只作为产物文件，不会自动改这项设置）；
-- DNS 生效通常需要几分钟到几十分钟；证书签发完成（最长约 24 小时）后再勾选
-  **Enforce HTTPS** 开启强制 HTTPS，否则访问会报证书错误。
+- 删除域名原有的停放页 A 记录，否则上面 4 条 GitHub IP 不会生效；
+- 在仓库 **Settings → Pages → Custom domain** 填写 `ystlr.com` 并 Save（`public/CNAME` 只是产物文件，不会自动改这项设置）；
+- DNS 生效与证书签发可能需要几分钟到 24 小时，完成后勾选 **Enforce HTTPS** 开启强制 HTTPS。
 
-### 5. 日常发布
+### 4. 日常发布
 
-写完文章保存，提交并推送：
+修改保存后提交并推送：
 
 ```bash
 git add .
-git commit -m "新增文章：xxx"
+git commit -m "更新作品集"
 git push
 ```
 

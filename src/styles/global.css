@@ -1,22 +1,32 @@
 /*
-  全局基础样式。色彩以 RGB 三元组形式存放在 :root，组件内用 rgb(var(--token)) 引用。
+  全局基础样式 · 暗色作品集主题。
+  色彩以 RGB 三元组存放在 :root，组件内用 rgb(var(--token)) 引用。
 */
 
 :root {
-	/* 品牌强调：深青墨绿 */
-	--accent: 31, 95, 91;
-	--accent-dark: 20, 66, 63;
-	/* 少量点缀：赭石，仅用于标签等小面积元素 */
-	--ochre: 176, 116, 45;
+	/* 品牌强调：荧光绿 */
+	--accent: 182, 255, 60;
+	--accent-dark: 140, 214, 42;
 
-	--ink: 28, 31, 33;
-	--muted: 98, 103, 100;
-	--muted-light: 158, 160, 154;
-	--line: 226, 223, 212;
-	--paper: 251, 250, 246;
-	--surface: 255, 255, 255;
+	/* 背景与表面 */
+	--bg: 13, 15, 14;
+	--bg-soft: 20, 23, 21;
+	--surface: 27, 30, 28;
+	--line: 43, 47, 44;
 
-	--box-shadow: 0 1px 2px rgba(var(--ink), 6%), 0 8px 24px rgba(var(--ink), 8%);
+	/* 文字 */
+	--ink: 240, 243, 238;
+	--muted: 154, 163, 155;
+	--muted-light: 104, 112, 105;
+
+	/* 小面积点缀 */
+	--ochre: 220, 184, 96;
+
+	--box-shadow: 0 1px 2px rgba(0, 0, 0, 30%), 0 12px 32px rgba(0, 0, 0, 45%);
+}
+
+html {
+	color-scheme: dark;
 }
 
 body {
@@ -25,10 +35,10 @@ body {
 	margin: 0;
 	padding: 0;
 	text-align: left;
-	background: rgb(var(--paper));
+	background: rgb(var(--bg));
+	color: rgb(var(--ink));
 	word-wrap: break-word;
 	overflow-wrap: break-word;
-	color: rgb(var(--ink));
 	font-size: 17px;
 	line-height: 1.75;
 	-webkit-font-smoothing: antialiased;
@@ -91,6 +101,9 @@ p {
 textarea,
 input {
 	font-size: 16px;
+	background: rgb(var(--bg-soft));
+	color: rgb(var(--ink));
+	border: 1px solid rgb(var(--line));
 }
 
 table {
@@ -100,25 +113,30 @@ table {
 img {
 	max-width: 100%;
 	height: auto;
-	border-radius: 10px;
+	border-radius: 12px;
 }
 
 code {
 	padding: 2px 6px;
-	background-color: rgb(var(--line));
-	border-radius: 4px;
+	background-color: rgb(var(--bg-soft));
+	border: 1px solid rgb(var(--line));
+	border-radius: 5px;
 	font-size: 0.88em;
+	color: rgb(var(--accent));
 }
 
 pre {
 	padding: 1.2em 1.4em;
-	border-radius: 10px;
-	background: rgb(34, 38, 38);
+	border-radius: 12px;
+	background: rgb(8, 10, 9);
+	border: 1px solid rgb(var(--line));
 	overflow-x: auto;
 }
 pre > code {
 	all: unset;
 	background: transparent;
+	border: none;
+	color: rgb(var(--ink));
 	padding: 0;
 }
 
@@ -139,8 +157,8 @@ hr {
 .tag {
 	display: inline-block;
 	font-size: 0.78rem;
-	color: rgb(var(--ochre));
-	border: 1px solid rgba(var(--ochre), 35%);
+	color: rgb(var(--accent));
+	border: 1px solid rgba(var(--accent), 30%);
 	border-radius: 999px;
 	padding: 0.05em 0.7em;
 	margin-right: 0.4em;

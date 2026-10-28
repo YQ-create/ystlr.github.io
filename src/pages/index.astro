@@ -2,17 +2,10 @@
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import PostListItem from '../components/PostListItem.astro';
-import ProjectCard from '../components/ProjectCard.astro';
-import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
 import { projects } from '../data/projects';
-import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
-const latestPosts = posts.slice(0, 3);
-const featuredProjects = projects.slice(0, 2);
+import { HERO, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import heroBg from '../assets/portfolio/hero-bg.jpg';
 ---
 
 <!doctype html>
@@ -22,127 +15,251 @@ const featuredProjects = projects.slice(0, 2);
 	</head>
 	<body>
 		<Header />
-		<main>
-			<section class="hero">
-				<p class="hero-kicker">{AUTHOR_NAME} 的个人站点</p>
-				<h1>写点东西，做点东西，<br />记录走过的路。</h1>
-				<p class="hero-desc">{SITE_DESCRIPTION}</p>
-				<div class="hero-actions">
-					<a class="btn primary" href="/blog">阅读博客</a>
-					<a class="btn ghost" href="/about">了解我</a>
-				</div>
-			</section>
 
-			<section class="section">
-				<div class="section-head">
-					<h2>最新文章</h2>
-					<a href="/blog" class="more">全部文章 →</a>
-				</div>
-				<ul class="post-list">
-					{latestPosts.map((post) => <PostListItem post={post} />)}
-				</ul>
-			</section>
+		<section class="hero" style={`background-image: url(${heroBg.src})`}>
+			<div class="hero-mask" aria-hidden="true"></div>
+			<div class="hero-inner">
+				<p class="kicker">{HERO.role}</p>
+				<h1 class="hero-title">
+					<span class="star star-a" aria-hidden="true">✦</span>
+					<span class="line accent">YSTLR</span>
+					<span class="star star-b" aria-hidden="true">✦</span>
+					<span class="line outline">PORTFOLIO</span>
+				</h1>
+				<p class="tagline">{HERO.tagline}，{HERO.tagline2}。</p>
+				<a class="scroll-hint" href="#works" aria-label="向下浏览作品">
+					<span>SCROLL</span>
+					<svg viewBox="0 0 16 24" width="14" height="22" aria-hidden="true">
+						<path d="M8 1v20M3 16l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</a>
+			</div>
+		</section>
 
-			<section class="section">
+		<main class="home-main">
+			<section id="works" class="section">
 				<div class="section-head">
 					<h2>精选作品</h2>
 					<a href="/projects" class="more">全部作品 →</a>
 				</div>
-				<div class="project-grid">
-					{featuredProjects.map((project) => <ProjectCard project={project} />)}
+				<div class="rail">
+					{projects.map((project) => (
+						<a class="rail-card" href="/projects" aria-label={project.title}>
+							<div class="rail-cover">
+								<Image src={project.cover} alt={project.title} width={600} height={450} />
+							</div>
+							<div class="rail-meta">
+								<span class="rail-title">{project.title}</span>
+								<span class="rail-year">{project.year}</span>
+							</div>
+						</a>
+					))}
 				</div>
 			</section>
+
+			<section class="about-preview">
+				<p class="kicker">ABOUT ME</p>
+				<h2>视觉设计 × AI 工作流</h2>
+				<p class="about-desc">
+					这里是一段占位简介：介绍你专注的方向（品牌视觉、3D、插画、产品或摄影）、你的工作方式，以及你正在探索的内容。之后可在
+					<code>src/pages/about.astro</code> 中替换成自己的文字。
+				</p>
+				<a href="/about" class="more-link">了解更多 →</a>
+			</section>
 		</main>
+
 		<Footer />
 	</body>
 </html>
 
 <style>
-	main {
-		max-width: 720px;
+	/* 首页使用全宽布局，覆盖全局 720px 限制 */
+	.home-main {
+		max-width: none;
+		width: 100%;
+		padding: 0;
 	}
+
+	/* ---- Hero ---- */
 	.hero {
-		padding: 3em 0 2em;
-	}
-	.hero-kicker {
-		color: rgb(var(--accent));
-		font-size: 0.9rem;
-		letter-spacing: 0.12em;
-		margin-bottom: 1em;
-	}
-	.hero h1 {
-		font-size: clamp(2rem, 5vw, 2.8rem);
-		line-height: 1.25;
-		margin-bottom: 0.8em;
-	}
-	.hero-desc {
-		color: rgb(var(--muted));
-		font-size: 1.05rem;
-		max-width: 480px;
-	}
-	.hero-actions {
+		position: relative;
+		min-height: 100vh;
+		background-size: cover;
+		background-position: center;
 		display: flex;
-		gap: 1em;
-		margin-top: 1.8em;
+		align-items: center;
 	}
-	.btn {
-		display: inline-block;
-		padding: 0.65em 1.4em;
-		border-radius: 10px;
-		text-decoration: none;
-		font-weight: 600;
+	.hero-mask {
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(180deg, rgba(13, 15, 14, 0.55) 0%, rgba(13, 15, 14, 0.25) 45%, rgba(13, 15, 14, 0.92) 100%);
+	}
+	.hero-inner {
+		position: relative;
+		z-index: 1;
+		width: 100%;
+		max-width: 1120px;
+		margin: 0 auto;
+		padding: 8em 1.5em 12em;
+	}
+	.kicker {
+		color: rgb(var(--accent));
 		font-size: 0.95rem;
+		letter-spacing: 0.25em;
+		text-transform: uppercase;
+		margin: 0 0 1.2em;
 	}
-	.btn.primary {
-		background: rgb(var(--accent));
-		color: #fff;
+	.hero-title {
+		margin: 0;
+		line-height: 0.95;
+		font-weight: 900;
+		text-transform: uppercase;
+		letter-spacing: 0.01em;
 	}
-	.btn.primary:hover {
-		background: rgb(var(--accent-dark));
-		color: #fff;
+	.line {
+		display: block;
+		font-size: clamp(3.2rem, 11vw, 8.5rem);
 	}
-	.btn.ghost {
-		border: 1px solid rgb(var(--line));
+	.line.accent {
+		color: rgb(var(--accent));
+		text-shadow: 0 0 40px rgba(var(--accent), 0.35);
+	}
+	.line.outline {
+		color: transparent;
+		-webkit-text-stroke: 2px rgb(var(--ink));
+		margin-top: 0.1em;
+	}
+	.star {
+		color: rgb(var(--accent));
+		font-size: clamp(1.2rem, 3vw, 2rem);
+		vertical-align: super;
+	}
+	.star-a {
+		margin-right: 0.2em;
+	}
+	.star-b {
+		margin-left: 0.2em;
+	}
+	.tagline {
+		margin-top: 1.6em;
+		font-size: clamp(1rem, 2vw, 1.3rem);
 		color: rgb(var(--ink));
+		max-width: 560px;
 	}
-	.btn.ghost:hover {
-		border-color: rgb(var(--accent));
+	.scroll-hint {
+		position: absolute;
+		left: 50%;
+		bottom: 2.2em;
+		transform: translateX(-50%);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5em;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		font-size: 0.7rem;
+		letter-spacing: 0.3em;
+	}
+	.scroll-hint:hover {
 		color: rgb(var(--accent));
 	}
+
+	/* ---- 作品横滑条 ---- */
 	.section {
-		margin-top: 3.5em;
+		max-width: 1120px;
+		margin: 0 auto;
+		padding: 4.5em 1.5em;
 	}
 	.section-head {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
-		margin-bottom: 0.5em;
+		margin-bottom: 1.6em;
 	}
 	.section-head h2 {
-		font-size: 1.3rem;
+		font-size: 1.6rem;
+		margin: 0;
 	}
 	.more {
-		font-size: 0.9rem;
+		font-size: 0.92rem;
 		text-decoration: none;
 		color: rgb(var(--muted));
 	}
 	.more:hover {
 		color: rgb(var(--accent));
 	}
-	.post-list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
+	.rail {
+		display: flex;
+		gap: 1.4em;
+		overflow-x: auto;
+		padding-bottom: 1em;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: thin;
+		scrollbar-color: rgb(var(--line)) transparent;
 	}
-	.project-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1.2em;
-		margin-top: 1em;
+	.rail-card {
+		flex: 0 0 min(340px, 78vw);
+		scroll-snap-align: start;
+		text-decoration: none;
 	}
-	@media (max-width: 600px) {
-		.project-grid {
-			grid-template-columns: 1fr;
+	.rail-cover {
+		border-radius: 16px;
+		overflow: hidden;
+		border: 1px solid rgb(var(--line));
+		aspect-ratio: 4 / 3;
+	}
+	.rail-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: 16px;
+		transition: transform 0.4s ease;
+	}
+	.rail-card:hover .rail-cover img {
+		transform: scale(1.05);
+	}
+	.rail-meta {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		margin-top: 0.8em;
+	}
+	.rail-title {
+		color: rgb(var(--ink));
+		font-weight: 600;
+	}
+	.rail-year {
+		color: rgb(var(--muted-light));
+		font-size: 0.85rem;
+	}
+
+	/* ---- 关于预览 ---- */
+	.about-preview {
+		max-width: 1120px;
+		margin: 0 auto;
+		padding: 4.5em 1.5em 6em;
+		border-top: 1px solid rgb(var(--line));
+	}
+	.about-preview h2 {
+		font-size: clamp(1.8rem, 4vw, 2.6rem);
+		margin: 0.2em 0 0.8em;
+	}
+	.about-desc {
+		color: rgb(var(--muted));
+		max-width: 620px;
+	}
+	.more-link {
+		display: inline-block;
+		margin-top: 1.2em;
+		color: rgb(var(--accent));
+		text-decoration: none;
+		font-weight: 600;
+	}
+
+	@media (max-width: 720px) {
+		.hero-inner {
+			padding: 6em 1.2em 10em;
 		}
 	}
 </style>

@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PatternWaves from '../components/PatternWaves.astro';
+import SpectralDrape from '../components/SpectralDrape.astro';
 import DriftWall from '../components/DriftWall.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
@@ -30,16 +30,16 @@ const latest = posts[0]?.data.pubDate;
 		<!-- ============ Hero ============ -->
 		<section class="hero">
 			<div class="hero-waves" aria-hidden="true">
-				<PatternWaves
-					preset="silk"
-					color="rgba(150, 84, 52, 0.42)"
-					color2="rgba(176, 134, 68, 0.34)"
-					fade="edges"
-					interactive
-					cursorSize={56}
-					cursorStrength={0.55}
-					density={24}
-					speed={0.9}
+				<SpectralDrape
+					preset="ember"
+					density={104}
+					rows={42}
+					speed={0.85}
+					amp={0.95}
+					dotSize={1.6}
+					opacity={0.95}
+					pointer
+					pointerStrength={1}
 				/>
 			</div>
 

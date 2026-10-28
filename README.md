@@ -73,9 +73,11 @@ npm run preview
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
-| `PatternWaves.astro` | 首页 Hero 的丝波 canvas 背景 | `preset`（silk/mesh/flow）、`color`、`interactive`、`density` |
+| `SpectralDrape.astro` | 首页 Hero 的光点织物背景（透视铺开、褶皱起伏、指针顶包） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
 | `DriftWall.astro` | 照片墙/首页的 3D 漂移照片带 | `items`、`columns`、`rows`、`speed`、`direction`、`tilt`、`turn`、`height` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
+
+`SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
 
 页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。
 

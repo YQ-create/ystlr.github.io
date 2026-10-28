@@ -69,8 +69,9 @@ npm run preview
 | `data-reveal-delay="120"` | 同组元素错开进场，单位毫秒 |
 | `data-glow` | 玻璃卡片跟随指针的高光 |
 | `data-tilt="8"` | 卡片随指针轻微 3D 倾斜 |
+| `data-count-up` | 数字从 `data-from` 滚到 `data-to`（由 `CountUp.astro` 输出，逻辑在 Motion.astro） |
 
-四个视觉组件可以单独复用：
+视觉组件：
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
@@ -79,12 +80,19 @@ npm run preview
 | `DepthCarousel.astro` | 3D 纵深照片轮播（首页、照片墙） | `items`、`depth`、`spread`、`tilt`、`tiltDirection`、`visibleCards`、`falloff`、`blur`、`autoplay`、`loop` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
 | `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
+| `MaskedHeading.astro` | 用图片/视频填充文字（首页大标题、副标题） | `text`、`mediaType`、`src`、`fillScale`、`parallax`、`spotlight`、`outline`、`strokeWidth`、`strokeColor` |
+| `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
+| `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
 
 `SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
 
 `SpecularButton` 把 React Bits 的 `SpecularButton` 用原生 WebGL2 重写了一遍（不引入 React）：圆角矩形的周长被映射到 0–1 的参数空间，光斑是这个参数上的一个余弦瓣，鼠标靠近时瓣会滑到离指针最近的边缘点；`autoAnimate` 会让这道光自己绕一周。传 `href` 渲染成 `<a>`，否则是 `<button>`；浏览器不支持 WebGL2 时自动退化成普通玻璃按钮。
 
 页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。
+
+> 改组件时的两个坑：
+> 1. Astro 会把体积小的 `<script>` 直接内联在组件**原位**（不是提到 `<head>`），所以组件里别写「只该跑一次」的脚本——同一页用 3 次就会内联 3 份。`CountUp` 因此只输出 `[data-count-up]` 标记，滚动逻辑统一放在 `Motion.astro`。
+> 2. 自己写了 `display` 的元素会盖掉浏览器对 `[hidden]` 的 `display:none`（如灯箱 `.lightbox`、发现页 `.link-card`），要显式补一条 `X[hidden]{display:none}`。
 
 > 注意：`src/components/BaseHead.astro` 里有一段极短的 `moveBefore` 兜底补丁。Chromium 137+ 的 `Element.moveBefore()` 不允许跨文档或把元素挪到 `<html>` 下，而 Astro 的 `transition:persist` 正好会这么做，不补丁会抛 `HierarchyRequestError` 导致点导航后地址栏不更新。等 Astro 上游修好后可以删掉这段。
 

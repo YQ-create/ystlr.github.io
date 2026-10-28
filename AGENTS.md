@@ -5,7 +5,7 @@
 - 「精品」= 文章 frontmatter 的 `featured: true`，首页精选优先取它；`draft: true` 不进首页。
 - 文章内容位于 `src/content/blog/`，照片墙记录位于 `src/content/gallery/`（图片本体放 `src/assets/gallery/`），frontmatter 字段见 `src/content.config.ts`。
 - 发现页书签数据在 `src/data/discover.json`；顶部播放器曲目在 `src/data/playlist.json`，音频文件放入 `public/audio/`。
-- 动效统一走 `src/components/Motion.astro` 的 data 属性；视觉组件为 `SpectralDrape`（Hero 背景）、`SpecularButton`（流光玻璃按钮）、`DriftWall`（照片带）、`Shredder`（404）。光源类组件都用 canvas/WebGL 自绘，不引入 React。
+- 动效统一走 `src/components/Motion.astro` 的 data 属性；视觉组件为 `SpectralDrape`（Hero 背景）、`SpecularButton`（流光玻璃按钮）、`DriftWall`（照片带）、`Shredder`（404）、`GlassSurface`（液态玻璃表面：页头胶囊、卡片底）。光源类组件都用 canvas/WebGL 自绘，不引入 React。
 - 本站是纯静态站点，没有服务端和数据库。`/admin` 是纯前端管理页（`src/admin/github.ts` + `app.ts`），用访问者自己粘贴的 GitHub PAT 调 API 提交文件，Token 只存 sessionStorage，任何情况下都不要把密钥写进仓库。手工发文同样可行：本地写 Markdown 后提交，GitHub Actions 自动构建上线。
 - 文章评论使用 Giscus；`src/components/Giscus.astro` 集中放置仓库与分类配置，未配置 `repoId` / `categoryId` 时评论区不渲染。
 - 部署：推送到 `main` 分支后，`.github/workflows/deploy.yml` 自动发布到 GitHub Pages。

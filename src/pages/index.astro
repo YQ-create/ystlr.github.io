@@ -142,28 +142,6 @@ const latest = posts[0]?.data.pubDate;
 				</svg>
 			</a>
 
-			<div class="hero-wall" aria-hidden="true">
-				<DriftWall
-					items={wallItems}
-					columns={7}
-					rows={2}
-					tileWidth={188}
-					tileHeight={124}
-					gap={16}
-					tilt={11}
-					turn={-8}
-					perspective={1300}
-					depth={80}
-					speed={22}
-					direction="left"
-					variance={0.5}
-					parallax={0.4}
-					lift={38}
-					fade={0.5}
-					dim={0.22}
-					height="clamp(148px, 20vh, 236px)"
-				/>
-			</div>
 		</section>
 
 		<!-- ============ 精选文章 ============ -->
@@ -324,10 +302,10 @@ const latest = posts[0]?.data.pubDate;
 	/* ---------- Hero ---------- */
 	.hero {
 		position: relative;
-		min-height: min(96vh, 940px);
+		min-height: min(92vh, 880px);
 		display: flex;
 		align-items: center;
-		padding: clamp(3.5rem, 9vh, 6rem) 0 clamp(2.5rem, 6vh, 4rem);
+		padding: clamp(4rem, 10vh, 7rem) 0 clamp(5rem, 12vh, 8rem);
 		overflow: hidden;
 		isolation: isolate;
 	}
@@ -337,24 +315,13 @@ const latest = posts[0]?.data.pubDate;
 		z-index: -1;
 		opacity: 0.9;
 	}
-	.hero-wall {
-		position: absolute;
-		inset: auto 0 0 0;
-		height: clamp(148px, 20vh, 236px);
-		z-index: 0;
-		pointer-events: none;
-		overflow: hidden;
-		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
-		mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
-	}
 	.hero-inner {
 		position: relative;
 		z-index: 1;
 		width: 100%;
 		max-width: var(--w-wide);
 		margin: 0 auto;
-		/* 底部留出 hero 照片带的高度（顺序别换，简写会把 padding-bottom 冲掉） */
-		padding: 0 var(--gutter) clamp(12rem, 24vh, 16rem);
+		padding: 0 var(--gutter);
 	}
 	.hero-eyebrow {
 		display: inline-flex;
@@ -677,7 +644,6 @@ const latest = posts[0]?.data.pubDate;
 		.hero {
 			min-height: auto;
 			padding-top: 3rem;
-			padding-bottom: 0;
 		}
 		.hero-stats {
 			gap: 1.6rem;

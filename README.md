@@ -78,6 +78,7 @@ npm run preview
 | `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
 | `DriftWall.astro` | 照片墙/首页的 3D 漂移照片带 | `items`、`columns`、`rows`、`speed`、`direction`、`tilt`、`turn`、`height` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
+| `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
 
 `SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
 

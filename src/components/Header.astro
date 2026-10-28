@@ -1,9 +1,10 @@
-﻿---
+---
 // 悬浮玻璃页头：滑动高亮块 + 滚动收缩 + 视图过渡锚点。
 // 导航标签刻意保持两个汉字，等宽排列，高亮块才能滑动得干净。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import MusicPlayer from './MusicPlayer.astro';
 import ThemeToggle from './ThemeToggle.astro';
+import GlassSurface from './GlassSurface.astro';
 
 const navItems = [
 	{ href: '/', label: '首页' },
@@ -15,7 +16,8 @@ const navItems = [
 ---
 
 <header class="site-head" transition:persist="site-head" transition:name="site-header">
-	<div class="head-shell glass" data-head-shell>
+	<div class="head-shell" data-head-shell>
+			<GlassSurface class="head-shell__glass" borderRadius={999} backgroundOpacity={0.38} blur={22} />
 		<a class="brand" href="/" aria-label={`${SITE_TITLE} 首页`}>
 			<span class="brand-dot" aria-hidden="true"><i></i></span>
 			<span class="brand-name">{SITE_TITLE}</span>
@@ -152,6 +154,8 @@ const navItems = [
 		pointer-events: none;
 	}
 	.head-shell {
+		position: relative;
+		isolation: isolate;
 		pointer-events: auto;
 		display: flex;
 		align-items: center;
@@ -268,6 +272,10 @@ const navItems = [
 	}
 
 	/* ---- 右侧操作 ---- */
+	.head-shell > :not(.head-shell__glass) {
+		position: relative;
+		z-index: 1;
+	}
 	.head-actions {
 		display: flex;
 		align-items: center;
@@ -324,8 +332,9 @@ const navItems = [
 			display: none;
 		}
 		.nav-link {
-			padding: 0.4rem 0.6rem;
-			font-size: 0.85rem;
+			padding: 0.3rem 0.32rem;
+			font-size: 0.78rem;
+			letter-spacing: -0.02em;
 		}
 	}
 </style>

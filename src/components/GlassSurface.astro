@@ -1,0 +1,277 @@
+---
+/**
+ * 液态玻璃表面（GlassSurface）。
+ *
+ * 两种用法：
+ *  1) 装饰层：不传 width/height，铺满最近的定位父级（父级要 position: relative），
+ *     用来给页头胶囊、卡片做玻璃底；
+ *  2) 独立盒子：传 width / height / borderRadius（或 shape），内容放进 slot。
+ *
+ * 真正"折射"的那一层需要一张背景图（backdrop），用 SVG 的位移贴图把画面揉出玻璃
+ * 波纹；没有 backdrop 时就退化成磨砂 + 边缘高光 + 色散描边——浏览器里够用，也不
+ * 会为了取一张实时背景快照去引入 html2canvas 那类重依赖。
+ */
+interface Props {
+	/** 玻璃尺寸；不传则铺满父级 */
+	width?: string;
+	height?: string;
+	borderRadius?: number;
+	/** 折射强度，负值往外推、正值往里收，0 关闭 */
+	distortionScale?: number;
+	/** 折射频率，越大波纹越碎 */
+	displace?: number;
+	/** 底色不透明度 0–1 */
+	backgroundOpacity?: number;
+	/** SVG/PNG 形状遮罩（如 /logo.svg），传了就忽略 borderRadius */
+	shape?: string;
+	/** 折射层用的背景图 URL（元素本身、图片都行） */
+	backdrop?: string;
+	/** 磨砂模糊半径 */
+	blur?: number;
+	class?: string;
+}
+
+const {
+	width,
+	height,
+	borderRadius = 999,
+	distortionScale = -180,
+	displace = 0.5,
+	backgroundOpacity = 0.12,
+	shape,
+	backdrop,
+	blur = 18,
+	class: className = '',
+} = Astro.props;
+
+const uid = `gs${Math.random().toString(36).slice(2, 8)}`;
+const filled = Boolean(width || height);
+const radius = shape ? '0' : `${borderRadius}px`;
+
+// 位移贴图：一圈噪声，靠近边缘更强，中间基本不动，看起来才像厚度不均的玻璃
+const mapUrl =
+	'data:image/svg+xml;utf8,' +
+	encodeURIComponent(
+		`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><defs>` +
+			`<radialGradient id="g" cx="50%" cy="50%" r="62%">` +
+			`<stop offset="0%" stop-color="#808080"/><stop offset="62%" stop-color="#808080"/>` +
+			`<stop offset="100%" stop-color="#b0b0b0"/></radialGradient>` +
+			`<filter id="n"><feTurbulence type="fractalNoise" baseFrequency="${displace * 0.02}" numOctaves="3" seed="7"/>` +
+			`<feColorMatrix type="saturate" values="0"/></filter></defs>` +
+			`<rect width="240" height="240" fill="url(#g)"/><rect width="240" height="240" filter="url(#n)" opacity="0.55"/>` +
+			`</svg>`
+	);
+---
+
+<div
+	class={`gs ${className}`}
+	style={`--gs-radius:${radius};--gs-blur:${blur}px;--gs-fill:${backgroundOpacity};${
+		filled ? `position:relative;width:${width ?? '100%'};height:${height ?? 'auto'};` : 'position:absolute;inset:0;'
+	}${shape ? `--gs-shape:url(${shape});` : ''}`}
+>
+	{backdrop && (
+		<>
+			<svg class="gs-defs" aria-hidden="true" focusable="false">
+				<defs>
+					<filter
+						id={uid}
+						x="-20%"
+						y="-20%"
+						width="140%"
+						height="140%"
+						color-interpolation-filters="sRGB"
+					>
+						<feImage href={mapUrl} result="map" preserveAspectRatio="none" />
+						<feDisplacementMap
+							in="SourceGraphic"
+							in2="map"
+							scale={distortionScale}
+							xChannelSelector="R"
+							yChannelSelector="G"
+						/>
+					</filter>
+				</defs>
+			</svg>
+			<div class="gs-refract" style={`background-image:url(${backdrop});filter:url(#${uid})`} aria-hidden="true"></div>
+		</>
+	)}
+
+	<div class="gs-frost" aria-hidden="true"></div>
+	<div class="gs-tint" aria-hidden="true"></div>
+	<div class="gs-rim" aria-hidden="true"></div>
+	<div class="gs-shimmer" aria-hidden="true"></div>
+	<div class="gs-spec" aria-hidden="true"></div>
+
+	<slot />
+</div>
+
+<style>
+	/* 只转渐变角度、不转盒子，否则高光会斜穿过玻璃内部 */
+	@property --gs-a {
+		syntax: '<angle>';
+		inherits: false;
+		initial-value: 0deg;
+	}
+	.gs {
+		border-radius: var(--gs-radius);
+		overflow: hidden;
+		isolation: isolate;
+		box-shadow: 0 18px 44px -26px rgba(var(--shadow), 0.55);
+		-webkit-mask-image: var(--gs-shape, none);
+		mask-image: var(--gs-shape, none);
+		-webkit-mask-size: contain;
+		mask-size: contain;
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		-webkit-mask-position: center;
+		mask-position: center;
+	}
+
+	.gs-defs {
+		position: absolute;
+		width: 0;
+		height: 0;
+		pointer-events: none;
+	}
+
+	/* 折射层：把背景图揉出波纹，再淡淡叠上去 */
+	.gs-refract {
+		position: absolute;
+		inset: -2%;
+		background-size: cover;
+		background-position: center;
+		opacity: 0.9;
+		pointer-events: none;
+	}
+
+	/* 磨砂层：真正让文字可读的那层 */
+	.gs-frost {
+		position: absolute;
+		inset: 0;
+		background: rgba(var(--paper), calc(var(--gs-fill) + 0.06));
+		-webkit-backdrop-filter: blur(var(--gs-blur)) saturate(1.7) brightness(1.04);
+		backdrop-filter: blur(var(--gs-blur)) saturate(1.7) brightness(1.04);
+		pointer-events: none;
+	}
+
+	/* 轻微色散：暖边 + 冷边，玻璃厚度感 */
+	.gs-tint {
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(120deg, rgba(255, 214, 170, 0.16), transparent 42%),
+			linear-gradient(300deg, rgba(160, 190, 255, 0.14), transparent 46%);
+		mix-blend-mode: screen;
+		opacity: calc(var(--gs-fill) * 1.4);
+		pointer-events: none;
+	}
+
+	/* 1.2px 的高光边：用遮罩挖出一个环 */
+	.gs-rim {
+		position: absolute;
+		inset: 0;
+		padding: 1.2px;
+		border-radius: inherit;
+		background: conic-gradient(
+			from 210deg,
+			rgba(255, 255, 255, 0.85),
+			rgba(255, 255, 255, 0.12) 22%,
+			rgba(255, 255, 255, 0.6) 42%,
+			rgba(255, 255, 255, 0.08) 60%,
+			rgba(255, 255, 255, 0.72) 82%,
+			rgba(255, 255, 255, 0.16)
+		);
+		-webkit-mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+		pointer-events: none;
+	}
+
+	/* 缓慢绕着边缘转的一道光，玻璃才像"活的" */
+	.gs-shimmer {
+		position: absolute;
+		inset: 0;
+		padding: 1.6px;
+		border-radius: inherit;
+		background: conic-gradient(
+			from var(--gs-a, 0deg),
+			transparent 0 64%,
+			rgba(255, 255, 255, 0.9) 76%,
+			rgba(255, 255, 255, 0.25) 82%,
+			transparent 92%
+		);
+		-webkit-mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		mask:
+			linear-gradient(#000 0 0) content-box,
+			linear-gradient(#000 0 0);
+		-webkit-mask-composite: xor;
+		mask-composite: exclude;
+		opacity: 0.5;
+		mix-blend-mode: screen;
+		animation: gs-turn 12s linear infinite;
+		pointer-events: none;
+	}
+	@keyframes gs-turn {
+		to {
+			--gs-a: 360deg;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.gs-shimmer {
+			animation: none;
+			opacity: 0.3;
+		}
+	}
+
+	/* 上下内高光：玻璃的"厚度" */
+	.gs-spec {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.55),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+			inset 0 12px 24px -18px rgba(255, 255, 255, 0.7);
+		pointer-events: none;
+	}
+
+	/* 全站的"透明玻璃"偏好也要作用到这里 */
+	:root[data-glass='clear'] .gs-frost {
+		background: rgba(var(--paper), calc(var(--gs-fill) * 0.34));
+		-webkit-backdrop-filter: blur(calc(var(--gs-blur) * 0.32)) saturate(1.35);
+		backdrop-filter: blur(calc(var(--gs-blur) * 0.32)) saturate(1.35);
+	}
+
+	:root[data-theme='dark'] .gs-frost {
+		background: rgba(var(--paper), calc(var(--gs-fill) + 0.1));
+	}
+	:root[data-theme='dark'] .gs-tint {
+		background:
+			linear-gradient(120deg, rgba(255, 196, 140, 0.16), transparent 46%),
+			linear-gradient(300deg, rgba(150, 190, 255, 0.12), transparent 48%);
+	}
+	:root[data-theme='dark'] .gs-rim {
+		background: conic-gradient(
+			from 210deg,
+			rgba(255, 255, 255, 0.5),
+			rgba(255, 255, 255, 0.06) 22%,
+			rgba(255, 255, 255, 0.34) 42%,
+			rgba(255, 255, 255, 0.04) 60%,
+			rgba(255, 255, 255, 0.42) 82%,
+			rgba(255, 255, 255, 0.08)
+		);
+	}
+	:root[data-theme='dark'] .gs-spec {
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+			inset 0 14px 26px -20px rgba(255, 255, 255, 0.32);
+	}
+</style>

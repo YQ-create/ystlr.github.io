@@ -77,7 +77,9 @@ tags: ['标签一', '标签二']
 ### 1. 在 GitHub 创建仓库
 
 - 登录 GitHub，新建一个空仓库（不要勾选初始化 README）；
-- 推荐仓库名为 `<你的GitHub用户名>.github.io`，这样站点挂在域名根路径；
+- 仓库名若正好是 `<你的GitHub用户名>.github.io`，站点挂在域名根路径；否则是「项目站点」，
+  默认地址为 `https://你的用户名.github.io/仓库名/`。本仓库属于后者（`YQ-create/ystlr.github.io`），
+  绑定自有域名 `ystlr.com` 后同样从域名根路径访问，站内以 `/` 开头的链接才有效；
 - 记下仓库地址，例如 `https://github.com/你的用户名/你的用户名.github.io.git`。
 
 ### 2. 关联远程仓库并推送
@@ -121,10 +123,17 @@ git push -u origin main
 
 | 主机记录 | 记录类型 | 记录值 |
 | --- | --- | --- |
-| `www` | CNAME | `你的GitHub用户名.github.io` |
+| `www` | CNAME | `yq-create.github.io` |
 
-仓库 `public/CNAME` 已写入 `ystlr.com`，构建时会自动进入产物。
-DNS 生效通常需要几分钟到几十分钟；Pages 设置页里勾选 **Enforce HTTPS** 开启强制 HTTPS。
+注意事项：
+
+- ystlr.com 在 **Spaceship**（NS：`launch1.spaceship.net` / `launch2.spaceship.net`）。
+  新域名默认开着「停放页」，解析里会有一条指向 `54.149.79.189`、`34.216.117.25` 的 A 记录，
+  **必须先删掉这些停放记录**，否则上面 4 条 GitHub IP 不会生效；
+- 自定义域名还需要在仓库 **Settings → Pages → Custom domain** 里填写 `ystlr.com` 并 Save
+  （用 GitHub Actions 发布时，`public/CNAME` 只作为产物文件，不会自动改这项设置）；
+- DNS 生效通常需要几分钟到几十分钟；证书签发完成（最长约 24 小时）后再勾选
+  **Enforce HTTPS** 开启强制 HTTPS，否则访问会报证书错误。
 
 ### 5. 日常发布
 

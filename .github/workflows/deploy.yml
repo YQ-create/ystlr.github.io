@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # 不自动取消进行中的部署：避免新推送或手动重试运行互相中断 deploy 任务
+  cancel-in-progress: false
 
 jobs:
   build:

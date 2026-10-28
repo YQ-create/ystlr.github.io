@@ -655,6 +655,26 @@ const latest = posts[0]?.data.pubDate;
 		gap: clamp(1rem, 2vw, 1.4rem);
 	}
 
+	/* 精选区只要文字，不要封面图 */
+	.bloggrid__main :global(.card img),
+	.bloggrid__main :global(.card-glyph),
+	.bloggrid__main :global(.card figure),
+	.bloggrid__main :global(.card picture),
+	.bloggrid__main :global(.card [class*='card-media']) {
+		display: none !important;
+	}
+	.bloggrid__main :global(.post-grid) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.bloggrid__main :global(.post-grid > :first-child) {
+		grid-column: 1 / -1;
+	}
+	@media (max-width: 900px) {
+		.bloggrid__main :global(.post-grid) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
 	.portal {
 		padding: 1.1rem 1.15rem;
 		border-radius: var(--r-lg);

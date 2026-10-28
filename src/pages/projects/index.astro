@@ -1,0 +1,57 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { projects } from '../../data/projects';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`作品 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<header class="page-head">
+				<h1>作品</h1>
+				<p>完成过的项目、开源尝试与正在进行中的实验。</p>
+			</header>
+			<div class="project-grid">
+				{projects.map((project) => <ProjectCard project={project} />)}
+			</div>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 720px;
+	}
+	.page-head {
+		padding: 1em 0 1.5em;
+		border-bottom: 1px solid rgb(var(--line));
+		margin-bottom: 1.5em;
+	}
+	.page-head h1 {
+		font-size: 2rem;
+		margin-bottom: 0.3em;
+	}
+	.page-head p {
+		color: rgb(var(--muted));
+		margin: 0;
+	}
+	.project-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.2em;
+	}
+	@media (max-width: 600px) {
+		.project-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

@@ -1,0 +1,173 @@
+/*
+  全局基础样式。色彩以 RGB 三元组形式存放在 :root，组件内用 rgb(var(--token)) 引用。
+*/
+
+:root {
+	/* 品牌强调：深青墨绿 */
+	--accent: 31, 95, 91;
+	--accent-dark: 20, 66, 63;
+	/* 少量点缀：赭石，仅用于标签等小面积元素 */
+	--ochre: 176, 116, 45;
+
+	--ink: 28, 31, 33;
+	--muted: 98, 103, 100;
+	--muted-light: 158, 160, 154;
+	--line: 226, 223, 212;
+	--paper: 251, 250, 246;
+	--surface: 255, 255, 255;
+
+	--box-shadow: 0 1px 2px rgba(var(--ink), 6%), 0 8px 24px rgba(var(--ink), 8%);
+}
+
+body {
+	font-family: var(--font-atkinson), 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei',
+		system-ui, -apple-system, sans-serif;
+	margin: 0;
+	padding: 0;
+	text-align: left;
+	background: rgb(var(--paper));
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	color: rgb(var(--ink));
+	font-size: 17px;
+	line-height: 1.75;
+	-webkit-font-smoothing: antialiased;
+}
+
+main {
+	width: 720px;
+	max-width: calc(100% - 2em);
+	margin: auto;
+	padding: 3em 1em;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0 0 0.5rem 0;
+	color: rgb(var(--ink));
+	line-height: 1.25;
+	font-weight: 700;
+}
+
+h1 {
+	font-size: 2.4rem;
+}
+h2 {
+	font-size: 1.8rem;
+}
+h3 {
+	font-size: 1.4rem;
+}
+h4 {
+	font-size: 1.15rem;
+}
+
+strong,
+b {
+	font-weight: 700;
+}
+
+a {
+	color: rgb(var(--accent));
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+a:hover {
+	color: rgb(var(--accent-dark));
+}
+
+p {
+	margin-bottom: 1em;
+}
+
+.prose p {
+	margin-bottom: 1.6em;
+}
+
+textarea,
+input {
+	font-size: 16px;
+}
+
+table {
+	width: 100%;
+}
+
+img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 10px;
+}
+
+code {
+	padding: 2px 6px;
+	background-color: rgb(var(--line));
+	border-radius: 4px;
+	font-size: 0.88em;
+}
+
+pre {
+	padding: 1.2em 1.4em;
+	border-radius: 10px;
+	background: rgb(34, 38, 38);
+	overflow-x: auto;
+}
+pre > code {
+	all: unset;
+	background: transparent;
+	padding: 0;
+}
+
+blockquote {
+	border-left: 3px solid rgb(var(--accent));
+	padding: 0.1em 0 0.1em 1.2em;
+	margin: 1.6em 0;
+	color: rgb(var(--muted));
+}
+
+hr {
+	border: none;
+	border-top: 1px solid rgb(var(--line));
+	margin: 2.5em 0;
+}
+
+/* 小标签 */
+.tag {
+	display: inline-block;
+	font-size: 0.78rem;
+	color: rgb(var(--ochre));
+	border: 1px solid rgba(var(--ochre), 35%);
+	border-radius: 999px;
+	padding: 0.05em 0.7em;
+	margin-right: 0.4em;
+}
+
+@media (max-width: 720px) {
+	body {
+		font-size: 16px;
+	}
+	main {
+		padding: 1.5em 1em;
+	}
+	h1 {
+		font-size: 1.9rem;
+	}
+}
+
+.sr-only {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	position: absolute !important;
+	height: 1px;
+	width: 1px;
+	overflow: hidden;
+	clip: rect(1px 1px 1px 1px);
+	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: inset(50%);
+	white-space: nowrap;
+}

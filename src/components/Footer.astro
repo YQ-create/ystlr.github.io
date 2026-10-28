@@ -1,0 +1,53 @@
+---
+import { AUTHOR_NAME, SOCIAL_LINKS, SITE_TITLE } from '../consts';
+const today = new Date();
+---
+
+<footer>
+	<div class="footer-inner">
+		<div class="colophon">
+			&copy; {today.getFullYear()} {AUTHOR_NAME} · {SITE_TITLE}
+			<a href="/rss.xml" class="rss-link">RSS 订阅</a>
+		</div>
+		<div class="social-links">
+			{SOCIAL_LINKS.github && (
+				<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">GitHub</a>
+			)}
+			{SOCIAL_LINKS.x && <a href={SOCIAL_LINKS.x} target="_blank" rel="noopener">X</a>}
+			{SOCIAL_LINKS.email && <a href={SOCIAL_LINKS.email}>邮箱</a>}
+		</div>
+	</div>
+</footer>
+
+<style>
+	footer {
+		border-top: 1px solid rgb(var(--line));
+		color: rgb(var(--muted));
+		padding: 2em 1em 3em 1em;
+	}
+	.footer-inner {
+		max-width: 720px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.6em;
+		font-size: 0.9rem;
+	}
+	.social-links {
+		display: flex;
+		gap: 1.2em;
+	}
+	.social-links a,
+	.rss-link {
+		color: rgb(var(--muted));
+		text-decoration: none;
+	}
+	.social-links a:hover,
+	.rss-link:hover {
+		color: rgb(var(--accent));
+	}
+	.rss-link {
+		margin-left: 1em;
+	}
+</style>

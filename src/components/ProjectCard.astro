@@ -1,0 +1,72 @@
+---
+import type { Project } from '../data/projects';
+
+interface Props {
+	project: Project;
+}
+
+const { project } = Astro.props;
+---
+
+<article class="project-card">
+	<div class="card-top">
+		<h3>{project.title}</h3>
+		<span class="year">{project.year}</span>
+	</div>
+	<p class="desc">{project.description}</p>
+	<div class="tags">
+		{project.tags.map((tag) => <span class="tag">{tag}</span>)}
+	</div>
+	{project.link && (
+		<a class="link" href={project.link} target="_blank" rel="noopener">
+			查看项目 →
+		</a>
+	)}
+</article>
+
+<style>
+	.project-card {
+		background: rgb(var(--surface));
+		border: 1px solid rgb(var(--line));
+		border-radius: 14px;
+		padding: 1.6em;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6em;
+		transition: border-color 0.2s ease, transform 0.2s ease;
+	}
+	.project-card:hover {
+		border-color: rgb(var(--accent));
+		transform: translateY(-2px);
+	}
+	.card-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 1em;
+	}
+	h3 {
+		margin: 0;
+		font-size: 1.15rem;
+	}
+	.year {
+		font-size: 0.8rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.desc {
+		margin: 0;
+		color: rgb(var(--muted));
+		font-size: 0.95rem;
+		flex: 1;
+	}
+	.tags {
+		margin-top: 0.3em;
+	}
+	.link {
+		font-size: 0.9rem;
+		text-decoration: none;
+		font-weight: 600;
+	}
+</style>

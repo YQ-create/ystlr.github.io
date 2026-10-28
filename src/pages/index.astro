@@ -1,0 +1,148 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import PostListItem from '../components/PostListItem.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { getCollection } from 'astro:content';
+import { projects } from '../data/projects';
+import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const latestPosts = posts.slice(0, 3);
+const featuredProjects = projects.slice(0, 2);
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section class="hero">
+				<p class="hero-kicker">{AUTHOR_NAME} 的个人站点</p>
+				<h1>写点东西，做点东西，<br />记录走过的路。</h1>
+				<p class="hero-desc">{SITE_DESCRIPTION}</p>
+				<div class="hero-actions">
+					<a class="btn primary" href="/blog">阅读博客</a>
+					<a class="btn ghost" href="/about">了解我</a>
+				</div>
+			</section>
+
+			<section class="section">
+				<div class="section-head">
+					<h2>最新文章</h2>
+					<a href="/blog" class="more">全部文章 →</a>
+				</div>
+				<ul class="post-list">
+					{latestPosts.map((post) => <PostListItem post={post} />)}
+				</ul>
+			</section>
+
+			<section class="section">
+				<div class="section-head">
+					<h2>精选作品</h2>
+					<a href="/projects" class="more">全部作品 →</a>
+				</div>
+				<div class="project-grid">
+					{featuredProjects.map((project) => <ProjectCard project={project} />)}
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 720px;
+	}
+	.hero {
+		padding: 3em 0 2em;
+	}
+	.hero-kicker {
+		color: rgb(var(--accent));
+		font-size: 0.9rem;
+		letter-spacing: 0.12em;
+		margin-bottom: 1em;
+	}
+	.hero h1 {
+		font-size: clamp(2rem, 5vw, 2.8rem);
+		line-height: 1.25;
+		margin-bottom: 0.8em;
+	}
+	.hero-desc {
+		color: rgb(var(--muted));
+		font-size: 1.05rem;
+		max-width: 480px;
+	}
+	.hero-actions {
+		display: flex;
+		gap: 1em;
+		margin-top: 1.8em;
+	}
+	.btn {
+		display: inline-block;
+		padding: 0.65em 1.4em;
+		border-radius: 10px;
+		text-decoration: none;
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+	.btn.primary {
+		background: rgb(var(--accent));
+		color: #fff;
+	}
+	.btn.primary:hover {
+		background: rgb(var(--accent-dark));
+		color: #fff;
+	}
+	.btn.ghost {
+		border: 1px solid rgb(var(--line));
+		color: rgb(var(--ink));
+	}
+	.btn.ghost:hover {
+		border-color: rgb(var(--accent));
+		color: rgb(var(--accent));
+	}
+	.section {
+		margin-top: 3.5em;
+	}
+	.section-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		margin-bottom: 0.5em;
+	}
+	.section-head h2 {
+		font-size: 1.3rem;
+	}
+	.more {
+		font-size: 0.9rem;
+		text-decoration: none;
+		color: rgb(var(--muted));
+	}
+	.more:hover {
+		color: rgb(var(--accent));
+	}
+	.post-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.project-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.2em;
+		margin-top: 1em;
+	}
+	@media (max-width: 600px) {
+		.project-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

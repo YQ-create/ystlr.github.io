@@ -1,0 +1,53 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`页面未找到 · ${SITE_TITLE}`} description="你访问的页面不存在。" />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section class="not-found">
+				<h1>404</h1>
+				<p>这个页面不存在，可能链接已经失效或地址写错了。</p>
+				<div class="actions">
+					<a href="/">回到首页</a>
+					<a href="/blog">浏览博客</a>
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 700px;
+		text-align: center;
+		padding-top: 5em;
+	}
+	h1 {
+		font-size: 4rem;
+		color: rgb(var(--accent));
+		margin-bottom: 0.3em;
+	}
+	p {
+		color: rgb(var(--muted));
+	}
+	.actions {
+		display: flex;
+		justify-content: center;
+		gap: 1.5em;
+		margin-top: 2em;
+	}
+	.actions a {
+		text-decoration: none;
+		font-weight: 600;
+	}
+</style>

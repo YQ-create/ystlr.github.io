@@ -1,0 +1,68 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+	</head>
+	<body>
+		<Header />
+		<main>
+			<header class="page-head">
+				<h1>关于我</h1>
+			</header>
+
+			<section class="prose">
+				<p>
+					你好，我是 <strong>{AUTHOR_NAME}</strong>。这里是我的个人站点，用来存放文章、项目记录和日常随想。
+					（这段是占位介绍，请替换成你自己的简介：你是谁、在做什么、关心什么方向。）
+				</p>
+				<p>
+					本站基于 Astro 静态生成，内容以 Markdown 写作，自动部署在 GitHub Pages 上，
+					域名绑定为 ystlr.com。如果你想看看我最近在做什么，可以去{' '}
+					<a href="/blog">博客</a>或<a href="/projects">作品</a>页面。
+				</p>
+
+				<h2>联系方式</h2>
+				<ul class="contact-list">
+					{SOCIAL_LINKS.email && (
+						<li>
+							邮箱：<a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>
+						</li>
+					)}
+					{SOCIAL_LINKS.github && (
+						<li>
+							GitHub：<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">{SOCIAL_LINKS.github}</a>
+						</li>
+					)}
+				</ul>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 700px;
+	}
+	.page-head {
+		padding: 1em 0 1.5em;
+		border-bottom: 1px solid rgb(var(--line));
+		margin-bottom: 1.5em;
+	}
+	.page-head h1 {
+		font-size: 2rem;
+	}
+	.contact-list {
+		padding-left: 1.2em;
+	}
+	.contact-list li {
+		margin-bottom: 0.5em;
+	}
+</style>

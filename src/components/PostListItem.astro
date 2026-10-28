@@ -1,0 +1,67 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+	post: CollectionEntry<'blog'>;
+	excerpt?: boolean;
+}
+
+const { post, excerpt = true } = Astro.props;
+---
+
+<li class="post-item">
+	<div class="post-date">
+		<FormattedDate date={post.data.pubDate} />
+	</div>
+	<div class="post-body">
+		<a href={`/blog/${post.id}/`} class="post-title">{post.data.title}</a>
+		{excerpt && <p class="post-desc">{post.data.description}</p>}
+		{post.data.tags.length > 0 && (
+			<div class="post-tags">
+				{post.data.tags.map((tag) => <span class="tag">{tag}</span>)}
+			</div>
+		)}
+	</div>
+</li>
+
+<style>
+	.post-item {
+		display: grid;
+		grid-template-columns: 96px 1fr;
+		gap: 1.2em;
+		padding: 1.6em 0;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.post-date {
+		font-size: 0.82rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		padding-top: 0.35em;
+	}
+	.post-title {
+		font-size: 1.2rem;
+		font-weight: 700;
+		color: rgb(var(--ink));
+		text-decoration: none;
+		line-height: 1.4;
+	}
+	.post-title:hover {
+		color: rgb(var(--accent));
+	}
+	.post-desc {
+		margin: 0.4em 0 0;
+		color: rgb(var(--muted));
+		font-size: 0.95rem;
+	}
+	.post-tags {
+		margin-top: 0.6em;
+	}
+	@media (max-width: 600px) {
+		.post-item {
+			grid-template-columns: 1fr;
+			gap: 0.3em;
+			padding: 1.3em 0;
+		}
+	}
+</style>

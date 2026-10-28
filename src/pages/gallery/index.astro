@@ -64,11 +64,17 @@ const monthLabel = (m: number) => `${m} 月`;
 				<span class="empty-wall__index">WALL IS EMPTY</span>
 				<h2>这张墙还在等第一张照片</h2>
 				<p>
-					把图片放进 <code>src/assets/gallery/</code>，再在
-					<code>src/content/gallery/</code> 里新建一个同名的 <code>.md</code>
-					填上日期就行。放好后这张墙会自动按年月排好，并在这里和首页的流动照片带里出现。
+					本地跑一条命令就行：<code>npm run photo -- 图片路径</code>，脚本会压图并生成同名记录；
+					也可以打开 <a href="/admin">/admin</a> 直接上传，或者手动把图片放进
+					<code>src/assets/gallery/</code>、在 <code>src/content/gallery/</code>
+					里新建一个 <code>.md</code> 填上日期。放好后这张墙会自动按年月排好，
+					并在这里和首页的流动照片带里出现。
 				</p>
-				<pre><code>---
+				<pre><code># 一条命令：压图 + 写记录（支持文件夹批量）
+npm run photo -- ./照片.jpg -t "江边的傍晚" -d 2026-10-22 -g 生活,风景
+
+# 等价的手写记录：src/content/gallery/my-photo.md
+---
 title: "江边的傍晚"
 date: 2026-10-22
 image: ../../assets/gallery/my-photo.jpg
@@ -289,6 +295,15 @@ tags: ["生活", "风景"]
 		margin: 0 0 1rem;
 		color: rgb(var(--muted));
 		line-height: 1.85;
+	}
+	.empty-wall p a {
+		color: rgb(var(--accent-deep));
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
+	.empty-wall p a:hover {
+		color: rgb(var(--accent));
 	}
 	.empty-wall code {
 		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

@@ -76,7 +76,7 @@ npm run preview
 | --- | --- | --- |
 | `SpectralDrape.astro` | 首页 Hero 的光点织物背景（透视铺开、褶皱起伏、指针顶包） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
 | `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
-| `DriftWall.astro` | 照片墙/首页的 3D 漂移照片带 | `items`、`columns`、`rows`、`speed`、`direction`、`tilt`、`turn`、`height` |
+| `DepthCarousel.astro` | 3D 纵深照片轮播（首页、照片墙） | `items`、`depth`、`spread`、`tilt`、`tiltDirection`、`visibleCards`、`falloff`、`blur`、`autoplay`、`loop` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
 | `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
 

@@ -1,0 +1,480 @@
+---
+import { Image } from 'astro:assets';
+
+interface Item {
+	image: ImageMetadata;
+	alt?: string;
+	title?: string;
+	href?: string;
+}
+
+interface Props {
+	items: Item[];
+	/** 相邻卡片之间拉开的距离（px） */
+	spread?: number;
+	/** 每远离一张，往后退多少（px） */
+	depth?: number;
+	/** 侧边卡片绕 Y 轴倾斜的角度 */
+	tilt?: number;
+	tiltDirection?: 'left' | 'right';
+	perspective?: number;
+	visibleCards?: number;
+	/** 离中心越远，缩放与透明度衰减越多 */
+	falloff?: number;
+	/** 离中心越远越模糊（px） */
+	blur?: number;
+	autoplay?: boolean;
+	loop?: boolean;
+	interval?: number;
+	height?: string;
+	class?: string;
+}
+
+const {
+	items,
+	spread = 90,
+	depth = 220,
+	tilt = 22,
+	tiltDirection = 'right',
+	perspective = 1400,
+	visibleCards = 4,
+	falloff = 0.2,
+	blur = 6,
+	autoplay = false,
+	loop = true,
+	interval = 3200,
+	height = 'clamp(360px, 52vh, 560px)',
+	class: className = '',
+} = Astro.props;
+
+const n = items.length;
+const start = 0;
+---
+
+<section
+	class={`dc ${className}`}
+	data-dc
+	data-spread={spread}
+	data-depth={depth}
+	data-tilt={tilt}
+	data-dir={tiltDirection}
+	data-perspective={perspective}
+	data-visible={visibleCards}
+	data-falloff={falloff}
+	data-blur={blur}
+	data-autoplay={autoplay ? '1' : '0'}
+	data-loop={loop ? '1' : '0'}
+	data-interval={interval}
+	aria-roledescription="carousel"
+	aria-label="照片轮播"
+	style={`--dc-h:${height};--dc-persp:${perspective}px`}
+>
+	<div class="dc-stage">
+		{
+			items.map((it, i) => {
+				const href = it.href;
+				const Tag = href ? 'a' : 'button';
+				return (
+					<Tag
+						class="dc-card"
+						data-dc-card
+						data-i={i}
+						data-active={i === start ? '1' : '0'}
+						href={href ?? undefined}
+						type={href ? undefined : 'button'}
+						aria-label={it.alt ?? `第 ${i + 1} 张`}
+						tabindex={i === start ? 0 : -1}
+					>
+						<Image src={it.image} alt={it.alt ?? ''} widths={[400, 800]} sizes="(max-width: 720px) 60vw, 320px" loading={i < 3 ? 'eager' : 'lazy'} />
+						{it.title && <span class="dc-cap">{it.title}</span>}
+					</Tag>
+				);
+			})
+		}
+	</div>
+
+	{
+		n > 1 && (
+			<div class="dc-nav">
+				<button class="dc-arrow" data-dc-prev type="button" aria-label="上一张">
+					<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+						<path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+				<div class="dc-dots" role="tablist" aria-label="选择照片">
+					{items.map((it, i) => (
+						<button
+							class="dc-dot"
+							data-dc-dot={i}
+							type="button"
+							role="tab"
+							aria-selected={i === start ? 'true' : 'false'}
+							aria-label={it.alt ?? `第 ${i + 1} 张`}
+						/>
+					))}
+				</div>
+				<button class="dc-arrow" data-dc-next type="button" aria-label="下一张">
+					<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+						<path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</div>
+		)
+	}
+</section>
+
+<style>
+	.dc {
+		position: relative;
+		height: var(--dc-h);
+		display: grid;
+		grid-template-rows: 1fr auto;
+		gap: clamp(0.8rem, 2vw, 1.4rem);
+		touch-action: pan-y;
+	}
+
+	.dc-stage {
+		position: relative;
+		perspective: var(--dc-persp);
+		perspective-origin: 50% 42%;
+		transform-style: preserve-3d;
+		overflow: hidden;
+		-webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent);
+		mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent);
+		cursor: grab;
+	}
+
+	.dc-stage:active {
+		cursor: grabbing;
+	}
+
+	.dc-card {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: clamp(150px, 18vw, 250px);
+		aspect-ratio: 4 / 5;
+		margin: 0;
+		padding: 0;
+		border: none;
+		border-radius: clamp(14px, 1.6vw, 22px);
+		overflow: hidden;
+		background: rgb(var(--paper));
+		box-shadow:
+			0 24px 60px -30px rgba(var(--shadow-color), 0.6),
+			0 2px 6px rgba(var(--shadow-color), 0.14);
+		transform: translate3d(-50%, -50%, 0);
+		transition:
+			transform 0.62s cubic-bezier(0.22, 0.9, 0.24, 1),
+			opacity 0.5s var(--ease-out, ease),
+			filter 0.5s var(--ease-out, ease);
+		will-change: transform, opacity;
+		backface-visibility: hidden;
+		cursor: pointer;
+		display: block;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.dc-card img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		pointer-events: none;
+	}
+
+	.dc-card[data-hidden='1'] {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.dc-card:focus-visible {
+		outline: 2px solid rgb(var(--accent));
+		outline-offset: 4px;
+	}
+
+	.dc-cap {
+		position: absolute;
+		inset: auto 0 0;
+		padding: 1.6rem 0.9rem 0.75rem;
+		font-size: 0.78rem;
+		letter-spacing: 0.06em;
+		color: #fff;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+		opacity: 0;
+		transition: opacity 0.35s var(--ease-out, ease);
+	}
+
+	.dc-card[data-active='1'] .dc-cap {
+		opacity: 1;
+	}
+
+	.dc-nav {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.9rem;
+	}
+
+	.dc-arrow {
+		width: 34px;
+		height: 34px;
+		display: grid;
+		place-items: center;
+		border-radius: 50%;
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		color: rgb(var(--ink-soft));
+		cursor: pointer;
+		transition:
+			background-color 0.2s var(--ease-out, ease),
+			color 0.2s var(--ease-out, ease),
+			transform 0.2s var(--ease-out, ease);
+	}
+
+	.dc-arrow:hover {
+		background: var(--chip-bg-strong);
+		color: rgb(var(--accent));
+		transform: translateY(-1px);
+	}
+
+	.dc-dots {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.dc-dot {
+		width: 7px;
+		height: 7px;
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: rgba(var(--ink), 0.22);
+		cursor: pointer;
+		transition:
+			width 0.3s var(--ease-out, ease),
+			background-color 0.3s var(--ease-out, ease);
+	}
+
+	.dc-dot[aria-selected='true'] {
+		width: 20px;
+		border-radius: 999px;
+		background: rgb(var(--accent));
+	}
+
+	@media (max-width: 720px) {
+		.dc-card {
+			width: clamp(140px, 52vw, 220px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.dc-card {
+			transition-duration: 0.01ms;
+		}
+	}
+</style>
+
+<script>
+	type Cfg = {
+		spread: number;
+		depth: number;
+		tilt: number;
+		dir: 'left' | 'right';
+		perspective: number;
+		visible: number;
+		falloff: number;
+		blur: number;
+		autoplay: boolean;
+		loop: boolean;
+		interval: number;
+	};
+
+	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+	function boot(el: HTMLElement) {
+		if (el.dataset.dcReady === '1') return;
+		el.dataset.dcReady = '1';
+
+		const stage = el.querySelector<HTMLElement>('.dc-stage')!;
+		const cards = [...el.querySelectorAll<HTMLElement>('[data-dc-card]')];
+		const dots = [...el.querySelectorAll<HTMLElement>('[data-dc-dot]')];
+		const n = cards.length;
+		if (!stage || n === 0) return;
+
+		const cfg: Cfg = {
+			spread: Number(el.dataset.spread) || 90,
+			depth: Number(el.dataset.depth) || 220,
+			tilt: Number(el.dataset.tilt) || 22,
+			dir: (el.dataset.dir as 'left' | 'right') || 'right',
+			perspective: Number(el.dataset.perspective) || 1400,
+			visible: Number(el.dataset.visible) || 4,
+			falloff: Number(el.dataset.falloff) || 0.2,
+			blur: Number(el.dataset.blur) || 6,
+			autoplay: el.dataset.autoplay === '1',
+			loop: el.dataset.loop === '1',
+			interval: Number(el.dataset.interval) || 3200,
+		};
+
+		let active = 0;
+		let timer: number | undefined;
+		let hovered = false;
+		let visible = true;
+
+		// 窄屏时把间距收一收，不然卡片会挤成一条
+		const scaleFactor = () => {
+			const w = stage.clientWidth;
+			return Math.min(1, Math.max(0.52, w / 1100));
+		};
+
+		const wrap = (d: number) => {
+			if (!cfg.loop || n < 2) return d;
+			const half = n / 2;
+			if (d > half) return d - n;
+			if (d < -half) return d + n;
+			return d;
+		};
+
+		const render = () => {
+			const k = scaleFactor();
+			const spread = cfg.spread * k;
+			const depth = cfg.depth * k;
+			const maxSide = n <= 4 ? 1 : Math.max(2, Math.ceil(cfg.visible / 2));
+
+			cards.forEach((card, i) => {
+				const d = wrap(i - active);
+				const ad = Math.abs(d);
+				const hidden = ad > maxSide;
+				const side = d === 0 ? 0 : d > 0 ? 1 : -1;
+				const rot =
+					cfg.dir === 'right' ? side * -cfg.tilt * Math.min(ad, 1.6) : side * cfg.tilt * Math.min(ad, 1.6);
+				const x = d * spread;
+				const z = -ad * depth;
+				const scale = Math.max(0.55, 1 - ad * cfg.falloff * 0.55);
+				const y = ad * 10 * k;
+
+				card.dataset.hidden = hidden ? '1' : '0';
+				card.dataset.active = d === 0 ? '1' : '0';
+				card.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), ${z}px) rotateY(${rot}deg) scale(${scale})`;
+				card.style.opacity = hidden ? '0' : String(Math.max(0, 1 - ad * cfg.falloff * 1.9));
+				card.style.filter = ad > 0 && cfg.blur > 0 ? `blur(${(ad * cfg.blur).toFixed(1)}px)` : 'none';
+				card.style.zIndex = String(100 - Math.round(ad * 2));
+				card.tabIndex = d === 0 ? 0 : -1;
+			});
+
+			dots.forEach((dot, i) => dot.setAttribute('aria-selected', i === active ? 'true' : 'false'));
+		};
+
+		const go = (i: number) => {
+			if (cfg.loop) active = ((i % n) + n) % n;
+			else active = Math.max(0, Math.min(n - 1, i));
+			render();
+		};
+
+		const next = () => {
+			if (!cfg.loop && active === n - 1) {
+				go(0);
+				return;
+			}
+			go(active + 1);
+		};
+
+		const prev = () => go(active - 1);
+
+		const stop = () => {
+			if (timer) window.clearInterval(timer);
+			timer = undefined;
+		};
+
+		const play = () => {
+			stop();
+			if (!cfg.autoplay || reduceMotion.matches || n < 2) return;
+			if (hovered || !visible) return;
+			timer = window.setInterval(next, cfg.interval);
+		};
+
+		cards.forEach((card, i) => {
+			card.addEventListener('click', (ev) => {
+				const d = wrap(i - active);
+				if (d !== 0) {
+					ev.preventDefault();
+					go(i);
+				}
+			});
+			card.addEventListener('focus', () => {
+				if (wrap(i - active) !== 0) go(i);
+			});
+		});
+
+		dots.forEach((dot, i) => dot.addEventListener('click', () => go(i)));
+		el.querySelector('[data-dc-next]')?.addEventListener('click', next);
+		el.querySelector('[data-dc-prev]')?.addEventListener('click', prev);
+
+		// 拖拽 / 横滑
+		let startX = 0;
+		let dragging = false;
+		stage.addEventListener('pointerdown', (ev) => {
+			dragging = true;
+			startX = ev.clientX;
+			stage.setPointerCapture(ev.pointerId);
+		});
+		stage.addEventListener('pointerup', (ev) => {
+			if (!dragging) return;
+			dragging = false;
+			const dx = ev.clientX - startX;
+			if (Math.abs(dx) > 42) (dx < 0 ? next : prev)();
+		});
+		stage.addEventListener('pointercancel', () => {
+			dragging = false;
+		});
+
+		el.addEventListener('keydown', (ev) => {
+			if (ev.key === 'ArrowRight') {
+				ev.preventDefault();
+				next();
+			} else if (ev.key === 'ArrowLeft') {
+				ev.preventDefault();
+				prev();
+			}
+		});
+
+		el.addEventListener('pointerenter', () => {
+			hovered = true;
+			stop();
+		});
+		el.addEventListener('pointerleave', () => {
+			hovered = false;
+			play();
+		});
+		el.addEventListener('focusin', stop);
+		el.addEventListener('focusout', play);
+
+		const io = new IntersectionObserver(
+			([entry]) => {
+				visible = entry.isIntersecting;
+				if (visible) play();
+				else stop();
+			},
+			{ threshold: 0.15 }
+		);
+		io.observe(el);
+
+		document.addEventListener('visibilitychange', () => {
+			if (document.hidden) stop();
+			else play();
+		});
+
+		new ResizeObserver(() => render()).observe(stage);
+
+		render();
+		play();
+	}
+
+	const init = () => document.querySelectorAll<HTMLElement>('[data-dc]').forEach(boot);
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+	else init();
+	document.addEventListener('astro:page-load', init);
+</script>

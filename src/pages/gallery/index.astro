@@ -1,6 +1,6 @@
 ﻿---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import DriftWall from '../../components/DriftWall.astro';
+import DepthCarousel from '../../components/DepthCarousel.astro';
 import { getCollection } from 'astro:content';
 import { Image, getImage } from 'astro:assets';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
@@ -42,10 +42,10 @@ for (const photo of photos) {
 	bigUrls.set(photo.id, big.src);
 }
 
-const wallItems = photos.map((photo) => ({
+const carouselItems = photos.slice(0, 10).map((photo) => ({
 	image: photo.data.image,
-	title: photo.data.title ?? photo.data.caption ?? '',
-	href: '#',
+	alt: photo.data.title ?? photo.data.caption ?? '',
+	title: photo.data.title ?? '',
 }));
 
 const monthLabel = (m: number) => `${m} 月`;
@@ -78,27 +78,20 @@ tags: ["生活", "风景"]
 			</div>
 		) : (
 			<>
-				<!-- 流动的照片带：向左漂移，作为进入照片墙的过渡 -->
-				<div class="drift-band" data-reveal="mask">
-					<DriftWall
-						items={wallItems}
-						columns={6}
-						rows={2}
-						tileWidth={180}
-						tileHeight={120}
-						gap={16}
-						tilt={10}
-						turn={-9}
-						perspective={1200}
-						depth={90}
-						speed={26}
-						direction="left"
-						variance={0.5}
-						parallax={0.5}
-						lift={48}
-						fade={0.5}
-						dim={0.18}
-						height="clamp(260px, 34vh, 380px)"
+				<div class="gallery-carousel" data-reveal="scale">
+					<DepthCarousel
+						items={carouselItems}
+						depth={200}
+						spread={100}
+						tilt={20}
+						perspective={1400}
+						visibleCards={4}
+						falloff={0.2}
+						blur={4}
+						autoplay
+						loop
+						interval={3800}
+						height="clamp(320px, 44vh, 460px)"
 					/>
 				</div>
 
@@ -257,6 +250,10 @@ tags: ["生活", "风景"]
 		width: var(--w-page);
 		margin-inline: auto;
 	}
+	.gallery-carousel {
+		margin: 0 0 clamp(2rem, 4vw, 3.2rem);
+	}
+
 	.page-head {
 		padding: 1rem 0 1.2rem;
 	}
@@ -268,10 +265,7 @@ tags: ["生活", "风景"]
 		margin: 0;
 	}
 
-	.drift-band {
-		/* 通栏溢出：照片带比正文更宽，视觉上像一条从画面外流过的河 */
-		margin: 0.5rem calc(50% - 50vw) clamp(1.6rem, 4vw, 2.6rem);
-	}
+
 
 	/* 空状态：告诉用户照片该怎么加进来 */
 	.empty-wall {

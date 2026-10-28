@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SpectralDrape from '../components/SpectralDrape.astro';
 import SpecularButton from '../components/SpecularButton.astro';
-import DriftWall from '../components/DriftWall.astro';
+import DepthCarousel from '../components/DepthCarousel.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
@@ -34,7 +34,11 @@ const coverItems = posts
 		title: post.data.title,
 		href: `/blog/${post.id}/`,
 	}));
-const wallItems = galleryItems.length >= 3 ? galleryItems : [...galleryItems, ...coverItems];
+const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => ({
+	image: it.image,
+	alt: it.title,
+	title: it.title,
+}));
 
 const latest = posts[0]?.data.pubDate;
 ---
@@ -214,36 +218,25 @@ const latest = posts[0]?.data.pubDate;
 
 			{photos.length === 0 ? (
 				<div class="wrap">
-					<p class="empty-hint">暂无照片，添加后这里会流动起来。</p>
+					<p class="empty-hint">暂无照片，添加后这里会转起来。</p>
 				</div>
 			) : (
-				<div class="wall-stage" data-reveal="mask">
-					<DriftWall
-						items={wallItems}
-						columns={5}
-						rows={3}
-						tileWidth={200}
-						tileHeight={132}
-						gap={18}
-						tilt={14}
-						turn={-12}
-						perspective={1200}
-						depth={120}
-						speed={34}
-						direction="left"
-						variance={0.45}
-						parallax={0.6}
-						lift={64}
-						fade={0.7}
-						dim={0.35}
-						height="clamp(380px, 56vh, 620px)"
-					/>
-					<div class="wall-edge wall-edge--top" aria-hidden="true"></div>
-					<div class="wall-edge wall-edge--bottom" aria-hidden="true"></div>
-					<div class="wall-note glass">
-						<span class="wall-note__num">{photos.length}</span>
-						<span class="wall-note__txt">张照片，按年月整理在照片墙里</span>
-						<a href="/gallery" class="wall-note__link">去看看 →</a>
+				<div class="wrap">
+					<div data-reveal="scale" data-reveal-delay="120">
+						<DepthCarousel
+							items={carouselItems}
+							depth={260}
+							spread={185}
+							tilt={26}
+							tiltDirection="right"
+							perspective={1400}
+							visibleCards={4}
+							falloff={0.18}
+							blur={4}
+							autoplay
+							loop
+							interval={3600}
+						/>
 					</div>
 				</div>
 			)}
@@ -527,125 +520,7 @@ const latest = posts[0]?.data.pubDate;
 	}
 
 	/* ---------- 照片墙 ---------- */
-	.wall-stage {
-		position: relative;
-		margin-top: 0.5rem;
-	}
-	/* 上下边缘融进纸面，避免照片带被切出一条硬边 */
-	.wall-edge {
-		position: absolute;
-		inset-inline: 0;
-		height: clamp(48px, 9vh, 96px);
-		pointer-events: none;
-		z-index: 2;
-	}
-	.wall-edge--top {
-		top: 0;
-		background: linear-gradient(to bottom, rgb(var(--bg)), rgba(var(--bg), 0));
-	}
-	.wall-edge--bottom {
-		bottom: 0;
-		background: linear-gradient(to top, rgb(var(--bg)), rgba(var(--bg), 0));
-	}
-	.wall-note {
-		position: absolute;
-		z-index: 3;
-		left: var(--gutter);
-		bottom: clamp(1rem, 4vh, 2.4rem);
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-		padding: 0.7rem 1.1rem;
-		border-radius: var(--r-pill);
-		font-size: 0.82rem;
-		color: rgb(var(--ink-soft));
-	}
-	.wall-note__num {
-		font-size: 1.1rem;
-		font-weight: 800;
-		color: rgb(var(--accent));
-		font-variant-numeric: tabular-nums;
-	}
-	.wall-note__link {
-		font-weight: 700;
-		text-decoration: none;
-		color: rgb(var(--accent));
-	}
-	.wall-note__link:hover {
-		color: rgb(var(--accent-deep));
-	}
-
-	/* ---------- 关于 ---------- */
-	.about-card {
-		display: grid;
-		grid-template-columns: 1.25fr 0.75fr;
-		gap: clamp(1.6rem, 4vw, 3.4rem);
-		padding: clamp(1.6rem, 4vw, 3rem);
-		border-radius: var(--r-xl);
-	}
-	.about-main h2 {
-		margin: 0.15em 0 0.7em;
-	}
-	.about-main p {
-		color: rgb(var(--muted));
-		max-width: 46ch;
-	}
-	.about-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		margin-top: 0.4rem;
-		font-weight: 700;
-		text-decoration: none;
-		color: rgb(var(--accent));
-		transition: gap var(--dur-fast) var(--ease-out);
-	}
-	.about-link:hover {
-		gap: 0.7rem;
-	}
-	.about-facts {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		gap: 0.1rem;
-	}
-	.about-facts li {
-		display: flex;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 0.7rem 0;
-		border-bottom: 1px dashed rgba(var(--line), 0.95);
-		font-size: 0.9rem;
-		color: rgb(var(--ink-soft));
-	}
-	.about-facts li:last-child {
-		border-bottom: none;
-	}
-	.about-facts span {
-		color: rgb(var(--muted-light));
-		font-size: 0.82rem;
-	}
-
-	@media (max-width: 980px) {
-		.post-grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.post-grid > :first-child {
-			grid-column: span 2;
-		}
-		.about-card {
-			grid-template-columns: 1fr;
-		}
-	}
-	@media (max-width: 680px) {
-		.hero {
-			min-height: auto;
-			padding-top: 3rem;
-		}
-		.hero-stats {
+	.hero-stats {
 			gap: 1.6rem;
 		}
 		.post-grid {
@@ -653,11 +528,6 @@ const latest = posts[0]?.data.pubDate;
 		}
 		.post-grid > :first-child {
 			grid-column: auto;
-		}
-		.wall-note {
-			position: static;
-			margin: 1rem var(--gutter) 0;
-			justify-content: space-between;
 		}
 		.scroll-cue {
 			display: none;

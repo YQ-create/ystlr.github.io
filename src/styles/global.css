@@ -17,8 +17,8 @@
 	--rose: 190, 132, 118;
 
 	/* 纸面层次 */
-	--bg: 246, 240, 229;
-	--bg-deep: 240, 232, 218;
+	--bg: 248, 244, 236;
+	--bg-deep: 243, 238, 228;
 	--paper: 253, 250, 244;
 	--surface: 255, 253, 248;
 	--line: 228, 216, 196;
@@ -31,16 +31,16 @@
 	--muted-light: 158, 146, 130;
 
 	/* 玻璃 */
-	--glass-bg: rgba(255, 252, 245, 0.55);
-	--glass-bg-strong: rgba(255, 253, 248, 0.78);
-	--glass-brd: rgba(255, 255, 255, 0.66);
+	--glass-bg: rgba(255, 252, 245, 0.24);
+	--glass-bg-strong: rgba(255, 253, 248, 0.46);
+	--glass-brd: rgba(255, 255, 255, 0.58);
 	--glass-brd-dim: rgba(255, 255, 255, 0.38);
-	--glass-blur: 18px;
+	--glass-blur: 26px;
 	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 	/* 小控件（胶囊、输入框、tag）的填充 */
-	--chip-bg: rgba(255, 255, 255, 0.5);
-	--chip-bg-dim: rgba(255, 255, 255, 0.32);
-	--chip-bg-strong: rgba(255, 255, 255, 0.88);
+	--chip-bg: rgba(255, 255, 255, 0.3);
+	--chip-bg-dim: rgba(255, 255, 255, 0.2);
+	--chip-bg-strong: rgba(255, 255, 255, 0.62);
 	/* 阴影颜色：深浅色各一套 */
 	--shadow-color: 90, 70, 45;
 	/* 背景三团光晕的浓度 */

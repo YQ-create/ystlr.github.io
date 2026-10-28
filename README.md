@@ -86,6 +86,23 @@ npm run preview
 
 > 注意：`src/components/BaseHead.astro` 里有一段极短的 `moveBefore` 兜底补丁。Chromium 137+ 的 `Element.moveBefore()` 不允许跨文档或把元素挪到 `<html>` 下，而 Astro 的 `transition:persist` 正好会这么做，不补丁会抛 `HierarchyRequestError` 导致点导航后地址栏不更新。等 Astro 上游修好后可以删掉这段。
 
+## 深浅色与玻璃
+
+页头右侧那个太阳/月亮按钮是**外观设置**，面板里有两组选项：
+
+| 组 | 选项 | 落到 `<html>` 上 |
+| --- | --- | --- |
+| 主题 | 浅色 / 深色 / 跟随系统 | `data-theme="light\|dark"` |
+| 玻璃 | 磨砂 / 透明 | `data-glass="frosted\|clear"` |
+
+两个维度正交，可以任意组合（深色+透明、浅色+磨砂……）。选择存在 `localStorage` 的 `ystlr:theme` 与 `ystlr:glass`，`data-theme-choice` 额外记住「跟随系统」这个意图，系统主题变化时会自动跟随。
+
+实现上没有一处是"深色单独写一套样式"：所有颜色都在 `src/styles/global.css` 顶部的两段 `:root` token 里（浅色一段、`:root[data-theme='dark']` 一段），深色只是把同一批 token 换成另一组值，组件一行都不用改。玻璃同理——`--glass-bg` / `--glass-blur` / `--glass-brd` 这几个 token 在 `:root[data-glass='clear']` 下换成更淡的底色和更重的模糊。
+
+想加自己的颜色：在 `:root` 里加变量，再在深色那段补一个对应值即可。`BaseHead.astro` 里有一小段内联脚本，在首屏渲染前就把 `data-theme` 落到 `<html>` 上，所以刷新时不会先白闪一下再变黑。
+
+切换的动画是给 `<html>` 加 380ms 的 `is-theme-anim` 类，让 `background-color` / `color` / `border-color` 平滑过渡；`prefers-reduced-motion` 下自动关掉。
+
 ## 常用修改位置
 
 | 想改什么 | 改哪里 |

@@ -110,9 +110,9 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 	}
 	.about-hero__blob {
 		position: absolute;
-		top: -30%;
-		right: -10%;
-		width: min(620px, 70vw);
+		top: 2%;
+		right: 1%;
+		width: min(540px, 64vw);
 		aspect-ratio: 1;
 		z-index: -1;
 		border-radius: 50%;
@@ -120,6 +120,9 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 			radial-gradient(circle at 35% 35%, rgba(var(--accent), 0.22), transparent 62%),
 			radial-gradient(circle at 65% 60%, rgba(176, 134, 68, 0.2), transparent 58%);
 		filter: blur(48px);
+		/* 光晕自己在边缘淡出，免得被 .about-hero 的 overflow 裁成一块硬边矩形 */
+		-webkit-mask-image: radial-gradient(closest-side circle, #000 42%, transparent 76%);
+		mask-image: radial-gradient(closest-side circle, #000 42%, transparent 76%);
 		animation: blob-drift 18s var(--ease-out) infinite alternate;
 	}
 	@keyframes blob-drift {
@@ -153,8 +156,8 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 		margin-top: 0.6rem;
 		padding: 0.3rem 0.85rem;
 		border-radius: var(--r-pill);
-		background: rgba(255, 253, 248, 0.6);
-		border: 1px solid rgba(255, 255, 255, 0.7);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-brd);
 		backdrop-filter: blur(10px);
 		font-size: 0.78rem;
 		letter-spacing: 0.06em;
@@ -188,7 +191,7 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 		padding: 0.35rem 0.95rem;
 		border-radius: var(--r-pill);
 		border: 1px solid rgba(var(--line), 1);
-		background: rgba(255, 255, 255, 0.5);
+		background: var(--chip-bg);
 		font-size: 0.85rem;
 		color: rgb(var(--ink-soft));
 		transition:
@@ -247,12 +250,12 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 		overflow: hidden;
 	}
 	.fact {
-		background: rgba(255, 253, 248, 0.72);
+		background: var(--glass-bg-strong);
 		padding: 1.1rem 1.2rem;
 		transition: background-color var(--dur-fast) var(--ease-out);
 	}
 	.fact:hover {
-		background: rgba(255, 255, 255, 0.95);
+		background: var(--chip-bg-strong);
 	}
 	.fact dt {
 		font-size: 0.74rem;

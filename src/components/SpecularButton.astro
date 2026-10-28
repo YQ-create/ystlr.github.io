@@ -18,7 +18,9 @@ interface Props {
 	blur?: number;
 	textColor?: string;
 	lineColor?: string;
+	lineColorDark?: string;
 	baseColor?: string;
+	baseColorDark?: string;
 	intensity?: number;
 	idleIntensity?: number;
 	shineSize?: number;
@@ -41,12 +43,14 @@ const {
 	href,
 	size = 'md',
 	radius = 999,
-	tint = '#fffdf8',
-	tintOpacity = 0.55,
+	tint = 'rgb(var(--btn-tint))',
+	tintOpacity = 0.72,
 	blur = 10,
-	textColor = '#2b211a',
+	textColor = 'var(--ink)',
 	lineColor = '#c2743f',
+	lineColorDark = '#d98a55',
 	baseColor = '#e7d9c8',
+	baseColorDark = '#4a4038',
 	intensity = 1,
 	idleIntensity = 0.24,
 	shineSize = 10,
@@ -88,7 +92,9 @@ const style = [
 				data-specular
 				data-radius={radius}
 				data-line-color={lineColor}
+	data-line-color-dark={lineColorDark}
 				data-base-color={baseColor}
+	data-base-color-dark={baseColorDark}
 				data-intensity={intensity}
 				data-idle-intensity={idleIntensity}
 				data-shine-size={shineSize}
@@ -114,7 +120,9 @@ const style = [
 				data-specular
 				data-radius={radius}
 				data-line-color={lineColor}
+	data-line-color-dark={lineColorDark}
 				data-base-color={baseColor}
+	data-base-color-dark={baseColorDark}
 				data-intensity={intensity}
 				data-idle-intensity={idleIntensity}
 				data-shine-size={shineSize}
@@ -404,7 +412,9 @@ void main() {
 		const settings = {
 			radius: Math.max(0, read('radius', 999)),
 			lineColor: button.dataset.lineColor || '#ffffff',
+			lineColorDark: button.dataset.lineColorDark || button.dataset.lineColor || '#ffffff',
 			baseColor: button.dataset.baseColor || '#525252',
+			baseColorDark: button.dataset.baseColorDark || button.dataset.baseColor || '#525252',
 			intensity: Math.max(0, read('intensity', 1)),
 			idleIntensity: clampNum(read('idleIntensity', 0.35), 0, 1),
 			shineSize: Math.max(0, read('shineSize', 10)),
@@ -505,8 +515,10 @@ void main() {
 			const pull = 1 - Math.min(0.35 * (height / 2), length) / length;
 			gl.uniform1f(uniforms.uSpot, state.spot);
 			gl.uniform2f(uniforms.uEntry, rimX * pull * scaleX, rimY * pull * scaleY);
-			gl.uniform3fv(uniforms.uLineColor, toRgb(settings.lineColor));
-			gl.uniform3fv(uniforms.uBaseColor, toRgb(settings.baseColor));
+			// 深浅色各一套描边色：每帧按当前主题取，切主题后立刻生效
+			const isDark = document.documentElement.dataset.theme === 'dark';
+			gl.uniform3fv(uniforms.uLineColor, toRgb(isDark ? settings.lineColorDark : settings.lineColor));
+			gl.uniform3fv(uniforms.uBaseColor, toRgb(isDark ? settings.baseColorDark : settings.baseColor));
 			gl.uniform1f(uniforms.uIntensity, settings.intensity * (state.level + state.press * 0.8));
 			gl.uniform2f(
 				uniforms.uWindow,
@@ -624,6 +636,14 @@ void main() {
 			},
 			{ once: true, signal: ac.signal }
 		);
+
+		// 切深浅色后画布要重画一次，否则描边还留着上一套颜色
+		const themeWatch = new MutationObserver(() => wake());
+		themeWatch.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-theme'],
+		});
+		ac.signal.addEventListener('abort', () => themeWatch.disconnect(), { once: true });
 
 		button.dataset.sbReady = '1';
 		measure();

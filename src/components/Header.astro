@@ -3,6 +3,7 @@
 // 导航标签刻意保持两个汉字，等宽排列，高亮块才能滑动得干净。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import MusicPlayer from './MusicPlayer.astro';
+import ThemeToggle from './ThemeToggle.astro';
 
 const navItems = [
 	{ href: '/', label: '首页' },
@@ -31,6 +32,7 @@ const navItems = [
 		</nav>
 
 		<div class="head-actions">
+			<ThemeToggle />
 			<div class="social">
 				{SOCIAL_LINKS.github && (
 					<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener" aria-label="GitHub">
@@ -167,7 +169,7 @@ const navItems = [
 	}
 	.head-shell.is-scrolled {
 		padding-block: 0.32rem;
-		background: rgba(255, 252, 245, 0.78);
+		background: var(--glass-bg-strong);
 		box-shadow: var(--glass-shine), var(--shadow-lg);
 	}
 
@@ -225,7 +227,7 @@ const navItems = [
 		gap: 0.1rem;
 		padding: 0.18rem;
 		border-radius: var(--r-pill);
-		background: rgba(255, 255, 255, 0.32);
+		background: var(--chip-bg-dim);
 		isolation: isolate;
 	}
 	.nav-ind {
@@ -235,8 +237,8 @@ const navItems = [
 		height: calc(100% - 0.36rem);
 		width: 3rem;
 		border-radius: var(--r-pill);
-		background: rgba(255, 253, 248, 0.95);
-		box-shadow: 0 1px 2px rgba(90, 70, 45, 0.12), 0 6px 16px -8px rgba(90, 70, 45, 0.4);
+		background: var(--glass-bg-strong);
+		box-shadow: 0 1px 2px rgba(var(--shadow-color), 0.12), 0 6px 16px -8px rgba(var(--shadow-color), 0.4);
 		transform: translate3d(0, -50%, 0);
 		transition:
 			transform 0.42s var(--ease-spring),
@@ -291,7 +293,7 @@ const navItems = [
 	}
 	.social a:hover {
 		color: rgb(var(--accent));
-		background: rgba(255, 255, 255, 0.6);
+		background: var(--chip-bg);
 	}
 
 	@media (max-width: 860px) {

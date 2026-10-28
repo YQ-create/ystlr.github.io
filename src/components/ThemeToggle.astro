@@ -1,0 +1,309 @@
+---
+/**
+ * 外观设置：深浅色 + 玻璃透明度。
+ * 真正的切换靠 <html data-theme data-glass>，这里只负责选择和记忆。
+ * data-theme-choice 记录用户的选择（含 system），data-theme 记录最终结果。
+ */
+---
+
+<div class="tp" data-tp>
+	<button class="tp-btn" type="button" data-tp-open aria-expanded="false" aria-controls="tp-panel" aria-label="外观设置">
+		<svg class="tp-ico tp-ico-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+			<circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"></circle>
+			<path
+				d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.6"
+				stroke-linecap="round"></path>
+		</svg>
+		<svg class="tp-ico tp-ico-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+			<path
+				d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.7 8.7 0 1 0 11.1 11.1Z"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.6"
+				stroke-linejoin="round"></path>
+		</svg>
+	</button>
+
+	<div class="tp-panel" id="tp-panel" data-tp-panel role="dialog" aria-label="外观设置">
+		<p class="tp-label">主题</p>
+		<div class="tp-seg" role="group" aria-label="主题">
+			<button type="button" data-tp-theme="light">浅色</button>
+			<button type="button" data-tp-theme="dark">深色</button>
+			<button type="button" data-tp-theme="system">跟随系统</button>
+		</div>
+
+		<p class="tp-label">玻璃</p>
+		<div class="tp-seg" role="group" aria-label="玻璃质感">
+			<button type="button" data-tp-glass="frosted">磨砂</button>
+			<button type="button" data-tp-glass="clear">透明</button>
+		</div>
+
+		<p class="tp-hint">选择会记在这台设备上。</p>
+	</div>
+</div>
+
+<style>
+	.tp {
+		position: relative;
+		display: flex;
+	}
+
+	.tp-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 34px;
+		height: 34px;
+		border-radius: 999px;
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		color: var(--ink-soft);
+		cursor: pointer;
+		transition:
+			background 0.24s var(--ease-out),
+			color 0.24s var(--ease-out),
+			border-color 0.24s var(--ease-out);
+	}
+	.tp-btn:hover,
+	.tp-btn[aria-expanded='true'] {
+		background: var(--chip-bg-strong);
+		border-color: var(--glass-brd);
+		color: var(--accent-deep);
+	}
+	.tp-btn:focus-visible {
+		outline: 2px solid var(--accent-soft);
+		outline-offset: 2px;
+	}
+
+	.tp-ico {
+		position: absolute;
+		transition:
+			opacity 0.3s var(--ease-out),
+			transform 0.4s var(--ease-out);
+	}
+	.tp-ico-moon {
+		opacity: 0;
+		transform: rotate(-25deg) scale(0.7);
+	}
+	:root[data-theme='dark'] .tp-ico-sun {
+		opacity: 0;
+		transform: rotate(35deg) scale(0.7);
+	}
+	:root[data-theme='dark'] .tp-ico-moon {
+		opacity: 1;
+		transform: none;
+	}
+
+	.tp-panel {
+		position: absolute;
+		visibility: hidden;
+		top: calc(100% + 12px);
+		right: -8px;
+		z-index: 60;
+		width: 232px;
+		padding: 14px 14px 12px;
+		border-radius: var(--r-md);
+		border: 1px solid var(--glass-brd);
+		/* 页头本身也有 backdrop-filter，嵌在这层里的模糊不一定生效，
+		   所以面板底色给足不透明度，保证文字永远压得住背景 */
+		background: color-mix(in srgb, rgb(var(--paper)) 94%, transparent);
+		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+		backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+		box-shadow: var(--shadow-md);
+		transform-origin: top right;
+		opacity: 0;
+		transform: translateY(-6px) scale(0.97);
+		pointer-events: none;
+		transition:
+			opacity 0.22s var(--ease-out),
+			transform 0.22s var(--ease-out),
+			visibility 0.22s;
+	}
+	.tp-panel[data-open='true'] {
+		visibility: visible;
+		opacity: 1;
+		transform: none;
+		pointer-events: auto;
+	}
+
+	.tp-label {
+		margin: 0 0 6px;
+		font-size: 11px;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+	.tp-seg {
+		display: flex;
+		gap: 4px;
+		margin-bottom: 12px;
+		padding: 3px;
+		border-radius: 999px;
+		background: var(--chip-bg-dim);
+	}
+	.tp-seg button {
+		flex: 1;
+		padding: 6px 4px;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--muted);
+		font-size: 12.5px;
+		cursor: pointer;
+		white-space: nowrap;
+		transition:
+			background 0.2s var(--ease-out),
+			color 0.2s var(--ease-out);
+	}
+	.tp-seg button:hover {
+		color: var(--ink);
+	}
+	.tp-seg button[aria-pressed='true'] {
+		background: var(--chip-bg-strong);
+		color: var(--accent-deep);
+		box-shadow: 0 1px 2px rgba(var(--shadow-color), 0.14);
+	}
+	.tp-seg button:focus-visible {
+		outline: 2px solid var(--accent-soft);
+		outline-offset: 1px;
+	}
+
+	.tp-hint {
+		margin: 0;
+		font-size: 11.5px;
+		color: var(--muted-light);
+	}
+
+	@media (max-width: 520px) {
+		.tp-panel {
+			right: -52px;
+			width: 212px;
+		}
+	}
+</style>
+
+<script>
+	type ThemeChoice = 'light' | 'dark' | 'system';
+	type GlassChoice = 'frosted' | 'clear';
+
+	const KEY_THEME = 'ystlr:theme';
+	const KEY_GLASS = 'ystlr:glass';
+	const root = document.documentElement;
+	const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+	const read = (key: string) => {
+		try {
+			return localStorage.getItem(key);
+		} catch {
+			return null;
+		}
+	};
+	const write = (key: string, value: string) => {
+		try {
+			localStorage.setItem(key, value);
+		} catch {
+			/* 隐私模式下写不进去就算了 */
+		}
+	};
+
+	function themeChoice(): ThemeChoice {
+		const saved = read(KEY_THEME);
+		return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+	}
+	function glassChoice(): GlassChoice {
+		return read(KEY_GLASS) === 'clear' ? 'clear' : 'frosted';
+	}
+
+	/** 把选择落到 <html> 上；system 时顺手解析成真实主题 */
+	function apply(theme: ThemeChoice, glass: GlassChoice) {
+		root.dataset.themeChoice = theme;
+		root.dataset.theme = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme;
+		root.dataset.glass = glass;
+
+		const meta = document.querySelector('meta[name="theme-color"]');
+		if (meta) meta.setAttribute('content', root.dataset.theme === 'dark' ? '#181512' : '#f6f0e5');
+	}
+
+	/** 切换时让整页颜色平滑过渡 350ms，只加一次 */
+	let animTimer = 0;
+	function animateOnce() {
+		root.classList.add('is-theme-anim');
+		window.clearTimeout(animTimer);
+		animTimer = window.setTimeout(() => root.classList.remove('is-theme-anim'), 380);
+	}
+
+	function wire() {
+		const host = document.querySelector<HTMLElement>('[data-tp]');
+		if (!host || host.dataset.wired === '1') return;
+		host.dataset.wired = '1';
+
+		const openBtn = host.querySelector<HTMLButtonElement>('[data-tp-open]');
+		const panel = host.querySelector<HTMLElement>('[data-tp-panel]');
+		const themeBtns = [...host.querySelectorAll<HTMLButtonElement>('[data-tp-theme]')];
+		const glassBtns = [...host.querySelectorAll<HTMLButtonElement>('[data-tp-glass]')];
+		if (!openBtn || !panel) return;
+
+		const sync = () => {
+			const t = (root.dataset.themeChoice as ThemeChoice) || 'system';
+			const g = (root.dataset.glass as GlassChoice) || 'frosted';
+			themeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tpTheme === t)));
+			glassBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tpGlass === g)));
+		};
+
+		const setOpen = (next: boolean) => {
+			panel.dataset.open = String(next);
+			openBtn.setAttribute('aria-expanded', String(next));
+		};
+
+		openBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			setOpen(panel.dataset.open !== 'true');
+			sync();
+		});
+
+		themeBtns.forEach((b) =>
+			b.addEventListener('click', () => {
+				animateOnce();
+				const next = (b.dataset.tpTheme as ThemeChoice) || 'system';
+				write(KEY_THEME, next);
+				apply(next, glassChoice());
+				sync();
+			})
+		);
+
+		glassBtns.forEach((b) =>
+			b.addEventListener('click', () => {
+				animateOnce();
+				const next = (b.dataset.tpGlass as GlassChoice) || 'frosted';
+				write(KEY_GLASS, next);
+				apply(themeChoice(), next);
+				sync();
+			})
+		);
+
+		// 点外面 / Esc 关掉
+		document.addEventListener('pointerdown', (e) => {
+			if (panel.dataset.open !== 'true') return;
+			if (!host.contains(e.target as Node)) setOpen(false);
+		});
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && panel.dataset.open === 'true') {
+				setOpen(false);
+				openBtn.focus();
+			}
+		});
+
+		// 选「跟随系统」时，系统主题变了要跟着走
+		media.addEventListener('change', () => {
+			if (themeChoice() === 'system') apply('system', glassChoice());
+		});
+
+		sync();
+	}
+
+	document.addEventListener('astro:page-load', wire);
+	if (document.readyState !== 'loading') wire();
+</script>

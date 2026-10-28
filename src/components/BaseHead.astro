@@ -29,7 +29,7 @@ const ogImage = new URL(image.src, Astro.url);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="theme-color" content="#f6f0e5" />
-<meta name="color-scheme" content="light" />
+<meta name="color-scheme" content="light dark" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" href="/favicon.ico" />
 <link rel="sitemap" href="/sitemap-index.xml" />
@@ -40,6 +40,24 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
+<script is:inline>
+	/* 首屏前置：在样式生效前把主题写进 <html>，避免刷新时闪一下浅色 */
+	(() => {
+		const d = document.documentElement;
+		try {
+			const t = localStorage.getItem('ystlr:theme');
+			const g = localStorage.getItem('ystlr:glass');
+			const sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			d.dataset.themeChoice = t || 'system';
+			d.dataset.theme = t === 'light' || t === 'dark' ? t : sys ? 'dark' : 'light';
+			d.dataset.glass = g === 'clear' ? 'clear' : 'frosted';
+		} catch {
+			d.dataset.themeChoice = 'system';
+			d.dataset.theme = 'light';
+			d.dataset.glass = 'frosted';
+		}
+	})();
+</script>
 {noindex && <meta name="robots" content="noindex" />}
 
 <Font cssVariable="--font-atkinson" preload />

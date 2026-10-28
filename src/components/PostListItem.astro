@@ -56,8 +56,8 @@ const { post, excerpt = true, tags = post.data.tags, index, delay = 0 } = Astro.
 		border-radius: var(--r-lg);
 		text-decoration: none;
 		color: inherit;
-		background: rgba(255, 253, 248, 0.42);
-		border: 1px solid rgba(255, 255, 255, 0.55);
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-brd-dim);
 		backdrop-filter: blur(12px);
 		box-shadow: var(--glass-shine);
 		transition:
@@ -67,7 +67,7 @@ const { post, excerpt = true, tags = post.data.tags, index, delay = 0 } = Astro.
 	}
 	.row-link:hover {
 		transform: translateX(4px);
-		background: rgba(255, 253, 248, 0.78);
+		background: var(--glass-bg-strong);
 		box-shadow: var(--glass-shine), var(--shadow-md);
 	}
 	.row-index {

@@ -37,6 +37,18 @@
 	--glass-brd-dim: rgba(255, 255, 255, 0.38);
 	--glass-blur: 18px;
 	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+	/* 小控件（胶囊、输入框、tag）的填充 */
+	--chip-bg: rgba(255, 255, 255, 0.5);
+	--chip-bg-dim: rgba(255, 255, 255, 0.32);
+	--chip-bg-strong: rgba(255, 255, 255, 0.88);
+	/* 阴影颜色：深浅色各一套 */
+	--shadow-color: 90, 70, 45;
+	/* 背景三团光晕的浓度 */
+	--glow-accent: 0.18;
+	--glow-ochre: 0.16;
+	--glow-sage: 0.13;
+	/* 按钮底色（SpecularButton 用） */
+	--btn-tint: 255, 246, 234;
 
 	/* 阴影 */
 	--shadow-sm: 0 1px 2px rgba(90, 70, 45, 9%), 0 6px 18px -8px rgba(90, 70, 45, 18%);
@@ -99,9 +111,9 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 	/* 暖色天光：三团极淡的光晕压住纸面，让玻璃有东西可以“透” */
 	background:
-		radial-gradient(58% 44% at 12% 0%, rgba(var(--accent-soft), 0.18) 0%, transparent 62%),
-		radial-gradient(48% 40% at 92% 6%, rgba(var(--ochre), 0.16) 0%, transparent 60%),
-		radial-gradient(60% 50% at 50% 100%, rgba(var(--sage), 0.13) 0%, transparent 68%),
+		radial-gradient(58% 44% at 12% 0%, rgba(var(--accent-soft), var(--glow-accent)) 0%, transparent 62%),
+		radial-gradient(48% 40% at 92% 6%, rgba(var(--ochre), var(--glow-ochre)) 0%, transparent 60%),
+		radial-gradient(60% 50% at 50% 100%, rgba(var(--sage), var(--glow-sage)) 0%, transparent 68%),
 		rgb(var(--bg));
 	background-attachment: fixed;
 	min-height: 100vh;
@@ -241,7 +253,7 @@ input,
 select {
 	font-size: 16px;
 	font-family: inherit;
-	background: rgba(255, 253, 248, 0.7);
+	background: var(--glass-bg-strong);
 	color: rgb(var(--ink));
 	border: 1px solid rgb(var(--line));
 	border-radius: var(--r-sm);
@@ -290,7 +302,7 @@ select:focus {
 }
 .glass-hover:hover {
 	transform: translateY(-4px);
-	border-color: rgba(255, 255, 255, 0.9);
+	border-color: var(--glass-brd);
 }
 
 /* 指针跟随的高光（配合 [data-glow]，--mx/--my 由 Motion.astro 写入） */
@@ -308,7 +320,7 @@ select:focus {
 	transition: opacity var(--dur) var(--ease-out);
 	background: radial-gradient(
 		260px circle at var(--mx, 50%) var(--my, 50%),
-		rgba(255, 255, 255, 0.55),
+		var(--glass-brd-dim),
 		transparent 65%
 	);
 	z-index: -1;
@@ -348,13 +360,13 @@ select:focus {
 	transform: translateY(0) scale(0.985);
 }
 .btn--ghost {
-	--btn-bg: rgba(255, 253, 248, 0.6);
+	--btn-bg: var(--glass-bg);
 	--btn-fg: rgb(var(--ink));
 	border-color: rgba(var(--line), 1);
 	backdrop-filter: blur(10px);
 }
 .btn--ghost:hover {
-	--btn-bg: rgba(255, 255, 255, 0.85);
+	--btn-bg: var(--chip-bg-strong);
 	border-color: rgba(var(--accent), 0.45);
 }
 .btn--accent-soft {
@@ -386,7 +398,7 @@ select:focus {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: rgb(var(--accent-deep));
-	background: rgba(255, 253, 248, 0.55);
+	background: var(--glass-bg);
 	border: 1px solid rgba(var(--accent), 0.2);
 	backdrop-filter: blur(10px);
 }
@@ -543,7 +555,7 @@ select:focus {
 	text-align: center;
 	border: 1px dashed rgb(var(--line));
 	border-radius: var(--r-lg);
-	background: rgba(255, 253, 248, 0.45);
+	background: var(--glass-bg);
 }
 
 .sr-only {
@@ -612,4 +624,85 @@ select:focus {
 		opacity: 0;
 		transform: translateY(14px);
 	}
+}
+
+/* ============ 深色主题 ============ */
+/* 只在 :root 上换值，组件一行都不用改；颜色仍是 RGB 三元组，方便继续用 rgb(var(--x)) */
+:root[data-theme='dark'] {
+	color-scheme: dark;
+
+	--accent: 208, 132, 92;
+	--accent-soft: 224, 158, 118;
+	--accent-deep: 238, 180, 140;
+	--ochre: 214, 168, 96;
+	--sage: 146, 166, 138;
+	--rose: 212, 152, 136;
+
+	--bg: 24, 21, 18;
+	--bg-deep: 17, 15, 13;
+	--paper: 36, 32, 28;
+	--surface: 44, 39, 34;
+	--line: 66, 58, 49;
+	--line-soft: 52, 46, 39;
+
+	--ink: 236, 229, 217;
+	--ink-soft: 214, 203, 187;
+	--muted: 168, 155, 140;
+	--muted-light: 132, 120, 106;
+
+	--glass-bg: rgba(38, 33, 28, 0.58);
+	--glass-bg-strong: rgba(31, 27, 23, 0.84);
+	--glass-brd: rgba(255, 255, 255, 0.14);
+	--glass-brd-dim: rgba(255, 255, 255, 0.08);
+	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+
+	--chip-bg: rgba(255, 255, 255, 0.08);
+	--chip-bg-dim: rgba(255, 255, 255, 0.05);
+	--chip-bg-strong: rgba(255, 255, 255, 0.16);
+
+	--shadow-color: 0, 0, 0;
+	--glow-accent: 0.15;
+	--glow-ochre: 0.11;
+	--glow-sage: 0.09;
+	--btn-tint: 52, 45, 38;
+}
+
+/* ============ 透明玻璃 ============ */
+/* 和主题正交：只把玻璃的底色变淡、模糊加重，让背景的光晕和照片真正透上来 */
+:root[data-glass='clear'] {
+	--glass-bg: rgba(255, 252, 245, 0.16);
+	--glass-bg-strong: rgba(255, 253, 248, 0.4);
+	--glass-brd: rgba(255, 255, 255, 0.5);
+	--glass-brd-dim: rgba(255, 255, 255, 0.24);
+	--glass-blur: 30px;
+	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+	--chip-bg: rgba(255, 255, 255, 0.2);
+	--chip-bg-dim: rgba(255, 255, 255, 0.12);
+	--chip-bg-strong: rgba(255, 255, 255, 0.45);
+}
+
+:root[data-theme='dark'][data-glass='clear'] {
+	--glass-bg: rgba(38, 33, 28, 0.24);
+	--glass-bg-strong: rgba(31, 27, 23, 0.52);
+	--glass-brd: rgba(255, 255, 255, 0.16);
+	--glass-brd-dim: rgba(255, 255, 255, 0.09);
+	--chip-bg: rgba(255, 255, 255, 0.09);
+	--chip-bg-dim: rgba(255, 255, 255, 0.05);
+	--chip-bg-strong: rgba(255, 255, 255, 0.2);
+}
+
+/* 深浅切换时整页平滑过渡（只过渡颜色类，不动 transform） */
+html.is-theme-anim,
+html.is-theme-anim * {
+	transition:
+		background-color 0.35s var(--ease-out),
+		border-color 0.35s var(--ease-out),
+		color 0.35s var(--ease-out),
+		fill 0.35s var(--ease-out) !important;
+}
+
+/* SpecularButton 的底色默认取 --btn-tint、文字默认取 --ink，深浅色自动跟随；
+   ghost 按钮只把文字降到次级色，其余交给 token */
+.specular-button.sb-ghost {
+	font-weight: 450;
 }

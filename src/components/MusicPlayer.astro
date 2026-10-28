@@ -349,7 +349,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		padding: 0;
 		border-radius: 50%;
 		border: 1px solid rgba(var(--line), 1);
-		background: rgba(255, 255, 255, 0.45);
+		background: var(--chip-bg);
 		color: rgb(var(--muted));
 		cursor: pointer;
 		transition:
@@ -528,7 +528,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 	}
 	.ctrl:hover {
 		color: rgb(var(--accent));
-		background: rgba(255, 255, 255, 0.55);
+		background: var(--chip-bg-strong);
 		transform: translateY(-1px);
 	}
 	.ctrl-main {
@@ -623,3 +623,4 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		}
 	}
 </style>
+

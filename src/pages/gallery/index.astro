@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DepthCarousel from '../../components/DepthCarousel.astro';
+import FadeContent from '../../components/FadeContent.astro';
 import { getCollection } from 'astro:content';
 import { Image, getImage } from 'astro:assets';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
@@ -116,7 +117,14 @@ tags: ["生活", "风景"]
 								<h3 class="month-title" data-reveal>{monthLabel(month.month)}</h3>
 								<div class="gallery-grid">
 									{month.items.map((photo, i) => (
-										<figure class="shot" data-reveal="scale" data-reveal-delay={i * 70}>
+										<FadeContent
+											effect="focus"
+											blur={8}
+											duration={0.9}
+											delay={Math.min(i * 60, 240)}
+											threshold={0.12}
+											class="shot"
+										>
 											<button
 												class="shot-btn"
 												type="button"
@@ -144,9 +152,9 @@ tags: ["生活", "风景"]
 												</span>
 											</button>
 											{photo.data.caption && (
-												<figcaption>{photo.data.caption}</figcaption>
+												<p class="shot-caption">{photo.data.caption}</p>
 											)}
-										</figure>
+										</FadeContent>
 									))}
 								</div>
 							</div>
@@ -419,11 +427,15 @@ tags: ["生活", "风景"]
 		opacity: 1;
 		transform: none;
 	}
-	.shot figcaption {
+	.shot figcaption,
+	.shot-caption {
 		padding: 0.6rem 0.85rem 0.75rem;
 		font-size: 0.82rem;
 		line-height: 1.55;
 		color: rgb(var(--muted));
+	}
+	.shot-caption {
+		margin: 0;
 	}
 
 	/* ---- 灯箱 ---- */

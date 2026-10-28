@@ -1,0 +1,99 @@
+---
+/**
+ * SplitText — 逐字/逐词拆分进场（React Bits 的 SplitText 原生移植，去 React）。
+ *
+ * 把 text 按字符/词/行拆开，滚入视口时逐块进场，支持 rise / fade / blur /
+ * flip / pop / skew / wave 七种效果，以及 hover 抬升/波浪、click 触发、loop 循环。
+ *
+ * 逻辑在 src/scripts/split-text.ts（依赖 gsap + SplitText 插件）。
+ * 注意：这是纯文本逐字动画，与 TechText（canvas 线框字）是两套东西，别混用。
+ */
+interface Props {
+	text: string;
+	class?: string;
+	delay?: number;
+	duration?: number;
+	splitType?: 'chars' | 'words' | 'lines' | 'words, chars';
+	threshold?: number;
+	rootMargin?: string;
+	tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span';
+	textAlign?: string;
+	staggerFrom?: 'start' | 'center' | 'end' | 'edges' | 'random';
+	mask?: boolean;
+	effect?: 'rise' | 'fade' | 'blur' | 'flip' | 'pop' | 'skew' | 'wave';
+	trigger?: 'view' | 'load' | 'hover' | 'click';
+	loop?: boolean;
+	loopDelay?: number;
+	hoverEffect?: 'none' | 'lift' | 'wave';
+	color?: string;
+	accentColor?: string;
+}
+
+const {
+	text,
+	class: className = '',
+	delay = 50,
+	duration = 1.25,
+	splitType = 'chars',
+	threshold = 0.1,
+	rootMargin = '-100px',
+	tag: Tag = 'p',
+	textAlign = 'center',
+	staggerFrom = 'start',
+	mask = false,
+	effect = 'rise',
+	trigger = 'view',
+	loop = false,
+	loopDelay = 1.5,
+	hoverEffect = 'none',
+	color,
+	accentColor,
+} = Astro.props;
+---
+
+<Tag
+	class:list={['split-parent', className]}
+	data-split-text
+	data-split={text}
+	data-split-delay={delay}
+	data-split-duration={duration}
+	data-split-type={splitType}
+	data-split-threshold={threshold}
+	data-split-root-margin={rootMargin}
+	data-split-stagger-from={staggerFrom}
+	data-split-mask={mask ? 'true' : 'false'}
+	data-split-effect={effect}
+	data-split-trigger={trigger}
+	data-split-loop={loop ? 'true' : 'false'}
+	data-split-loop-delay={loopDelay}
+	data-split-hover-effect={hoverEffect}
+	style:list={[
+		{ textAlign, display: 'inline-block', whiteSpace: 'normal', wordWrap: 'break-word' },
+		color ? `color:${color}` : undefined,
+		trigger === 'click' ? 'cursor:pointer' : undefined,
+	]}
+	aria-label={text}
+	>{text}</Tag
+>
+
+<style>
+	:global(.split-parent) {
+		visibility: hidden;
+	}
+	:global(.split-char),
+	:global(.split-word),
+	:global(.split-line) {
+		display: inline-block;
+	}
+	:global(.split-line) {
+		display: block;
+	}
+</style>
+
+<script>
+	import { bootAllSplit } from '../scripts/split-text';
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAllSplit, { once: true });
+	else bootAllSplit();
+	document.addEventListener('astro:page-load', bootAllSplit);
+</script>

@@ -1,0 +1,86 @@
+---
+/**
+ * FadeContent — 滚动进场包装器（React Bits 的 FadeContent 原生移植，去 React）。
+ *
+ * 把子内容包起来，滚入视口时做进场动画。效果有 fade / focus / develop /
+ * dissolve / mist / pixel 六种；支持 stagger 错峰、scroll/mount 触发、
+ * scrub 滚动驱动、exit 滚出退出、disappearAfter 延时隐去。
+ *
+ * 逻辑在 src/scripts/fade-content.ts（依赖 GSAP，未引入 React）。
+ * 组件只负责输出标记与 data-* 参数，配合 View Transitions 的 page-load 挂载。
+ */
+interface Props {
+	effect?: 'fade' | 'focus' | 'develop' | 'dissolve' | 'mist' | 'pixel';
+	/** true 或数值（px），默认 false 无模糊 */
+	blur?: boolean | number;
+	duration?: number;
+	ease?: string;
+	delay?: number;
+	threshold?: number;
+	initialOpacity?: number;
+	stagger?: number;
+	staggerFrom?: 'start' | 'end' | 'center' | 'edges' | 'random';
+	trigger?: 'scroll' | 'mount';
+	once?: boolean;
+	exit?: boolean;
+	/** true 或数值（平滑秒数），默认 false 关闭 */
+	scrub?: boolean | number;
+	disappearAfter?: number;
+	disappearDuration?: number;
+	disappearEase?: string;
+	class?: string;
+}
+
+const {
+	effect = 'fade',
+	blur = false,
+	duration = 1,
+	ease = 'power2.out',
+	delay = 0,
+	threshold = 0.1,
+	initialOpacity = 0,
+	stagger = 0,
+	staggerFrom = 'start',
+	trigger = 'scroll',
+	once = true,
+	exit = false,
+	scrub = false,
+	disappearAfter = 0,
+	disappearDuration = 0.5,
+	disappearEase = 'power2.in',
+	class: className = '',
+} = Astro.props;
+
+const scrubVal = scrub === true ? 0 : scrub === false ? -1 : Number(scrub);
+---
+
+<div
+	class:list={['fade-content', className]}
+	data-fade-content
+	data-fade-effect={effect}
+	data-fade-blur={blur === true ? 'true' : String(Number(blur) || 0)}
+	data-fade-duration={duration}
+	data-fade-ease={ease}
+	data-fade-delay={delay}
+	data-fade-threshold={threshold}
+	data-fade-initial-opacity={initialOpacity}
+	data-fade-stagger={stagger}
+	data-fade-stagger-from={staggerFrom}
+	data-fade-trigger={trigger}
+	data-fade-once={once ? 'true' : 'false'}
+	data-fade-exit={exit ? 'true' : 'false'}
+	data-fade-scrub={scrubVal}
+	data-fade-disappear-after={disappearAfter}
+	data-fade-disappear-duration={disappearDuration}
+	data-fade-disappear-ease={disappearEase}
+>
+	<slot />
+</div>
+
+<script>
+	import { bootAllFade } from '../scripts/fade-content';
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAllFade, { once: true });
+	else bootAllFade();
+	document.addEventListener('astro:page-load', bootAllFade);
+</script>

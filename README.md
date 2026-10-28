@@ -98,12 +98,16 @@ Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投
 | `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
 | `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
 | `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
+| `FadeContent.astro` | 滚动进场包装器（照片墙照片用；React Bits `FadeContent` 原生移植） | `effect`（fade/focus/develop/dissolve/mist/pixel）、`blur`、`duration`、`stagger`、`trigger`（scroll/mount）、`scrub`、`exit`、`disappearAfter` |
+| `SplitText.astro` | 逐字/逐词拆分进场（首页副标题用；React Bits `SplitText` 原生移植） | `text`、`splitType`、`effect`（rise/fade/blur/flip/pop/skew/wave）、`delay`、`mask`、`trigger`（view/load/hover/click）、`loop`、`hoverEffect` |
 
-`AcidSquares` 与 `TechText` 是 React Bits 同名组件的原生移植（不引入 React）。它们的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`：Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
+`AcidSquares`、`TechText`、`FadeContent`、`SplitText` 都是 React Bits 同名组件的原生移植（不引入 React）。`AcidSquares`/`TechText` 的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`；`FadeContent`/`SplitText` 依赖 GSAP（`gsap` + `ScrollTrigger` + `SplitText` 插件，纯 JS，不含 React），逻辑放在 `src/scripts/fade-content.ts` 与 `src/scripts/split-text.ts`。Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
 
-两者的配色都支持 `--token` 形式（如 `color="--bg-deep"`），运行时用 `getComputedStyle` 解析成 `rgb()`，所以深浅色切换不用改组件。`AcidSquares` 在主题切换时会重建实例（释放旧 WebGL 上下文），`TechText` 因为默认取 `currentColor`，只需重绘。
+`AcidSquares`/`TechText` 的配色支持 `--token` 形式（如 `color="--bg-deep"`），运行时用 `getComputedStyle` 解析成 `rgb()`；也支持直接传十六进制（首页现在用的是 Neon 酸性霓虹预设：底 `#120f17`、粉 `#ff4fb8`、蓝 `#3b6bff`）。
 
 `TechText` 的 `sweep` 默认是 `true`（指针不在时自动巡航扫描），用作标题时建议关掉——否则标题会长期有一个字处于线框态，影响可读性。
+
+`FadeContent` 的 `dissolve`/`mist`/`pixel` 三种效果会用 SVG `feTurbulence` 建噪点遮罩，每个目标一个 `<svg>`，照片多时别整页铺满这几种，用 `fade`/`focus`（不建遮罩）更轻量。`SplitText` 初始由 `.split-parent` 的 `visibility:hidden` 兜底，脚本就绪后必须用 inline `visible` 覆盖（设 `''` 会被样式表规则盖回去）。
 
 `SpecularButton` 把 React Bits 的 `SpecularButton` 用原生 WebGL2 重写了一遍（不引入 React）：圆角矩形的周长被映射到 0–1 的参数空间，光斑是这个参数上的一个余弦瓣，鼠标靠近时瓣会滑到离指针最近的边缘点；`autoAnimate` 会让这道光自己绕一周。传 `href` 渲染成 `<a>`，否则是 `<button>`；浏览器不支持 WebGL2 时自动退化成普通玻璃按钮。
 

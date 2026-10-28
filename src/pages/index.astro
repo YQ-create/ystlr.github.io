@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AcidSquares from '../components/AcidSquares.astro';
 import TechText from '../components/TechText.astro';
+import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import DepthCarousel from '../components/DepthCarousel.astro';
 import CountUp from '../components/CountUp.astro';
@@ -78,9 +79,9 @@ const latest = posts[0]?.data.pubDate;
 		<section class="hero">
 			<div class="hero-waves" aria-hidden="true">
 				<AcidSquares
-					color="--bg-deep"
-					accentColor="--accent"
-					secondaryColor="--sage"
+					color="#120f17"
+					accentColor="#ff4fb8"
+					secondaryColor="#3b6bff"
 					tileSize={1.05}
 					gap={0.14}
 					roundness={0.2}
@@ -138,7 +139,18 @@ const latest = posts[0]?.data.pubDate;
 							introDuration={1.6}
 						/>
 					</h1>
-					<p class="hero-sub">想法与读过的东西</p>
+					<p class="hero-sub">
+						<SplitText
+							text="想法与读过的东西"
+							tag="span"
+							effect="fade"
+							duration={0.9}
+							delay={70}
+							staggerFrom="start"
+							trigger="load"
+							class="hero-sub__text"
+						/>
+					</p>
 				</div>
 
 				<p class="hero-lede">{HERO.tagline2}。</p>
@@ -502,6 +514,10 @@ const latest = posts[0]?.data.pubDate;
 		font-weight: 600;
 		letter-spacing: 0.16em;
 		color: rgb(var(--accent));
+		/* SplitText 逐字拆分后每个字是 inline-block，保证间距一致 */
+	}
+	.hero-sub :global(.split-char) {
+		letter-spacing: 0.16em;
 	}
 
 	.hero-lede {

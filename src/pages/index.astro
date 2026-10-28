@@ -1,6 +1,7 @@
----
+﻿---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SpectralDrape from '../components/SpectralDrape.astro';
+import SpecularButton from '../components/SpecularButton.astro';
 import DriftWall from '../components/DriftWall.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
@@ -57,8 +58,47 @@ const latest = posts[0]?.data.pubDate;
 				<p class="hero-lede">{HERO.tagline2}。</p>
 
 				<div class="hero-actions">
-					<a class="btn" href="/blog">阅读文章</a>
-					<a class="btn btn--ghost" href="/gallery">看看照片</a>
+					<SpecularButton
+						href="/blog"
+						size="md"
+						radius={999}
+						tint="#fff6ea"
+						tintOpacity={0.78}
+						blur={10}
+						textColor="#4a2f1c"
+						lineColor="#c2743f"
+						baseColor="#e7d9c8"
+						idleIntensity={0.3}
+						intensity={1.15}
+						shineSize={8}
+						shineFade={24}
+						thickness={2}
+						glow={0.75}
+						proximity={260}
+						autoAnimate
+						speed={0.22}
+					>
+						阅读文章
+					</SpecularButton>
+					<SpecularButton
+						href="/gallery"
+						size="md"
+						radius={999}
+						tint="#fffdf8"
+						tintOpacity={0.34}
+						blur={8}
+						textColor="#5b4a3a"
+						lineColor="#9c8168"
+						baseColor="#e2d3c1"
+						idleIntensity={0.16}
+						shineSize={10}
+						shineFade={30}
+						thickness={1}
+						glow={0.7}
+						proximity={220}
+					>
+						看看照片
+					</SpecularButton>
 				</div>
 
 				<dl class="hero-stats">
@@ -610,3 +650,6 @@ const latest = posts[0]?.data.pubDate;
 		}
 	}
 </style>
+
+
+

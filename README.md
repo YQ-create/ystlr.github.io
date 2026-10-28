@@ -69,15 +69,18 @@ npm run preview
 | `data-glow` | 玻璃卡片跟随指针的高光 |
 | `data-tilt="8"` | 卡片随指针轻微 3D 倾斜 |
 
-三个视觉组件可以单独复用：
+四个视觉组件可以单独复用：
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
 | `SpectralDrape.astro` | 首页 Hero 的光点织物背景（透视铺开、褶皱起伏、指针顶包） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
+| `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
 | `DriftWall.astro` | 照片墙/首页的 3D 漂移照片带 | `items`、`columns`、`rows`、`speed`、`direction`、`tilt`、`turn`、`height` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
 
 `SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
+
+`SpecularButton` 把 React Bits 的 `SpecularButton` 用原生 WebGL2 重写了一遍（不引入 React）：圆角矩形的周长被映射到 0–1 的参数空间，光斑是这个参数上的一个余弦瓣，鼠标靠近时瓣会滑到离指针最近的边缘点；`autoAnimate` 会让这道光自己绕一周。传 `href` 渲染成 `<a>`，否则是 `<button>`；浏览器不支持 WebGL2 时自动退化成普通玻璃按钮。
 
 页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。
 
@@ -89,7 +92,7 @@ npm run preview
 | --- | --- |
 | 站点标题、Hero 头衔与两行副标题、邮箱、GitHub 链接 | `src/consts.ts` |
 | 博客文章（写作、发布、删除） | `src/content/blog/`，frontmatter 格式见下文 |
-| 照片墙照片与说明 | `src/content/gallery/`，`date` 决定所属年月 |
+| 照片墙照片与说明 | 图片放 `src/assets/gallery/`，记录写 `src/content/gallery/`，`date` 决定所属年月 |
 | 发现页书签、推荐站点 | `src/data/discover.json` |
 | 顶部播放器曲目 | `src/data/playlist.json`，音频文件放入 `public/audio/` |
 | 首页 Hero、最新文章与照片墙区块 | `src/pages/index.astro` |
@@ -120,17 +123,24 @@ tags: ['标签一', '标签二']
 
 ## 照片墙记录格式
 
-每条照片记录放在 `src/content/gallery/`，`date` 为拍摄日期，页面按年、月自动分组：
+照片分两步加：**图片放 `src/assets/gallery/`，记录写 `src/content/gallery/`**。`date` 为拍摄日期，页面按年、月自动分组。
+
+1. 把照片（jpg / png / webp 都行）放进 `src/assets/gallery/`，例如 `my-photo.jpg`；
+2. 在 `src/content/gallery/` 新建一个 `.md`（文件名随意，只作记录 id）：
 
 ```yaml
 ---
 title: "江边的傍晚"
 date: 2026-10-22
-image: ../../assets/gallery/g-01.jpg
+image: ../../assets/gallery/my-photo.jpg
 caption: "落日把江面染成暖橙色，风里有秋天的味道。"
 tags: ["生活", "风景"]
 ---
 ```
+
+`image` 是相对这个 `.md` 文件的路径；`title`、`caption`、`tags` 都可以省略。保存后照片会同时出现在照片墙和首页的流动照片带里；点开任意一张会放大，**放大状态下顶栏依然可以点**，切页时灯箱自动收起、页面滚动也会解锁。
+
+> 仓库里原有的示例照片已经清空，现在照片墙是空的，等你按上面的步骤慢慢加。
 
 ## 评论系统（Giscus）
 

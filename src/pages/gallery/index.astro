@@ -1,4 +1,4 @@
----
+﻿---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DriftWall from '../../components/DriftWall.astro';
 import { getCollection } from 'astro:content';
@@ -60,7 +60,22 @@ const monthLabel = (m: number) => `${m} 月`;
 		</header>
 
 		{photos.length === 0 ? (
-			<p class="empty-hint">暂无照片，添加后这里会按年月排列起来。</p>
+			<div class="empty-wall glass" data-reveal>
+				<span class="empty-wall__index">WALL IS EMPTY</span>
+				<h2>这张墙还在等第一张照片</h2>
+				<p>
+					把图片放进 <code>src/assets/gallery/</code>，再在
+					<code>src/content/gallery/</code> 里新建一个同名的 <code>.md</code>
+					填上日期就行。放好后这张墙会自动按年月排好，并在这里和首页的流动照片带里出现。
+				</p>
+				<pre><code>---
+title: "江边的傍晚"
+date: 2026-10-22
+image: ../../assets/gallery/my-photo.jpg
+caption: "落日把江面染成暖橙色。"
+tags: ["生活", "风景"]
+---</code></pre>
+			</div>
 		) : (
 			<>
 				<!-- 流动的照片带：向左漂移，作为进入照片墙的过渡 -->
@@ -162,17 +177,26 @@ const monthLabel = (m: number) => `${m} 月`;
 	let lastFocus: HTMLElement | null = null;
 	let wired = false;
 
-	function closeLightbox() {
+	/** 立刻收起并解锁滚动：切页、Esc、点遮罩都走这里 */
+	function resetLightbox(restoreFocus = false) {
 		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
 		const img = document.querySelector<HTMLImageElement>('[data-lightbox-img]');
 		if (!root) return;
 		root.classList.remove('is-open');
-		document.body.style.overflow = '';
-		window.setTimeout(() => {
-			root.hidden = true;
-			if (img) img.removeAttribute('src');
-		}, 220);
-		lastFocus?.focus();
+		root.hidden = true;
+		document.documentElement.style.removeProperty('overflow');
+		document.body.style.removeProperty('overflow');
+		if (img) img.removeAttribute('src');
+		if (restoreFocus) lastFocus?.focus();
+	}
+
+	function closeLightbox() {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		if (!root) return;
+		root.classList.remove('is-open');
+		document.documentElement.style.removeProperty('overflow');
+		document.body.style.removeProperty('overflow');
+		window.setTimeout(() => resetLightbox(true), 200);
 	}
 
 	function openLightbox(trigger: HTMLElement) {
@@ -184,6 +208,7 @@ const monthLabel = (m: number) => `${m} 月`;
 		img.src = trigger.dataset.full ?? '';
 		if (caption) caption.textContent = trigger.dataset.caption ?? '';
 		root.hidden = false;
+		document.documentElement.style.overflow = 'hidden';
 		document.body.style.overflow = 'hidden';
 		requestAnimationFrame(() => root.classList.add('is-open'));
 		root.querySelector<HTMLElement>('[data-lightbox-close]')?.focus();
@@ -202,6 +227,17 @@ const monthLabel = (m: number) => `${m} 月`;
 			t.addEventListener('click', () => openLightbox(t));
 		});
 	}
+
+	// 用 View Transitions 切页时页面不会卸载，灯箱留下的状态和滚动锁必须手动清掉，
+	// 否则“放大看过一张之后”整站都滑不动、也点不动导航。
+	document.addEventListener('astro:before-swap', () => resetLightbox());
+	document.addEventListener('astro:page-load', () => {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		if (root && root.hidden) {
+			document.documentElement.style.removeProperty('overflow');
+			document.body.style.removeProperty('overflow');
+		}
+	});
 
 	if (!wired) {
 		wired = true;
@@ -235,6 +271,50 @@ const monthLabel = (m: number) => `${m} 月`;
 	.drift-band {
 		/* 通栏溢出：照片带比正文更宽，视觉上像一条从画面外流过的河 */
 		margin: 0.5rem calc(50% - 50vw) clamp(1.6rem, 4vw, 2.6rem);
+	}
+
+	/* 空状态：告诉用户照片该怎么加进来 */
+	.empty-wall {
+		margin-top: 0.6rem;
+		padding: clamp(1.4rem, 3.4vw, 2.4rem);
+		border-radius: var(--r-lg);
+		max-width: 44rem;
+	}
+	.empty-wall__index {
+		font-size: 0.68rem;
+		letter-spacing: 0.22em;
+		color: rgb(var(--muted-light));
+	}
+	.empty-wall h2 {
+		margin: 0.5rem 0 0.7rem;
+		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+	}
+	.empty-wall p {
+		margin: 0 0 1rem;
+		color: rgb(var(--muted));
+		line-height: 1.85;
+	}
+	.empty-wall code {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 0.88em;
+		padding: 0.1em 0.38em;
+		border-radius: 4px;
+		background: rgba(var(--accent), 0.1);
+		color: rgb(var(--accent-deep));
+	}
+	.empty-wall pre {
+		margin: 0;
+		padding: 0.9rem 1rem;
+		overflow-x: auto;
+		border-radius: var(--r-md);
+		background: rgba(255, 253, 248, 0.72);
+		border: 1px solid rgba(var(--line), 1);
+	}
+	.empty-wall pre code {
+		background: none;
+		padding: 0;
+		color: rgb(var(--ink-soft));
+		line-height: 1.7;
 	}
 
 	.year-section {
@@ -408,3 +488,5 @@ const monthLabel = (m: number) => `${m} 月`;
 		}
 	}
 </style>
+
+

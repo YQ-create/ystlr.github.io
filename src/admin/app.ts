@@ -865,8 +865,8 @@ export function boot(): void {
 	function openNewEditor(slug: string): void {
 		const path = `${BLOG_DIR}/${slug}.md`;
 		fillEditor({ path, sha: '' }, {}, '', slug);
-		setFieldChecked('draft', true); // 新文章默认草稿，写完再取消
-		setStatus('busy', `已打开新建草稿 ${path}：填好内容后点「保存到 main」才会提交。`);
+		setFieldChecked('draft', false); // 新文章默认直接发布，勾选「草稿」才不发布
+		setStatus('busy', `已打开新建文章 ${path}：默认直接发布，勾选「草稿」可先不发布；填好内容后点「保存到 main」提交。`);
 		focusField('title');
 	}
 
@@ -952,7 +952,8 @@ export function boot(): void {
 			sortPosts();
 			renderPosts();
 			if (editorPath) editorPath.textContent = target.path;
-			setStatus('ok', `${SUBMIT_OK}（${target.path}${featured ? '，已设为精品' : ''}）`);
+			const stateNote = draft ? '，仍是草稿（未发布，请取消勾选「草稿」后再次保存）' : '，已发布';
+			setStatus('ok', `${SUBMIT_OK}（${target.path}${featured ? '，已设为精品' : ''}${stateNote}）`);
 		} catch (error) {
 			setStatus('err', describeError(error));
 		} finally {

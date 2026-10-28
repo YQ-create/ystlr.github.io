@@ -6,7 +6,7 @@ import DepthCarousel from '../components/DepthCarousel.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
-import { HERO, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { AUTHOR_NAME, HERO, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 const posts = (await getCollection('blog'))
 	.filter((post) => !post.data.draft)
@@ -39,6 +39,32 @@ const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => (
 	alt: it.title,
 	title: it.title,
 }));
+
+// 标签云 + 最新动态 + 站点统计（门户式版块用）
+const tagCount = new Map<string, number>();
+for (const post of posts) for (const tag of post.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
+const tagStats = [...tagCount.entries()]
+	.sort((a, b) => b[1] - a[1])
+	.slice(0, 6)
+	.map(([name, count]) => ({ name, count }));
+
+const activity = posts.slice(0, 4).map((post) => ({
+	title: post.data.title,
+	href: `/blog/${post.id}/`,
+	date: post.data.pubDate.toISOString().slice(0, 10),
+}));
+
+const totalWords = posts.reduce((sum, post) => sum + (post.body?.replace(/\s/g, '').length ?? 0), 0);
+const firstDate = posts.length ? new Date(Math.min(...posts.map((p) => p.data.pubDate.valueOf()))) : null;
+const days = firstDate ? Math.max(1, Math.ceil((Date.now() - firstDate.valueOf()) / 86400000)) : 0;
+
+const stats = [
+	{ label: '文章', value: `${posts.length} 篇` },
+	{ label: '照片', value: `${photos.length} 张` },
+	{ label: '标签', value: `${tagCount.size} 个` },
+	{ label: '总字数', value: totalWords > 9999 ? `${(totalWords / 1000).toFixed(1)}k` : String(totalWords) },
+	{ label: '运行', value: `${days} 天` },
+];
 
 const latest = posts[0]?.data.pubDate;
 ---
@@ -148,37 +174,81 @@ const latest = posts[0]?.data.pubDate;
 
 		</section>
 
-		<!-- ============ 精选文章 ============ -->
-		<section class="sec" id="featured">
+		<!-- ============ 精选文章（参考 Firefly：标签条 + 三栏门户式） ============ -->
+		<section class="sec sec--blog" id="featured">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">01 — WRITING</span>
-						<h2>精选文章</h2>
-					</div>
-					<a class="sec-head__more" href="/blog">
-						全部文章
-						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-							<path
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.8"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-						</svg>
+				<div class="tagbar" data-reveal>
+					<a class="tagbar__home" href="/" aria-label="首页">
+						<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 7.2 8 2l6 5.2V14H2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
 					</a>
-				</header>
+					{tagStats.map((t) => (
+						<a class="tagbar__item" href={`/blog/?tag=${encodeURIComponent(t.name)}`}>
+							{t.name}<span>{t.count}</span>
+						</a>
+					))}
+					<a class="tagbar__more" href="/blog">更多 →</a>
+				</div>
 
-				{featured.length === 0 ? (
-					<p class="empty-hint">还没有文章。第一篇文章写好后，会出现在这里。</p>
-				) : (
-					<div class="post-grid">
-						{featured.map((post, i) => (
-							<PostCard post={post} index={i} delay={i * 90} />
-						))}
+				<div class="bloggrid">
+					<aside class="portal profile" data-reveal>
+						<div class="profile__ava" aria-hidden="true">
+							<span>{AUTHOR_NAME.slice(0, 1).toUpperCase()}</span>
+						</div>
+						<h3 class="profile__name">{AUTHOR_NAME}</h3>
+						<p class="profile__bio">{HERO.tagline}</p>
+						<div class="profile__links">
+							<a href="/about">关于我</a>
+							<a href="/rss.xml">RSS</a>
+						</div>
+					</aside>
+
+					<div class="bloggrid__main">
+						<header class="sec-head">
+							<div>
+								<span class="sec-head__index">01 — WRITING</span>
+								<h2>精选文章</h2>
+							</div>
+							<a class="sec-head__more" href="/blog">
+								全部文章
+								<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+									<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+								</svg>
+							</a>
+						</header>
+
+						{featured.length === 0 ? (
+							<p class="empty-hint">还没有文章。第一篇文章写好后，会出现在这里。</p>
+						) : (
+							<div class="post-grid">
+								{featured.map((post, i) => <PostCard post={post} index={i} delay={i * 90} />)}
+							</div>
+						)}
 					</div>
-				)}
+
+					<aside class="bloggrid__side">
+						<section class="portal" data-reveal data-reveal-delay="60">
+							<h4 class="portal__title">最新动态</h4>
+							<ul class="feed">
+								{activity.map((item) => (
+									<li class="feed__item">
+										<a href={item.href}>{item.title}</a>
+										<time>{item.date}</time>
+									</li>
+								))}
+							</ul>
+							<a class="portal__more" href="/blog">更多动态 →</a>
+						</section>
+
+						<section class="portal" data-reveal data-reveal-delay="120">
+							<h4 class="portal__title">站点统计</h4>
+							<ul class="stats">
+								{stats.map((s) => (
+									<li><span>{s.label}</span><b>{s.value}</b></li>
+								))}
+							</ul>
+						</section>
+					</aside>
+				</div>
 			</div>
 		</section>
 
@@ -496,6 +566,213 @@ const latest = posts[0]?.data.pubDate;
 	.sec--wall .wrap {
 		max-width: none;
 		padding-inline: clamp(0.25rem, 1.5vw, 1.5rem);
+	}
+
+	/* ---------- 门户式精选区 ---------- */
+	.tagbar {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin-bottom: clamp(1.2rem, 3vw, 2rem);
+	}
+	.tagbar__home {
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		border-radius: 50%;
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		color: rgb(var(--accent));
+		text-decoration: none;
+	}
+	.tagbar__item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.34rem 0.8rem;
+		border-radius: var(--r-pill);
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		font-size: 0.82rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+	}
+	.tagbar__item span {
+		font-size: 0.72rem;
+		color: rgb(var(--muted-light));
+	}
+	.tagbar__item:hover {
+		background: var(--chip-bg-strong);
+		color: rgb(var(--accent-deep));
+	}
+	.tagbar__more {
+		margin-left: auto;
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		text-decoration: none;
+	}
+
+	.bloggrid {
+		display: grid;
+		grid-template-columns: 232px minmax(0, 1fr) 268px;
+		gap: clamp(1rem, 2vw, 1.6rem);
+		align-items: start;
+	}
+	.bloggrid__main {
+		min-width: 0;
+	}
+	.bloggrid__side {
+		display: grid;
+		gap: clamp(1rem, 2vw, 1.4rem);
+	}
+
+	.portal {
+		padding: 1.1rem 1.15rem;
+		border-radius: var(--r-lg);
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--glass-bg);
+		-webkit-backdrop-filter: blur(22px) saturate(1.4);
+		backdrop-filter: blur(22px) saturate(1.4);
+		box-shadow: var(--glass-shine);
+	}
+
+	.profile {
+		text-align: center;
+	}
+	.profile__ava {
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		border-radius: var(--r-md);
+		display: grid;
+		place-items: center;
+		margin-bottom: 0.9rem;
+		background:
+			radial-gradient(120% 90% at 30% 20%, rgba(var(--accent), 0.35), transparent 60%),
+			linear-gradient(160deg, rgba(var(--ochre), 0.3), rgba(var(--sage), 0.22));
+		color: rgba(255, 255, 255, 0.92);
+		font-size: 2.4rem;
+		font-weight: 800;
+	}
+	.profile__name {
+		margin: 0 0 0.3rem;
+		font-size: 1.05rem;
+	}
+	.profile__bio {
+		margin: 0 0 0.9rem;
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		line-height: 1.6;
+	}
+	.profile__links {
+		display: flex;
+		justify-content: center;
+		gap: 0.9rem;
+		font-size: 0.8rem;
+	}
+	.profile__links a {
+		color: rgb(var(--accent-deep));
+		text-decoration: none;
+	}
+
+	.portal__title {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		margin: 0 0 0.8rem;
+		font-size: 0.92rem;
+		font-weight: 700;
+	}
+	.portal__title::before {
+		content: '';
+		width: 3px;
+		height: 0.95em;
+		border-radius: 2px;
+		background: rgb(var(--accent));
+	}
+	.feed {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.75rem;
+	}
+	.feed__item a {
+		display: block;
+		font-size: 0.86rem;
+		color: rgb(var(--ink));
+		text-decoration: none;
+		line-height: 1.45;
+	}
+	.feed__item a:hover {
+		color: rgb(var(--accent));
+	}
+	.feed__item time {
+		font-size: 0.72rem;
+		color: rgb(var(--muted-light));
+	}
+	.portal__more {
+		display: inline-block;
+		margin-top: 0.8rem;
+		font-size: 0.78rem;
+		color: rgb(var(--accent-deep));
+		text-decoration: none;
+	}
+	.stats {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.55rem;
+	}
+	.stats li {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		border-bottom: 1px dashed rgba(var(--line), 0.9);
+		padding-bottom: 0.45rem;
+	}
+	.stats li:last-child {
+		border-bottom: none;
+		padding-bottom: 0;
+	}
+	.stats b {
+		color: rgb(var(--ink));
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	@media (max-width: 1080px) {
+		.bloggrid {
+			grid-template-columns: 210px minmax(0, 1fr);
+		}
+		.bloggrid__side {
+			grid-column: 1 / -1;
+			grid-template-columns: 1fr 1fr;
+		}
+	}
+	@media (max-width: 760px) {
+		.bloggrid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.profile {
+			display: grid;
+			grid-template-columns: 84px 1fr;
+			gap: 0.9rem;
+			text-align: left;
+			align-items: center;
+		}
+		.profile__ava {
+			margin: 0;
+			aspect-ratio: 1;
+			grid-row: span 2;
+		}
+		.bloggrid__side {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.sec {

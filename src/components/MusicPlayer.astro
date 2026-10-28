@@ -1,5 +1,6 @@
 ---
 // 顶部悬浮音乐播放器：曲目来自 src/data/playlist.json，音频文件放在 public/audio/。
+// 面板走玻璃质感 + 弹性入场，播放中按钮显示音柱动画。
 
 import playlist from '../data/playlist.json';
 
@@ -27,13 +28,14 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
 	</button>
 
-	<div class="music-panel" data-music-panel hidden>
+	<div class="music-panel glass" data-music-panel hidden>
 		<div class="np">
+			<span class="np-kicker">NOW PLAYING</span>
 			<p class="np-title" data-music-title>尚未添加音乐</p>
 			<p class="np-artist" data-music-artist></p>
 		</div>
 
-		<div class="progress" data-music-bar>
+		<div class="progress" data-music-bar role="slider" tabindex="0" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
 			<span class="progress-fill" data-music-progress></span>
 		</div>
 		<div class="time">
@@ -42,9 +44,16 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		</div>
 
 		<div class="controls">
-			<button type="button" data-music-prev aria-label="上一首" class="ctrl">⏮</button>
-			<button type="button" data-music-play aria-label="播放" class="ctrl ctrl-main">▶</button>
-			<button type="button" data-music-next aria-label="下一首" class="ctrl">⏭</button>
+			<button type="button" data-music-prev aria-label="上一首" class="ctrl">
+				<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M4 3h1.6v10H4zM13 3.4v9.2a.6.6 0 0 1-.93.5L5.9 8.5a.6.6 0 0 1 0-1l6.17-4.6a.6.6 0 0 1 .93.5Z"/></svg>
+			</button>
+			<button type="button" data-music-play aria-label="播放" class="ctrl ctrl-main">
+				<svg class="icon-play" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M5 2.9v10.2c0 .5.54.8.97.55l8.1-5.1a.65.65 0 0 0 0-1.1l-8.1-5.1A.65.65 0 0 0 5 2.9Z"/></svg>
+				<svg class="icon-pause" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M4 3h3v10H4zM9 3h3v10H9z"/></svg>
+			</button>
+			<button type="button" data-music-next aria-label="下一首" class="ctrl">
+				<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 3h-1.6v10H12zM3 3.4v9.2a.6.6 0 0 0 .93.5L10.1 8.5a.6.6 0 0 0 0-1L3.93 2.9A.6.6 0 0 0 3 3.4Z"/></svg>
+			</button>
 		</div>
 
 		<ol class="list" data-music-list>
@@ -131,6 +140,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		const empty = root.querySelector<HTMLElement>('[data-music-empty]');
 		const list = root.querySelector<HTMLElement>('[data-music-list]');
 		const progress = root.querySelector<HTMLElement>('[data-music-progress]');
+		const bar = root.querySelector<HTMLElement>('[data-music-bar]');
 		const current = root.querySelector<HTMLElement>('[data-music-current]');
 		const duration = root.querySelector<HTMLElement>('[data-music-duration]');
 		const matches = root.querySelectorAll<HTMLElement>('[data-music-track]');
@@ -138,7 +148,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		if (title) title.textContent = track?.title ?? '尚未添加音乐';
 		if (artist) artist.textContent = track?.artist ?? '';
 		if (playBtn) {
-			playBtn.textContent = playing ? '⏸' : '▶';
+			playBtn.classList.toggle('is-playing', playing);
 			playBtn.setAttribute('aria-label', playing ? '暂停' : '播放');
 		}
 		if (empty) empty.hidden = tracks.length > 0;
@@ -151,6 +161,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		if (audio) {
 			const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
 			if (progress) progress.style.width = `${Math.min(100, ratio * 100)}%`;
+			if (bar) bar.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
 			if (current) current.textContent = fmt(audio.currentTime);
 			if (duration) duration.textContent = fmt(audio.duration);
 		}
@@ -162,10 +173,12 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		const root = document.querySelector<HTMLElement>('[data-music]');
 		if (!root) return;
 		const progress = root.querySelector<HTMLElement>('[data-music-progress]');
+		const bar = root.querySelector<HTMLElement>('[data-music-bar]');
 		const current = root.querySelector<HTMLElement>('[data-music-current]');
 		const duration = root.querySelector<HTMLElement>('[data-music-duration]');
 		const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
 		if (progress) progress.style.width = `${Math.min(100, ratio * 100)}%`;
+		if (bar) bar.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
 		if (current) current.textContent = fmt(audio.currentTime);
 		if (duration) duration.textContent = fmt(audio.duration);
 	}
@@ -173,9 +186,22 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 	function openPanel(open: boolean) {
 		const panel = document.querySelector<HTMLElement>('[data-music-panel]');
 		const toggle = document.querySelector<HTMLElement>('[data-music-toggle]');
+		const root = document.querySelector<HTMLElement>('[data-music]');
 		if (!panel || !toggle) return;
-		panel.hidden = !open;
+
 		toggle.setAttribute('aria-expanded', String(open));
+		root?.classList.toggle('is-open', open);
+
+		if (open) {
+			panel.hidden = false;
+			// 先渲染一帧再加类，入场过渡才会生效
+			requestAnimationFrame(() => panel.classList.add('is-open'));
+		} else {
+			panel.classList.remove('is-open');
+			window.setTimeout(() => {
+				if (!panel.classList.contains('is-open')) panel.hidden = true;
+			}, 240);
+		}
 	}
 
 	function bind() {
@@ -203,13 +229,12 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		if (!root) return;
 
 		if (target.closest('[data-music-toggle]')) {
-			const panel = root.querySelector<HTMLElement>('[data-music-panel]');
-			openPanel(!!panel?.hidden);
+			openPanel(!root.classList.contains('is-open'));
 			return;
 		}
 
 		// 点击播放器外部时收起面板
-		if (!target.closest('[data-music]') && !root.querySelector('[data-music-panel]')?.hasAttribute('hidden')) {
+		if (!target.closest('[data-music]') && root.classList.contains('is-open')) {
 			openPanel(false);
 		}
 
@@ -250,6 +275,27 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		}
 	});
 
+	// 空格 / 方向键控制进度条（进度条可聚焦）
+	document.addEventListener('keydown', (event) => {
+		if ((event.target as HTMLElement)?.closest?.('[data-music-bar]')) {
+			const audio = audioEl();
+			if (!audio?.duration) return;
+			if (event.key === 'ArrowRight') {
+				audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+				tick();
+				event.preventDefault();
+			} else if (event.key === 'ArrowLeft') {
+				audio.currentTime = Math.max(0, audio.currentTime - 5);
+				tick();
+				event.preventDefault();
+			}
+		}
+		if (event.key === 'Escape') {
+			const root = document.querySelector<HTMLElement>('[data-music]');
+			if (root?.classList.contains('is-open')) openPanel(false);
+		}
+	});
+
 	// 事件挂一次即可；播放器元素在页面切换时通过 transition:persist 保留
 	document.addEventListener('play', (event) => {
 		if ((event.target as HTMLElement).matches?.('[data-music-audio]')) {
@@ -282,7 +328,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		if (!audio?.getAttribute('src')) return;
 		sessionStorage.setItem(
 			MUSIC_STATE_KEY,
-			JSON.stringify({ src: audio.getAttribute('src'), time: audio.currentTime }),
+			JSON.stringify({ src: audio.getAttribute('src'), currentTime: audio.currentTime }),
 		);
 	});
 </script>
@@ -302,15 +348,25 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		height: 34px;
 		padding: 0;
 		border-radius: 50%;
-		border: 1px solid rgb(var(--line));
-		background: rgba(var(--surface), 0.9);
+		border: 1px solid rgba(var(--line), 1);
+		background: rgba(255, 255, 255, 0.45);
 		color: rgb(var(--muted));
 		cursor: pointer;
-		transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out),
+			box-shadow var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out);
 	}
 	.music-btn:hover {
 		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.5);
+		transform: translateY(-1px);
+	}
+	.music.is-open .music-btn {
+		color: rgb(var(--accent));
 		border-color: rgba(var(--accent), 0.55);
+		box-shadow: 0 0 0 4px rgba(var(--accent), 0.1);
 	}
 	.icon-note {
 		width: 15px;
@@ -347,11 +403,6 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 	.is-playing .bars {
 		display: flex;
 	}
-	.is-playing .music-btn {
-		color: rgb(var(--accent));
-		border-color: rgba(var(--accent), 0.6);
-		box-shadow: 0 0 14px rgba(var(--accent), 0.25);
-	}
 	@keyframes bar {
 		0%,
 		100% {
@@ -364,46 +415,85 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 
 	.music-panel {
 		position: absolute;
-		top: calc(100% + 0.85em);
+		top: calc(100% + 0.9rem);
 		right: 0;
-		width: 248px;
-		padding: 0.95em 1em 0.8em;
-		border-radius: 16px;
-		border: 1px solid rgb(var(--line));
-		background: rgb(var(--paper));
-		box-shadow: 0 12px 30px rgba(90, 70, 45, 18%);
-		backdrop-filter: blur(14px);
-		z-index: 40;
+		width: 268px;
+		padding: 1rem 1.05rem 0.9rem;
+		border-radius: var(--r-lg);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
+		opacity: 0;
+		transform: translate3d(0, -8px, 0) scale(0.97);
+		transform-origin: top right;
+		transition:
+			opacity 0.22s var(--ease-out),
+			transform 0.3s var(--ease-spring);
+		z-index: 45;
+	}
+	.music-panel.is-open {
+		opacity: 1;
+		transform: none;
+	}
+
+	.np-kicker {
+		display: block;
+		font-size: 0.6rem;
+		letter-spacing: 0.24em;
+		color: rgb(var(--muted-light));
+		margin-bottom: 0.25rem;
 	}
 	.np-title {
 		margin: 0;
-		font-size: 0.92rem;
-		font-weight: 600;
+		font-size: 0.94rem;
+		font-weight: 700;
 		color: rgb(var(--ink));
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 	.np-artist {
-		margin: 0.15em 0 0;
-		font-size: 0.75rem;
+		margin: 0.2em 0 0;
+		font-size: 0.74rem;
 		color: rgb(var(--muted-light));
 		min-height: 1em;
 	}
+
 	.progress {
 		position: relative;
-		height: 4px;
-		margin-top: 0.85em;
+		height: 5px;
+		margin-top: 0.9em;
 		border-radius: 999px;
-		background: rgb(var(--line));
+		background: rgba(var(--line), 1);
 		cursor: pointer;
 	}
+	.progress:focus-visible {
+		outline: 2px solid rgba(var(--accent), 0.5);
+		outline-offset: 3px;
+	}
 	.progress-fill {
+		position: relative;
 		display: block;
 		height: 100%;
 		width: 0;
 		border-radius: 999px;
-		background: rgb(var(--accent));
+		background: linear-gradient(90deg, rgb(var(--accent)), rgb(var(--accent-2, 190, 120, 70)));
+		transition: width 0.25s linear;
+	}
+	.progress-fill::after {
+		content: '';
+		position: absolute;
+		right: -4px;
+		top: 50%;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: rgb(var(--paper));
+		border: 1.5px solid rgb(var(--accent));
+		transform: translateY(-50%);
+		opacity: 0;
+		transition: opacity var(--dur-fast) var(--ease-out);
+	}
+	.music-panel:hover .progress-fill::after {
+		opacity: 1;
 	}
 	.time {
 		display: flex;
@@ -411,45 +501,65 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		font-size: 0.68rem;
 		color: rgb(var(--muted-light));
 		font-variant-numeric: tabular-nums;
-		margin-top: 0.35em;
+		margin-top: 0.4em;
 	}
 	.controls {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.8em;
-		margin: 0.5em 0 0.2em;
+		gap: 0.9em;
+		margin: 0.55em 0 0.25em;
 	}
 	.ctrl {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		border: none;
 		background: transparent;
 		color: rgb(var(--muted));
 		cursor: pointer;
-		font-size: 0.85rem;
-		padding: 0.25em;
-		border-radius: 8px;
+		padding: 0.3em;
+		border-radius: 50%;
 		line-height: 1;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out);
 	}
 	.ctrl:hover {
 		color: rgb(var(--accent));
+		background: rgba(255, 255, 255, 0.55);
+		transform: translateY(-1px);
 	}
 	.ctrl-main {
-		width: 32px;
-		height: 32px;
+		width: 38px;
+		height: 38px;
 		border-radius: 50%;
-		border: 1px solid rgba(var(--accent), 0.5);
-		color: rgb(var(--accent));
-		font-size: 0.8rem;
+		background: rgb(var(--accent));
+		color: rgb(var(--paper));
+		box-shadow: 0 8px 18px -8px rgba(var(--accent), 0.7);
 	}
 	.ctrl-main:hover {
-		background: rgba(var(--accent), 0.12);
+		background: rgb(var(--accent-deep));
+		color: rgb(var(--paper));
+		transform: translateY(-2px) scale(1.03);
 	}
+	.ctrl-main .icon-pause {
+		display: none;
+	}
+	.ctrl-main.is-playing .icon-play {
+		display: none;
+	}
+	.ctrl-main.is-playing .icon-pause {
+		display: block;
+	}
+
 	.list {
 		list-style: none;
-		margin: 0.5em 0 0;
-		padding: 0.5em 0 0;
-		border-top: 1px solid rgb(var(--line));
-		max-height: 128px;
+		margin: 0.55em 0 0;
+		padding: 0.55em 0 0;
+		border-top: 1px solid rgba(var(--line), 1);
+		max-height: 132px;
 		overflow-y: auto;
 	}
 	.track {
@@ -457,7 +567,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		align-items: baseline;
 		gap: 0.6em;
 		width: 100%;
-		padding: 0.3em 0.4em;
+		padding: 0.35em 0.45em;
 		border: none;
 		border-radius: 8px;
 		background: transparent;
@@ -465,13 +575,17 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		cursor: pointer;
 		text-align: left;
 		font-size: 0.8rem;
+		transition:
+			background-color var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
 	}
 	.track:hover {
-		background: rgba(var(--accent), 0.08);
+		background: rgba(var(--accent), 0.09);
 		color: rgb(var(--ink));
 	}
 	.track.active {
-		color: rgb(var(--accent));
+		color: rgb(var(--accent-deep));
+		font-weight: 600;
 	}
 	.track-index {
 		font-size: 0.65rem;
@@ -497,10 +611,15 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		.music-panel {
 			position: fixed;
 			top: auto;
-			bottom: 1em;
-			right: 1em;
-			left: 1em;
+			bottom: calc(1rem + env(safe-area-inset-bottom));
+			right: 1rem;
+			left: 1rem;
 			width: auto;
+			transform-origin: bottom center;
+			transform: translate3d(0, 12px, 0) scale(0.98);
+		}
+		.music-panel.is-open {
+			transform: none;
 		}
 	}
 </style>

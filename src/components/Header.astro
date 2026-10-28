@@ -1,34 +1,40 @@
 ---
+// 悬浮玻璃页头：滑动高亮块 + 滚动收缩 + 视图过渡锚点。
+// 导航标签刻意保持两个汉字，等宽排列，高亮块才能滑动得干净。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
-import HeaderLink from './HeaderLink.astro';
 import MusicPlayer from './MusicPlayer.astro';
 
 const navItems = [
 	{ href: '/', label: '首页' },
 	{ href: '/blog', label: '文章' },
-	{ href: '/gallery', label: '照片墙' },
+	{ href: '/gallery', label: '照片' },
 	{ href: '/discover', label: '发现' },
 	{ href: '/about', label: '关于' },
 ];
 ---
 
-<header>
-	<nav>
-		<h2>
-			<a href="/" class="logo">
-				<span class="dot" aria-hidden="true"></span>
-				{SITE_TITLE}
-			</a>
-		</h2>
-		<div class="internal-links">
-			{navItems.map((item) => <HeaderLink href={item.href}>{item.label}</HeaderLink>)}
-		</div>
-		<div class="header-right">
-			<div class="social-links">
+<header class="site-head" transition:persist="site-head" transition:name="site-header">
+	<div class="head-shell glass" data-head-shell>
+		<a class="brand" href="/" aria-label={`${SITE_TITLE} 首页`}>
+			<span class="brand-dot" aria-hidden="true"><i></i></span>
+			<span class="brand-name">{SITE_TITLE}</span>
+			<span class="brand-sub" aria-hidden="true">/ journal</span>
+		</a>
+
+		<nav class="nav" data-nav aria-label="主导航">
+			<span class="nav-ind" data-nav-ind aria-hidden="true"></span>
+			{navItems.map((item) => (
+				<a href={item.href} class="nav-link" data-nav-item data-href={item.href}>
+					{item.label}
+				</a>
+			))}
+		</nav>
+
+		<div class="head-actions">
+			<div class="social">
 				{SOCIAL_LINKS.github && (
-					<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">
-						<span class="sr-only">GitHub</span>
-						<svg viewBox="0 0 16 16" aria-hidden="true" width="19" height="19">
+					<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener" aria-label="GitHub">
+						<svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
 							<path
 								fill="currentColor"
 								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
@@ -37,9 +43,8 @@ const navItems = [
 					</a>
 				)}
 				{SOCIAL_LINKS.email && (
-					<a href={SOCIAL_LINKS.email}>
-						<span class="sr-only">邮箱</span>
-						<svg viewBox="0 0 16 16" aria-hidden="true" width="19" height="19">
+					<a href={SOCIAL_LINKS.email} aria-label="邮箱">
+						<svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
 							<path
 								fill="currentColor"
 								d="M1.5 3h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Zm.7 1 5.68 4.38a.5.5 0 0 0 .64 0L14.1 4H2.2ZM14 5.62 9.62 8.99a1.5 1.5 0 0 1-1.92 0L3 5.62V12h11V5.62Z"
@@ -50,110 +55,275 @@ const navItems = [
 			</div>
 			<MusicPlayer />
 		</div>
-	</nav>
+	</div>
 </header>
 
+<script>
+	const SHELL = '[data-head-shell]';
+	const NAV = '[data-nav]';
+	const IND = '[data-nav-ind]';
+
+	function currentPath() {
+		const p = location.pathname.replace(/\/+$/, '');
+		return p === '' ? '/' : p;
+	}
+
+	/** 把高亮块滑到目标链接下面；first=true 时不做过渡，避免从 0 飞过来 */
+	function slideTo(link: HTMLElement, first = false) {
+		const nav = link.closest<HTMLElement>(NAV);
+		const ind = nav?.querySelector<HTMLElement>(IND);
+		if (!nav || !ind) return;
+
+		const navRect = nav.getBoundingClientRect();
+		const r = link.getBoundingClientRect();
+		ind.style.width = `${r.width}px`;
+		ind.style.transform = `translate3d(${r.left - navRect.left}px, -50%, 0)`;
+		if (first) {
+			ind.classList.add('no-anim');
+			requestAnimationFrame(() => ind.classList.remove('no-anim'));
+		}
+	}
+
+	function init() {
+		const shell = document.querySelector<HTMLElement>(SHELL);
+		const nav = document.querySelector<HTMLElement>(NAV);
+		if (!shell || !nav) return;
+
+		const links = Array.from(nav.querySelectorAll<HTMLElement>('[data-nav-item]'));
+		const path = currentPath();
+
+		// 页头被 transition:persist 保活，active 状态得按当前路径重算
+		let active = links.find((a) => a.dataset.href === path);
+		if (!active) {
+			active =
+				links
+					.filter((a) => a.dataset.href !== '/' && path.startsWith(a.dataset.href!))
+					.sort((a, b) => b.dataset.href!.length - a.dataset.href!.length)[0] ??
+				links[0];
+		}
+		links.forEach((a) => {
+			const on = a === active;
+			a.classList.toggle('is-active', on);
+			if (on) a.setAttribute('aria-current', 'page');
+			else a.removeAttribute('aria-current');
+		});
+		slideTo(active, true);
+
+		// 悬停：高亮块跟手预览，离开后回到当前页
+		for (const link of links) {
+			link.addEventListener('pointerenter', () => slideTo(link));
+			link.addEventListener('focus', () => slideTo(link));
+		}
+		nav.addEventListener('pointerleave', () => slideTo(active!));
+		nav.addEventListener('focusout', (e) => {
+			if (!nav.contains(e.relatedTarget as Node)) slideTo(active!);
+		});
+
+		// 滚动收缩
+		let raf = 0;
+		const onScroll = () => {
+			if (raf) return;
+			raf = requestAnimationFrame(() => {
+				raf = 0;
+				shell.classList.toggle('is-scrolled', window.scrollY > 16);
+			});
+		};
+		onScroll();
+		window.addEventListener('scroll', onScroll, { passive: true });
+
+		// 窗口尺寸变化时重新对齐（字体加载完宽度也会变）
+		const onResize = () => slideTo(active!, true);
+		window.addEventListener('resize', onResize);
+		document.fonts?.ready.then(onResize);
+	}
+
+	document.addEventListener('astro:page-load', init);
+	if (document.readyState !== 'loading') init();
+</script>
+
 <style>
-	header {
+	.site-head {
 		position: sticky;
 		top: 0;
-		z-index: 20;
-		padding: 1em 1em 0;
+		z-index: 40;
+		padding: 0.75rem var(--gutter) 0;
+		pointer-events: none;
 	}
-	nav {
+	.head-shell {
+		pointer-events: auto;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		max-width: 1040px;
+		gap: 1rem;
+		max-width: var(--w-wide);
 		margin: 0 auto;
-		gap: 1em;
-		padding: 0.7em 1.2em;
-		background: rgba(253, 250, 244, 0.82);
-		border: 1px solid rgb(var(--line));
-		border-radius: 999px;
-		backdrop-filter: blur(12px);
+		padding: 0.55rem 0.6rem 0.55rem 1.1rem;
+		border-radius: var(--r-pill);
+		transition:
+			padding var(--dur) var(--ease-out),
+			background-color var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out),
+			transform var(--dur) var(--ease-out);
 	}
-	h2 {
-		margin: 0;
-		font-size: 1.02em;
+	.head-shell.is-scrolled {
+		padding-block: 0.32rem;
+		background: rgba(255, 252, 245, 0.78);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
 	}
-	.logo {
+
+	/* ---- 品牌 ---- */
+	.brand {
 		display: inline-flex;
-		align-items: center;
-		gap: 0.5em;
+		align-items: baseline;
+		gap: 0.5rem;
 		text-decoration: none;
 		color: rgb(var(--ink));
-		font-weight: 700;
-		letter-spacing: 0.03em;
+		font-weight: 800;
+		letter-spacing: 0.02em;
+		font-size: 1.02rem;
+		flex-shrink: 0;
 	}
-	.dot {
+	.brand-dot {
+		position: relative;
+		align-self: center;
 		width: 9px;
 		height: 9px;
 		border-radius: 50%;
 		background: rgb(var(--accent));
-		box-shadow: 0 0 10px rgba(var(--accent), 0.35);
+		box-shadow: 0 0 0 0 rgba(var(--accent), 0.45);
+		animation: dot-pulse 3.6s var(--ease-out) infinite;
 	}
-	.internal-links {
+	.brand-dot i {
+		position: absolute;
+		inset: -3px;
+		border-radius: 50%;
+		border: 1px solid rgba(var(--accent), 0.35);
+	}
+	.brand-sub {
+		font-size: 0.72rem;
+		font-weight: 400;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+		text-transform: lowercase;
+	}
+	@keyframes dot-pulse {
+		0%,
+		62%,
+		100% {
+			box-shadow: 0 0 0 0 rgba(var(--accent), 0.4);
+		}
+		30% {
+			box-shadow: 0 0 0 7px rgba(var(--accent), 0);
+		}
+	}
+
+	/* ---- 导航 ---- */
+	.nav {
+		position: relative;
 		display: flex;
-		gap: 0.2em;
+		align-items: center;
+		gap: 0.1rem;
+		padding: 0.18rem;
+		border-radius: var(--r-pill);
+		background: rgba(255, 255, 255, 0.32);
+		isolation: isolate;
 	}
-	nav a {
-		padding: 0.5em 0.7em;
+	.nav-ind {
+		position: absolute;
+		left: 0;
+		top: 50%;
+		height: calc(100% - 0.36rem);
+		width: 3rem;
+		border-radius: var(--r-pill);
+		background: rgba(255, 253, 248, 0.95);
+		box-shadow: 0 1px 2px rgba(90, 70, 45, 0.12), 0 6px 16px -8px rgba(90, 70, 45, 0.4);
+		transform: translate3d(0, -50%, 0);
+		transition:
+			transform 0.42s var(--ease-spring),
+			width 0.42s var(--ease-spring);
+		z-index: -1;
+	}
+	.nav-ind.no-anim {
+		transition: none;
+	}
+	.nav-link {
+		position: relative;
+		padding: 0.42rem 0.78rem;
+		border-radius: var(--r-pill);
+		font-size: 0.9rem;
+		font-weight: 500;
 		color: rgb(var(--muted));
 		text-decoration: none;
-		border-radius: 999px;
-		font-size: 0.92rem;
+		white-space: nowrap;
+		transition: color var(--dur-fast) var(--ease-out);
 	}
-	nav a:hover {
+	.nav-link:hover {
 		color: rgb(var(--ink));
 	}
-	nav a.active {
-		color: rgb(var(--accent));
+	.nav-link.is-active {
+		color: rgb(var(--accent-deep));
+		font-weight: 700;
 	}
-	.social-links,
-	.social-links a {
+
+	/* ---- 右侧操作 ---- */
+	.head-actions {
 		display: flex;
 		align-items: center;
+		gap: 0.5rem;
+		flex-shrink: 0;
 	}
-	.header-right {
+	.social {
 		display: flex;
 		align-items: center;
-		gap: 0.9em;
+		gap: 0.15rem;
 	}
-	.social-links {
-		gap: 0.9em;
-	}
-	.social-links a {
+	.social a {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
 		color: rgb(var(--muted));
-		padding: 0.4em;
+		text-decoration: none;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
 	}
-	.social-links a:hover {
+	.social a:hover {
 		color: rgb(var(--accent));
+		background: rgba(255, 255, 255, 0.6);
 	}
-	@media (max-width: 900px) {
-		.social-links {
+
+	@media (max-width: 860px) {
+		.brand-sub,
+		.social {
 			display: none;
 		}
 	}
-	@media (max-width: 720px) {
-		header {
-			padding: 0.7em 0.6em 0;
+	@media (max-width: 620px) {
+		.site-head {
+			padding: 0.5rem 0.6rem 0;
 		}
-		nav {
-			justify-content: space-between;
-			border-radius: 18px;
-			padding: 0.55em 0.7em;
-			gap: 0.4em;
+		.head-shell {
+			border-radius: 20px;
+			padding: 0.45rem 0.45rem 0.45rem 0.7rem;
+			gap: 0.5rem;
 		}
-		nav a {
-			padding: 0.45em 0.5em;
-			font-size: 0.85rem;
+		.brand {
+			font-size: 0.95rem;
 		}
-		.internal-links {
+		.nav {
 			gap: 0;
+			overflow-x: auto;
+			scrollbar-width: none;
+			mask-image: linear-gradient(90deg, #000 88%, transparent);
 		}
-		h2 {
-			font-size: 0.95em;
+		.nav::-webkit-scrollbar {
+			display: none;
+		}
+		.nav-link {
+			padding: 0.4rem 0.6rem;
+			font-size: 0.85rem;
 		}
 	}
 </style>

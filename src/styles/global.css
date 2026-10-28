@@ -1,32 +1,87 @@
 /*
-  全局基础样式 · 米白暖调 / 杂志纸张感主题。
-  色彩以 RGB 三元组存放在 :root，组件内用 rgb(var(--token)) 引用。
+  全局设计系统 · 暖纸 × 玻璃（glassmorphism）× 克制的动效。
+  - 颜色以 RGB 三元组存放，组件内用 rgb(var(--token)) 引用；
+  - 玻璃质感统一由 .glass / .glass-soft 提供，不要各自写 backdrop-filter；
+  - 动效统一由 [data-reveal] / [data-tilt] / [data-glow] 驱动（见 Motion.astro）。
 */
 
+/* ============ 设计变量 ============ */
 :root {
-	/* 强调：赭石陶土棕（杂志刊头气质，低饱和暖色） */
+	/* 强调色：赭石陶土棕 */
 	--accent: 150, 84, 52;
 	--accent-soft: 184, 120, 86;
+	--accent-deep: 112, 60, 36;
+	--ochre: 176, 134, 68;
+	/* 补一个低饱和的灰绿，用于渐变里的冷暖对比 */
+	--sage: 122, 138, 116;
+	--rose: 190, 132, 118;
 
-	/* 背景与纸面 */
+	/* 纸面层次 */
 	--bg: 246, 240, 229;
+	--bg-deep: 240, 232, 218;
 	--paper: 253, 250, 244;
 	--surface: 255, 253, 248;
 	--line: 228, 216, 196;
+	--line-soft: 236, 227, 210;
 
 	/* 文字 */
-	--ink: 46, 39, 32;
+	--ink: 42, 36, 29;
+	--ink-soft: 68, 58, 47;
 	--muted: 122, 110, 95;
 	--muted-light: 158, 146, 130;
 
-	/* 小面积点缀 */
-	--ochre: 176, 134, 68;
+	/* 玻璃 */
+	--glass-bg: rgba(255, 252, 245, 0.55);
+	--glass-bg-strong: rgba(255, 253, 248, 0.78);
+	--glass-brd: rgba(255, 255, 255, 0.66);
+	--glass-brd-dim: rgba(255, 255, 255, 0.38);
+	--glass-blur: 18px;
+	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 
-	--box-shadow: 0 1px 2px rgba(90, 70, 45, 12%), 0 10px 28px rgba(90, 70, 45, 12%);
+	/* 阴影 */
+	--shadow-sm: 0 1px 2px rgba(90, 70, 45, 9%), 0 6px 18px -8px rgba(90, 70, 45, 18%);
+	--shadow-md: 0 2px 4px rgba(90, 70, 45, 8%), 0 18px 40px -18px rgba(90, 70, 45, 26%);
+	--shadow-lg: 0 30px 70px -30px rgba(90, 70, 45, 38%), 0 2px 6px rgba(90, 70, 45, 8%);
+	--box-shadow: var(--shadow-md);
+
+	/* 圆角与节奏 */
+	--r-sm: 10px;
+	--r-md: 16px;
+	--r-lg: 22px;
+	--r-xl: 30px;
+	--r-pill: 999px;
+
+	/* 版心 */
+	--w-read: 720px;
+	--w-page: 920px;
+	--w-wide: 1120px;
+	--gutter: clamp(1.1rem, 4vw, 2.5rem);
+
+	/* 动效曲线：柔和进场，精准收束 */
+	--ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+	--ease-spring: cubic-bezier(0.34, 1.4, 0.44, 1);
+	--dur-fast: 0.22s;
+	--dur: 0.45s;
+	--dur-slow: 0.9s;
+}
+
+/* ============ 基础 ============ */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
 }
 
 html {
 	color-scheme: light;
+	scroll-behavior: smooth;
+	-webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
 }
 
 body {
@@ -35,20 +90,57 @@ body {
 	margin: 0;
 	padding: 0;
 	text-align: left;
-	background: rgb(var(--bg));
 	color: rgb(var(--ink));
-	word-wrap: break-word;
-	overflow-wrap: break-word;
 	font-size: 17px;
 	line-height: 1.75;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
 	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	/* 暖色天光：三团极淡的光晕压住纸面，让玻璃有东西可以“透” */
+	background:
+		radial-gradient(58% 44% at 12% 0%, rgba(var(--accent-soft), 0.18) 0%, transparent 62%),
+		radial-gradient(48% 40% at 92% 6%, rgba(var(--ochre), 0.16) 0%, transparent 60%),
+		radial-gradient(60% 50% at 50% 100%, rgba(var(--sage), 0.13) 0%, transparent 68%),
+		rgb(var(--bg));
+	background-attachment: fixed;
+	min-height: 100vh;
+}
+
+::selection {
+	background: rgba(var(--accent), 0.2);
+	color: rgb(var(--ink));
+}
+
+/* 细一点、暖一点的滚动条 */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: rgba(var(--muted), 0.35) transparent;
+}
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-thumb {
+	background: rgba(var(--muted), 0.28);
+	border-radius: 99px;
+	border: 3px solid transparent;
+	background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(var(--muted), 0.45);
+	background-clip: content-box;
 }
 
 main {
-	width: 720px;
-	max-width: calc(100% - 2em);
+	width: var(--w-read);
+	max-width: calc(100% - var(--gutter) * 2);
 	margin: auto;
-	padding: 3em 1em;
+	padding: 2.5em 0 4em;
+}
+
+main.wide {
+	width: var(--w-wide);
 }
 
 h1,
@@ -59,21 +151,23 @@ h5,
 h6 {
 	margin: 0 0 0.5rem 0;
 	color: rgb(var(--ink));
-	line-height: 1.25;
-	font-weight: 700;
+	line-height: 1.18;
+	font-weight: 800;
+	letter-spacing: -0.015em;
+	text-wrap: balance;
 }
 
 h1 {
-	font-size: 2.4rem;
+	font-size: clamp(2rem, 4.4vw, 3.1rem);
 }
 h2 {
-	font-size: 1.8rem;
+	font-size: clamp(1.5rem, 3vw, 2.05rem);
 }
 h3 {
-	font-size: 1.4rem;
+	font-size: 1.32rem;
 }
 h4 {
-	font-size: 1.15rem;
+	font-size: 1.1rem;
 }
 
 strong,
@@ -85,6 +179,7 @@ a {
 	color: rgb(var(--accent));
 	text-decoration-thickness: 1px;
 	text-underline-offset: 3px;
+	transition: color var(--dur-fast) var(--ease-out);
 }
 a:hover {
 	color: rgb(var(--accent-soft));
@@ -94,43 +189,29 @@ p {
 	margin-bottom: 1em;
 }
 
-.prose p {
-	margin-bottom: 1.6em;
-}
-
-textarea,
-input {
-	font-size: 16px;
-	background: rgb(var(--paper));
-	color: rgb(var(--ink));
-	border: 1px solid rgb(var(--line));
-}
-
-table {
-	width: 100%;
-}
-
 img {
 	max-width: 100%;
 	height: auto;
-	border-radius: 12px;
+	border-radius: var(--r-md);
 }
 
 code {
-	padding: 2px 6px;
-	background-color: rgb(var(--paper));
+	padding: 0.12em 0.42em;
+	background-color: rgba(var(--paper), 0.9);
 	border: 1px solid rgb(var(--line));
-	border-radius: 5px;
+	border-radius: 6px;
 	font-size: 0.88em;
-	color: rgb(var(--accent));
+	color: rgb(var(--accent-deep));
 }
 
 pre {
-	padding: 1.2em 1.4em;
-	border-radius: 12px;
-	background: rgb(50, 43, 36);
-	border: 1px solid rgb(var(--line));
+	padding: 1.25em 1.45em;
+	border-radius: var(--r-md);
+	background: rgb(43, 37, 30);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	box-shadow: var(--shadow-md);
 	overflow-x: auto;
+	line-height: 1.6;
 }
 pre > code {
 	all: unset;
@@ -138,13 +219,15 @@ pre > code {
 	border: none;
 	color: rgb(var(--paper));
 	padding: 0;
+	font-size: 0.9em;
 }
 
 blockquote {
-	border-left: 3px solid rgb(var(--accent));
-	padding: 0.1em 0 0.1em 1.2em;
-	margin: 1.6em 0;
+	border-left: 2px solid rgba(var(--accent), 0.5);
+	padding: 0.2em 0 0.2em 1.2em;
+	margin: 1.8em 0;
 	color: rgb(var(--muted));
+	font-style: italic;
 }
 
 hr {
@@ -153,27 +236,314 @@ hr {
 	margin: 2.5em 0;
 }
 
-/* 小标签 */
+textarea,
+input,
+select {
+	font-size: 16px;
+	font-family: inherit;
+	background: rgba(255, 253, 248, 0.7);
+	color: rgb(var(--ink));
+	border: 1px solid rgb(var(--line));
+	border-radius: var(--r-sm);
+	padding: 0.6em 0.85em;
+	transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+textarea:focus,
+input:focus,
+select:focus {
+	outline: none;
+	border-color: rgba(var(--accent), 0.55);
+	box-shadow: 0 0 0 4px rgba(var(--accent), 0.12);
+}
+
+/* 键盘可达性：统一焦点环，鼠标点击不显示 */
+:focus-visible {
+	outline: 2px solid rgba(var(--accent), 0.65);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+
+/* ============ 玻璃 ============ */
+.glass {
+	background: var(--glass-bg);
+	backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+	-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+	border: 1px solid var(--glass-brd);
+	box-shadow: var(--glass-shine), var(--shadow-md);
+}
+
+.glass-strong {
+	background: var(--glass-bg-strong);
+	backdrop-filter: blur(26px) saturate(1.5);
+	-webkit-backdrop-filter: blur(26px) saturate(1.5);
+	border: 1px solid var(--glass-brd);
+	box-shadow: var(--glass-shine), var(--shadow-lg);
+}
+
+/* 玻璃卡片：hover 时轻微抬起 + 边缘提亮 */
+.glass-hover {
+	transition:
+		transform var(--dur) var(--ease-out),
+		box-shadow var(--dur) var(--ease-out),
+		border-color var(--dur) var(--ease-out);
+	will-change: transform;
+}
+.glass-hover:hover {
+	transform: translateY(-4px);
+	border-color: rgba(255, 255, 255, 0.9);
+}
+
+/* 指针跟随的高光（配合 [data-glow]，--mx/--my 由 Motion.astro 写入） */
+[data-glow] {
+	position: relative;
+	isolation: isolate;
+}
+[data-glow]::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity var(--dur) var(--ease-out);
+	background: radial-gradient(
+		260px circle at var(--mx, 50%) var(--my, 50%),
+		rgba(255, 255, 255, 0.55),
+		transparent 65%
+	);
+	z-index: -1;
+}
+[data-glow]:hover::after {
+	opacity: 1;
+}
+
+/* ============ 按钮 / 标签 ============ */
+.btn {
+	--btn-bg: rgb(var(--accent));
+	--btn-fg: rgb(var(--paper));
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5em;
+	padding: 0.72em 1.45em;
+	border-radius: var(--r-pill);
+	font-size: 0.95rem;
+	font-weight: 700;
+	line-height: 1;
+	text-decoration: none;
+	color: var(--btn-fg);
+	background: var(--btn-bg);
+	border: 1px solid transparent;
+	box-shadow: var(--shadow-sm);
+	transition:
+		transform var(--dur-fast) var(--ease-spring),
+		box-shadow var(--dur) var(--ease-out),
+		background-color var(--dur-fast) var(--ease-out);
+}
+.btn:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-md);
+	color: var(--btn-fg);
+}
+.btn:active {
+	transform: translateY(0) scale(0.985);
+}
+.btn--ghost {
+	--btn-bg: rgba(255, 253, 248, 0.6);
+	--btn-fg: rgb(var(--ink));
+	border-color: rgba(var(--line), 1);
+	backdrop-filter: blur(10px);
+}
+.btn--ghost:hover {
+	--btn-bg: rgba(255, 255, 255, 0.85);
+	border-color: rgba(var(--accent), 0.45);
+}
+.btn--accent-soft {
+	--btn-bg: rgba(var(--accent), 0.12);
+	--btn-fg: rgb(var(--accent-deep));
+	border-color: rgba(var(--accent), 0.25);
+	backdrop-filter: blur(10px);
+}
+
 .tag {
 	display: inline-block;
-	font-size: 0.78rem;
-	color: rgb(var(--accent));
-	border: 1px solid rgba(var(--accent), 28%);
-	border-radius: 999px;
-	padding: 0.05em 0.7em;
+	font-size: 0.76rem;
+	letter-spacing: 0.04em;
+	color: rgb(var(--accent-deep));
+	background: rgba(var(--accent), 0.09);
+	border: 1px solid rgba(var(--accent), 0.18);
+	border-radius: var(--r-pill);
+	padding: 0.1em 0.7em;
 	margin-right: 0.4em;
 }
 
-@media (max-width: 720px) {
-	body {
-		font-size: 16px;
-	}
-	main {
-		padding: 1.5em 1em;
-	}
-	h1 {
-		font-size: 1.9rem;
-	}
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	padding: 0.3em 0.85em;
+	border-radius: var(--r-pill);
+	font-size: 0.78rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgb(var(--accent-deep));
+	background: rgba(255, 253, 248, 0.55);
+	border: 1px solid rgba(var(--accent), 0.2);
+	backdrop-filter: blur(10px);
+}
+
+/* 区块标题：小索引 + 标题 + 右侧“更多” */
+.sec-head {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1em;
+	margin-bottom: clamp(1.4rem, 3vw, 2.4rem);
+}
+.sec-head__index {
+	font-size: 0.78rem;
+	letter-spacing: 0.28em;
+	color: rgb(var(--muted-light));
+	font-variant-numeric: tabular-nums;
+	display: block;
+	margin-bottom: 0.5em;
+}
+.sec-head h2 {
+	margin: 0;
+}
+.sec-head__more {
+	font-size: 0.9rem;
+	font-weight: 600;
+	text-decoration: none;
+	color: rgb(var(--muted));
+	white-space: nowrap;
+	padding-bottom: 0.35em;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	transition: color var(--dur-fast) var(--ease-out), gap var(--dur-fast) var(--ease-out);
+}
+.sec-head__more:hover {
+	color: rgb(var(--accent));
+	gap: 0.6em;
+}
+
+/* ============ 滚动进场（Motion.astro 添加 .is-in） ============ */
+[data-reveal] {
+	opacity: 0;
+	transform: translate3d(0, 26px, 0);
+	filter: blur(5px);
+	transition:
+		opacity 0.75s var(--ease-out),
+		transform 0.75s var(--ease-out),
+		filter 0.75s var(--ease-out);
+	transition-delay: var(--reveal-delay, 0ms);
+	will-change: opacity, transform;
+}
+[data-reveal='left'] {
+	transform: translate3d(-30px, 0, 0);
+}
+[data-reveal='right'] {
+	transform: translate3d(30px, 0, 0);
+}
+[data-reveal='scale'] {
+	transform: scale(0.94);
+}
+@property --reveal-wipe {
+	syntax: '<percentage>';
+	inherits: false;
+	initial-value: -30%;
+}
+
+/* 用 mask 做「擦除式」揭示：clip-path 会把元素自身裁成 0 高，
+   导致 IntersectionObserver 永远认为它没有进入视口（进场动画与图片懒加载都会卡死）。
+   mask 只影响绘制，不改几何，所以观察器能正常触发。 */
+[data-reveal='mask'] {
+	opacity: 1;
+	transform: none;
+	filter: none;
+	clip-path: none;
+	--reveal-wipe: -30%;
+	-webkit-mask-image: linear-gradient(
+		to bottom,
+		#000 var(--reveal-wipe),
+		transparent calc(var(--reveal-wipe) + 26%)
+	);
+	mask-image: linear-gradient(
+		to bottom,
+		#000 var(--reveal-wipe),
+		transparent calc(var(--reveal-wipe) + 26%)
+	);
+	transition: --reveal-wipe 1.05s var(--ease-out);
+}
+[data-reveal='mask'].is-in {
+	--reveal-wipe: 130%;
+}
+[data-reveal].is-in {
+	opacity: 1;
+	transform: none;
+	filter: blur(0);
+	clip-path: inset(0 0 0 0);
+}
+
+/* 顶部阅读进度条（Motion.astro 写入 --progress） */
+.scroll-progress {
+	position: fixed;
+	inset: 0 0 auto 0;
+	height: 2px;
+	z-index: 60;
+	transform-origin: 0 50%;
+	transform: scaleX(var(--progress, 0));
+	background: linear-gradient(90deg, rgb(var(--accent)), rgb(var(--ochre)));
+	pointer-events: none;
+	transition: transform 0.1s linear;
+}
+
+/* ============ 文章正文 ============ */
+.prose {
+	font-size: 1.02rem;
+	line-height: 1.9;
+}
+.prose p {
+	margin-bottom: 1.6em;
+}
+.prose h2 {
+	margin: 2.4em 0 0.8em;
+	font-size: 1.55rem;
+}
+.prose h3 {
+	margin: 2em 0 0.6em;
+}
+.prose ul,
+.prose ol {
+	padding-left: 1.3em;
+	margin-bottom: 1.6em;
+}
+.prose li {
+	margin-bottom: 0.45em;
+}
+.prose img {
+	margin: 2em 0;
+	box-shadow: var(--shadow-md);
+}
+.prose hr {
+	margin: 3em 0;
+}
+
+/* ============ 页脚区（组件内只用这个工具类） ============ */
+.page-foot {
+	max-width: var(--w-wide);
+	margin: 0 auto;
+	padding: 0 var(--gutter);
+}
+
+.empty-hint {
+	color: rgb(var(--muted));
+	font-size: 0.95rem;
+	padding: 2.5em 1.5em;
+	text-align: center;
+	border: 1px dashed rgb(var(--line));
+	border-radius: var(--r-lg);
+	background: rgba(255, 253, 248, 0.45);
 }
 
 .sr-only {
@@ -185,7 +555,61 @@ hr {
 	width: 1px;
 	overflow: hidden;
 	clip: rect(1px 1px 1px 1px);
-	clip: rect(1px, 1px, 1px, 1px);
 	clip-path: inset(50%);
 	white-space: nowrap;
+}
+
+/* ============ 响应式 & 无障碍 ============ */
+@media (max-width: 720px) {
+	body {
+		font-size: 16px;
+	}
+	main {
+		padding: 1.6em 0 3em;
+	}
+}
+
+/* 全站降级：关掉所有装饰性动画，只保留内容 */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+	[data-reveal] {
+		opacity: 1 !important;
+		transform: none !important;
+		filter: none !important;
+		clip-path: none !important;
+	}
+}
+
+/* 视图过渡：整页淡入上浮，页头用同名元素做锚点，不重绘 */
+@media (prefers-reduced-motion: no-preference) {
+	::view-transition-old(root) {
+		animation: vt-fade-out 0.28s var(--ease-out) both;
+	}
+	::view-transition-new(root) {
+		animation: vt-fade-in 0.42s var(--ease-out) both;
+	}
+	::view-transition-old(site-header),
+	::view-transition-new(site-header) {
+		animation: none;
+	}
+}
+
+@keyframes vt-fade-out {
+	to {
+		opacity: 0;
+		transform: translateY(-10px) scale(0.995);
+	}
+}
+@keyframes vt-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
 }

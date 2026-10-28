@@ -1,139 +1,284 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import { getCollection } from 'astro:content';
 import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
+
+const posts = await getCollection('blog');
+const photos = await getCollection('gallery');
+
+const startedAt = posts.reduce<Date | null>((earliest, post) => {
+	const d = post.data.pubDate;
+	return !earliest || d < earliest ? d : earliest;
+}, null);
+
+const facts = [
+	{ label: '记录方式', value: '文字 · 照片' },
+	{ label: '更新节奏', value: '不定期，想起来就写' },
+	{ label: '文章数量', value: `${posts.length} 篇` },
+	{ label: '照片数量', value: `${photos.length} 张` },
+	{ label: '站点技术', value: 'Astro · GitHub Pages' },
+	{ label: '留言', value: '文章页底部评论区' },
+];
+
+const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '照片记录', '慢慢整理'];
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-	<head>
-		<BaseHead title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main class="about-main">
-			<section class="intro">
-				<p class="section-kicker">ABOUT</p>
-				<h1>你好，我是 {AUTHOR_NAME}</h1>
-				<p class="bio">
+<BaseLayout title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main class="about">
+		<section class="about-hero">
+			<div class="about-hero__blob" aria-hidden="true"></div>
+			<div class="wrap">
+				<span class="sec-head__index" data-reveal>ABOUT / {AUTHOR_NAME}</span>
+				<h1 data-reveal data-reveal-delay="60">
+					你好，我是 <span class="accent">{AUTHOR_NAME}</span>
+				</h1>
+				<p class="lede" data-reveal data-reveal-delay="120">
 					这里是一段占位简介：介绍你是谁、在记录什么、关注哪些方向。本站用来沉淀日常随笔、阅读笔记与生活照片，
 					慢慢整理成属于自己的记录空间。
 				</p>
-				<p class="bio">
-					写作偏随性，不追求产量；照片用来留住那些容易被遗忘的瞬间。想看看最近写了什么，可以前往{' '}
+				<p class="lede lede--muted" data-reveal data-reveal-delay="180">
+					写作偏随性，不追求产量；照片用来留住那些容易被遗忘的瞬间。想看看最近写了什么，可以前往
 					<a href="/blog">文章</a>；想看看最近拍了什么，可以前往 <a href="/gallery">照片墙</a>。
 				</p>
-			</section>
 
-			<section class="info">
-				<div class="info-col">
-					<h2>在这里记录什么</h2>
-					<ul>
-						<li>日常随笔</li>
-						<li>阅读笔记</li>
-						<li>生活片段</li>
-						<li>随想与思考</li>
-					</ul>
-				</div>
-				<div class="info-col">
-					<h2>保持联系</h2>
-					<ul class="contact-list">
-						{SOCIAL_LINKS.email && (
-							<li>
-								<span>邮箱</span>
-								<a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>
-							</li>
-						)}
-						{SOCIAL_LINKS.github && (
-							<li>
-								<span>GitHub</span>
-								<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">YQ-create</a>
-							</li>
-						)}
-					</ul>
-				</div>
-			</section>
-		</main>
-		<Footer />
-	</body>
-</html>
+				{startedAt && (
+					<p class="since" data-reveal data-reveal-delay="240">
+						从 <FormattedDate date={startedAt} /> 开始记录
+					</p>
+				)}
+			</div>
+		</section>
+
+		<section class="wrap about-body">
+			<div class="panel glass" data-reveal data-glow>
+				<h2>在这里记录什么</h2>
+				<ul class="chips">
+					{topics.map((topic) => (
+						<li>{topic}</li>
+					))}
+				</ul>
+			</div>
+
+			<div class="panel glass" data-reveal data-reveal-delay="80" data-glow>
+				<h2>保持联系</h2>
+				<ul class="contact">
+					{SOCIAL_LINKS.email && (
+						<li>
+							<span>邮箱</span>
+							<a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>
+						</li>
+					)}
+					{SOCIAL_LINKS.github && (
+						<li>
+							<span>GitHub</span>
+							<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">YQ-create</a>
+						</li>
+					)}
+				</ul>
+			</div>
+		</section>
+
+		<section class="wrap about-facts">
+			<dl class="fact-grid">
+				{facts.map((fact, i) => (
+					<div class="fact" data-reveal data-reveal-delay={i * 50}>
+						<dt>{fact.label}</dt>
+						<dd>{fact.value}</dd>
+					</div>
+				))}
+			</dl>
+		</section>
+	</main>
+</BaseLayout>
 
 <style>
-	.about-main {
-		max-width: none;
+	/* 与全站正文同宽（main 默认是阅读宽度 --w-read） */
+	main.about {
+		width: var(--w-page);
+	}
+	.wrap {
 		width: 100%;
-		padding: 0;
-	}
-	section {
-		max-width: 1040px;
 		margin: 0 auto;
-		padding: 3.5em 1.5em;
-	}
-	.intro {
-		border-bottom: 1px solid rgb(var(--line));
-	}
-	.section-kicker {
-		color: rgb(var(--accent));
-		font-size: 0.9rem;
-		letter-spacing: 0.25em;
-		text-transform: uppercase;
-		margin: 0 0 1em;
-	}
-	.intro h1 {
-		font-size: clamp(2rem, 4vw, 2.6rem);
-		margin: 0 0 0.8em;
-	}
-	.bio {
-		color: rgb(var(--muted));
-		max-width: 620px;
-		margin-bottom: 1em;
-	}
-	.info {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 3em;
-	}
-	.info-col h2 {
-		font-size: 1.1rem;
-		margin-bottom: 1em;
-		color: rgb(var(--ink));
-	}
-	.info-col ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.6em;
-	}
-	.info-col li {
-		border: 1px solid rgb(var(--line));
-		border-radius: 999px;
-		padding: 0.25em 1em;
-		color: rgb(var(--muted));
-		font-size: 0.9rem;
-	}
-	.contact-list {
-		flex-direction: column;
-		gap: 0.7em;
-	}
-	.contact-list li {
-		display: flex;
-		gap: 1em;
-		border: none;
-		padding: 0;
-	}
-	.contact-list span {
-		color: rgb(var(--muted-light));
-		width: 64px;
-		flex-shrink: 0;
 	}
 
-	@media (max-width: 720px) {
-		.info {
+	.about-hero {
+		position: relative;
+		padding: clamp(2.5rem, 7vw, 5rem) 0 clamp(1.5rem, 4vw, 2.5rem);
+		overflow: hidden;
+		isolation: isolate;
+	}
+	.about-hero__blob {
+		position: absolute;
+		top: -30%;
+		right: -10%;
+		width: min(620px, 70vw);
+		aspect-ratio: 1;
+		z-index: -1;
+		border-radius: 50%;
+		background:
+			radial-gradient(circle at 35% 35%, rgba(var(--accent), 0.22), transparent 62%),
+			radial-gradient(circle at 65% 60%, rgba(176, 134, 68, 0.2), transparent 58%);
+		filter: blur(48px);
+		animation: blob-drift 18s var(--ease-out) infinite alternate;
+	}
+	@keyframes blob-drift {
+		to {
+			transform: translate3d(-6%, 8%, 0) scale(1.12);
+		}
+	}
+	.about-hero h1 {
+		margin: 0.2em 0 0.5em;
+	}
+	.accent {
+		color: rgb(var(--accent));
+	}
+	.lede {
+		max-width: 46ch;
+		color: rgb(var(--ink-soft));
+		font-size: clamp(1rem, 1.4vw, 1.1rem);
+	}
+	.lede--muted {
+		color: rgb(var(--muted));
+	}
+	.lede a {
+		color: rgb(var(--accent));
+		text-decoration-color: rgba(var(--accent), 0.35);
+	}
+	.lede a:hover {
+		text-decoration-color: rgb(var(--accent));
+	}
+	.since {
+		display: inline-flex;
+		margin-top: 0.6rem;
+		padding: 0.3rem 0.85rem;
+		border-radius: var(--r-pill);
+		background: rgba(255, 253, 248, 0.6);
+		border: 1px solid rgba(255, 255, 255, 0.7);
+		backdrop-filter: blur(10px);
+		font-size: 0.78rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted));
+	}
+
+	.about-body {
+		display: grid;
+		grid-template-columns: 1.15fr 0.85fr;
+		gap: clamp(1rem, 2.5vw, 1.6rem);
+		padding-bottom: clamp(1.5rem, 4vw, 2.5rem);
+	}
+	.panel {
+		padding: clamp(1.3rem, 3vw, 2rem);
+		border-radius: var(--r-xl);
+	}
+	.panel h2 {
+		font-size: 1.05rem;
+		margin: 0 0 1.1rem;
+		letter-spacing: 0.02em;
+	}
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.chips li {
+		padding: 0.35rem 0.95rem;
+		border-radius: var(--r-pill);
+		border: 1px solid rgba(var(--line), 1);
+		background: rgba(255, 255, 255, 0.5);
+		font-size: 0.85rem;
+		color: rgb(var(--ink-soft));
+		transition:
+			transform var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.chips li:hover {
+		transform: translateY(-2px);
+		border-color: rgba(var(--accent), 0.45);
+		color: rgb(var(--accent-deep));
+	}
+	.contact {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+	.contact li {
+		display: flex;
+		align-items: baseline;
+		gap: 1rem;
+		padding: 0.75rem 0;
+		border-bottom: 1px dashed rgba(var(--line), 0.95);
+	}
+	.contact li:last-child {
+		border-bottom: none;
+	}
+	.contact span {
+		width: 56px;
+		flex-shrink: 0;
+		font-size: 0.8rem;
+		color: rgb(var(--muted-light));
+	}
+	.contact a {
+		color: rgb(var(--ink));
+		text-decoration: none;
+		border-bottom: 1px solid rgba(var(--accent), 0.35);
+	}
+	.contact a:hover {
+		color: rgb(var(--accent));
+	}
+
+	.about-facts {
+		padding-bottom: clamp(3rem, 6vw, 5rem);
+	}
+	.fact-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1px;
+		margin: 0;
+		background: rgba(var(--line), 1);
+		border-radius: var(--r-lg);
+		overflow: hidden;
+	}
+	.fact {
+		background: rgba(255, 253, 248, 0.72);
+		padding: 1.1rem 1.2rem;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.fact:hover {
+		background: rgba(255, 255, 255, 0.95);
+	}
+	.fact dt {
+		font-size: 0.74rem;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: rgb(var(--muted-light));
+		margin-bottom: 0.35rem;
+	}
+	.fact dd {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: rgb(var(--ink));
+	}
+
+	@media (max-width: 860px) {
+		.about-body {
 			grid-template-columns: 1fr;
-			gap: 2em;
+		}
+		.fact-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	@media (max-width: 520px) {
+		.fact-grid {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

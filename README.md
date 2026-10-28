@@ -31,16 +31,16 @@ npm run preview
 ```text
 ├── public/                  # 静态资源，原样复制到产物；CNAME 为自定义域名配置
 ├── src/
-│   ├── components/          # 页头、页脚、音乐播放器、文章列表项、Giscus 评论等组件
+│   ├── components/          # 页头、页脚、播放器、动效组件（见下方「视觉与动效」）
 │   ├── content/
 │   │   ├── blog/           # 所有博客文章（一篇文章一个 Markdown 文件）
 │   │   └── gallery/        # 照片墙记录（每条一张照片，按 date 分组到年、月）
 │   ├── data/
 │   │   ├── discover.json   # 发现页收藏书签与推荐站点分组
 │   │   └── playlist.json   # 顶部悬浮播放器曲目列表
-│   ├── layouts/            # 文章详情布局
+│   ├── layouts/            # BaseLayout（全站骨架）+ BlogPost（文章详情）
 │   ├── pages/              # 路由：/、/blog、/gallery、/discover、/about、/404
-│   ├── styles/global.css   # 全局配色与排版变量（米白暖调 token 在顶部）
+│   ├── styles/global.css   # 全局配色、玻璃质感与排版变量（token 在顶部）
 │   └── consts.ts           # 站点标题、Hero 文案、作者、社交链接
 ├── .github/workflows/deploy.yml   # GitHub Pages 自动部署流程
 └── astro.config.mjs         # 站点域名与集成配置
@@ -57,6 +57,29 @@ npm run preview
 | 关于 | `/about` | 个人简介、记录方向与联系方式 |
 
 文章详情页底部接入 Giscus 评论；未配置 `repoId` / `categoryId` 时不渲染评论区，不影响其他内容。
+
+## 视觉与动效
+
+整站是一套「暖色纸面 + 玻璃卡片」的设计：背景是三层极淡的径向光晕，卡片用半透明底色 + `backdrop-filter` 做磨砂，主色是赭石棕（`--accent`）。所有动效都由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
+
+| 写什么 | 效果 |
+| --- | --- |
+| `data-reveal` | 进入视口时上浮淡入（`left` / `right` / `scale` / `mask` 是变体） |
+| `data-reveal-delay="120"` | 同组元素错开进场，单位毫秒 |
+| `data-glow` | 玻璃卡片跟随指针的高光 |
+| `data-tilt="8"` | 卡片随指针轻微 3D 倾斜 |
+
+三个视觉组件可以单独复用：
+
+| 组件 | 用途 | 主要参数 |
+| --- | --- | --- |
+| `PatternWaves.astro` | 首页 Hero 的丝波 canvas 背景 | `preset`（silk/mesh/flow）、`color`、`interactive`、`density` |
+| `DriftWall.astro` | 照片墙/首页的 3D 漂移照片带 | `items`、`columns`、`rows`、`speed`、`direction`、`tilt`、`turn`、`height` |
+| `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
+
+页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。
+
+> 注意：`src/components/BaseHead.astro` 里有一段极短的 `moveBefore` 兜底补丁。Chromium 137+ 的 `Element.moveBefore()` 不允许跨文档或把元素挪到 `<html>` 下，而 Astro 的 `transition:persist` 正好会这么做，不补丁会抛 `HierarchyRequestError` 导致点导航后地址栏不更新。等 Astro 上游修好后可以删掉这段。
 
 ## 常用修改位置
 

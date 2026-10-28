@@ -1,53 +1,101 @@
 ---
-import { AUTHOR_NAME, SOCIAL_LINKS, SITE_TITLE } from '../consts';
-const today = new Date();
+import { AUTHOR_NAME, SOCIAL_LINKS, SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+const year = new Date().getFullYear();
+
+const nav = [
+	{ href: '/blog', label: '文章' },
+	{ href: '/gallery', label: '照片' },
+	{ href: '/discover', label: '发现' },
+	{ href: '/about', label: '关于' },
+	{ href: '/rss.xml', label: 'RSS' },
+];
 ---
 
-<footer>
-	<div class="footer-inner">
-		<div class="colophon">
-			&copy; {today.getFullYear()} {AUTHOR_NAME} · {SITE_TITLE}
-			<a href="/rss.xml" class="rss-link">RSS 订阅</a>
+<footer class="site-foot">
+	<div class="foot-shell glass">
+		<div class="foot-brand">
+			<p class="foot-mark">{SITE_TITLE}<span>.</span></p>
+			<p class="foot-desc">{SITE_DESCRIPTION}</p>
 		</div>
-		<div class="social-links">
+
+		<nav class="foot-nav" aria-label="页脚导航">
+			{nav.map((item) => (
+				<a href={item.href}>{item.label}</a>
+			))}
+		</nav>
+
+		<div class="foot-contact">
 			{SOCIAL_LINKS.github && (
 				<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener">GitHub</a>
 			)}
-			{SOCIAL_LINKS.x && <a href={SOCIAL_LINKS.x} target="_blank" rel="noopener">X</a>}
-			{SOCIAL_LINKS.email && <a href={SOCIAL_LINKS.email}>邮箱</a>}
+			{SOCIAL_LINKS.email && <a href={SOCIAL_LINKS.email}>写封邮件</a>}
 		</div>
 	</div>
+
+	<p class="foot-copy">
+		&copy; {year} {AUTHOR_NAME} · 用 Astro 构建，托管在 GitHub Pages
+	</p>
 </footer>
 
 <style>
-	footer {
-		border-top: 1px solid rgb(var(--line));
-		color: rgb(var(--muted));
-		padding: 2em 1em 3em 1em;
+	.site-foot {
+		max-width: var(--w-wide);
+		margin: clamp(3rem, 7vw, 5rem) auto 0;
+		padding: 0 var(--gutter) 2.5rem;
 	}
-	.footer-inner {
-		max-width: 720px;
-		margin: 0 auto;
-		display: flex;
-		flex-direction: column;
+	.foot-shell {
+		display: grid;
+		grid-template-columns: 1.3fr auto auto;
 		align-items: center;
-		gap: 0.6em;
-		font-size: 0.9rem;
+		gap: clamp(1.4rem, 4vw, 3rem);
+		padding: clamp(1.4rem, 3vw, 2.2rem) clamp(1.4rem, 3vw, 2.4rem);
+		border-radius: var(--r-xl);
 	}
-	.social-links {
-		display: flex;
-		gap: 1.2em;
+	.foot-mark {
+		margin: 0;
+		font-size: 1.6rem;
+		font-weight: 800;
+		letter-spacing: -0.01em;
+		color: rgb(var(--ink));
 	}
-	.social-links a,
-	.rss-link {
-		color: rgb(var(--muted));
-		text-decoration: none;
-	}
-	.social-links a:hover,
-	.rss-link:hover {
+	.foot-mark span {
 		color: rgb(var(--accent));
 	}
-	.rss-link {
-		margin-left: 1em;
+	.foot-desc {
+		margin: 0.35rem 0 0;
+		max-width: 34ch;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		color: rgb(var(--muted));
+	}
+	.foot-nav,
+	.foot-contact {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 1.1rem;
+	}
+	.foot-nav a,
+	.foot-contact a {
+		font-size: 0.88rem;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.foot-nav a:hover,
+	.foot-contact a:hover {
+		color: rgb(var(--accent));
+	}
+	.foot-copy {
+		margin: 1.2rem 0 0;
+		text-align: center;
+		font-size: 0.76rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted-light));
+	}
+	@media (max-width: 820px) {
+		.foot-shell {
+			grid-template-columns: 1fr;
+			gap: 1.2rem;
+		}
 	}
 </style>

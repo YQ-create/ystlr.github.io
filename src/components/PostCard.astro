@@ -1,0 +1,175 @@
+---
+// 文章卡片：首页精选与列表页共用。
+// 有 heroImage 时铺图，没有则退化成纯文本卡（带大号序号）。
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+	post: CollectionEntry<'blog'>;
+	index?: number;
+	delay?: number;
+}
+
+const { post, index, delay = 0 } = Astro.props;
+const { title, description, pubDate, heroImage, tags } = post.data;
+---
+
+<article
+	class="card glass glass-hover"
+	data-glow
+	data-tilt="5"
+	data-reveal="scale"
+	data-reveal-delay={delay}
+>
+	<a class="card-link" href={`/blog/${post.id}/`} aria-label={title}>
+		<div class:list={['card-media', { 'has-image': Boolean(heroImage) }]}>
+			{heroImage ? (
+				<Image
+					src={heroImage}
+					alt=""
+					widths={[420, 720, 1040]}
+					sizes="(max-width: 760px) 92vw, (max-width: 1080px) 46vw, 420px"
+					loading="lazy"
+				/>
+			) : (
+				<span class="card-glyph" aria-hidden="true">❞</span>
+			)}
+			{typeof index === 'number' && (
+				<span class="card-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+			)}
+		</div>
+
+		<div class="card-body">
+			<div class="card-meta">
+				<FormattedDate date={pubDate} />
+				{tags.length > 0 && <span class="card-dot" aria-hidden="true">·</span>}
+				<span class="card-tags">{tags.slice(0, 2).join(' / ')}</span>
+			</div>
+			<h3 class="card-title">{title}</h3>
+			<p class="card-desc">{description}</p>
+			<span class="card-more">
+				阅读全文
+				<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+					<path
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+				</svg>
+			</span>
+		</div>
+	</a>
+</article>
+
+<style>
+	.card {
+		position: relative;
+		border-radius: var(--r-xl);
+		overflow: hidden;
+		height: 100%;
+	}
+	.card-link {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		text-decoration: none;
+		color: inherit;
+	}
+	.card-media {
+		position: relative;
+		aspect-ratio: 16 / 10;
+		overflow: hidden;
+		background:
+			radial-gradient(120% 120% at 20% 0%, rgba(var(--accent-soft), 0.35), transparent 60%),
+			radial-gradient(120% 120% at 100% 100%, rgba(var(--sage), 0.3), transparent 60%),
+			rgba(var(--paper), 0.8);
+	}
+	.card-media img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: 0;
+		transition: transform 0.9s var(--ease-out);
+	}
+	.card:hover .card-media img {
+		transform: scale(1.06);
+	}
+	.card-glyph {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 4.5rem;
+		color: rgba(var(--accent), 0.18);
+		line-height: 1;
+	}
+	.card-index {
+		position: absolute;
+		top: 0.9rem;
+		left: 1.1rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.3em;
+		color: rgba(var(--ink), 0.45);
+		font-variant-numeric: tabular-nums;
+	}
+	.card-body {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		gap: 0.45rem;
+		padding: 1.15rem 1.3rem 1.3rem;
+	}
+	.card-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.78rem;
+		color: rgb(var(--muted));
+		letter-spacing: 0.02em;
+	}
+	.card-dot {
+		opacity: 0.5;
+	}
+	.card-tags {
+		color: rgb(var(--muted-light));
+	}
+	.card-title {
+		margin: 0;
+		font-size: 1.18rem;
+		line-height: 1.35;
+		letter-spacing: -0.01em;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.card:hover .card-title {
+		color: rgb(var(--accent-deep));
+	}
+	.card-desc {
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.65;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.card-more {
+		margin-top: auto;
+		padding-top: 0.7rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: rgb(var(--accent));
+		transition: gap var(--dur-fast) var(--ease-out);
+	}
+	.card:hover .card-more {
+		gap: 0.7rem;
+	}
+</style>

@@ -1,4 +1,5 @@
 ---
+// 列表行：玻璃薄片，悬停时左移并露出箭头。
 import type { CollectionEntry } from 'astro:content';
 import FormattedDate from './FormattedDate.astro';
 
@@ -6,63 +7,140 @@ interface Props {
 	post: CollectionEntry<'blog'>;
 	excerpt?: boolean;
 	tags?: string[];
+	index?: number;
+	delay?: number;
 }
 
-const { post, excerpt = true, tags = post.data.tags } = Astro.props;
+const { post, excerpt = true, tags = post.data.tags, index, delay = 0 } = Astro.props;
 ---
 
-<li class="post-item" data-tags={tags.join(',')}>
-	<div class="post-date">
-		<FormattedDate date={post.data.pubDate} />
-	</div>
-	<div class="post-body">
-		<a href={`/blog/${post.id}/`} class="post-title">{post.data.title}</a>
-		{excerpt && <p class="post-desc">{post.data.description}</p>}
-		{tags.length > 0 && (
-			<div class="post-tags">
-				{tags.map((tag) => <span class="tag">{tag}</span>)}
-			</div>
-		)}
-	</div>
+<li class="post-row" data-tags={tags.join(',')} data-reveal data-reveal-delay={delay}>
+	<a class="row-link" href={`/blog/${post.id}/`}>
+		<span class="row-index" aria-hidden="true">
+			{typeof index === 'number' ? String(index + 1).padStart(2, '0') : '—'}
+		</span>
+
+		<span class="row-body">
+			<span class="row-meta">
+				<FormattedDate date={post.data.pubDate} />
+				{tags.length > 0 && <span class="row-sep" aria-hidden="true">/</span>}
+				<span class="row-tags">{tags.join(' · ')}</span>
+			</span>
+			<span class="row-title">{post.data.title}</span>
+			{excerpt && <span class="row-desc">{post.data.description}</span>}
+		</span>
+
+		<svg class="row-arrow" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+			<path
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.7"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+		</svg>
+	</a>
 </li>
 
 <style>
-	.post-item {
-		display: grid;
-		grid-template-columns: 96px 1fr;
-		gap: 1.2em;
-		padding: 1.6em 0;
-		border-bottom: 1px solid rgb(var(--line));
+	.post-row {
+		list-style: none;
+		margin-bottom: 0.7rem;
 	}
-	.post-date {
-		font-size: 0.82rem;
+	.row-link {
+		display: grid;
+		grid-template-columns: 2.6rem 1fr auto;
+		align-items: start;
+		gap: 1rem;
+		padding: 1.25rem 1.4rem;
+		border-radius: var(--r-lg);
+		text-decoration: none;
+		color: inherit;
+		background: rgba(255, 253, 248, 0.42);
+		border: 1px solid rgba(255, 255, 255, 0.55);
+		backdrop-filter: blur(12px);
+		box-shadow: var(--glass-shine);
+		transition:
+			transform var(--dur) var(--ease-out),
+			background-color var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out);
+	}
+	.row-link:hover {
+		transform: translateX(4px);
+		background: rgba(255, 253, 248, 0.78);
+		box-shadow: var(--glass-shine), var(--shadow-md);
+	}
+	.row-index {
+		padding-top: 0.15em;
+		font-size: 0.72rem;
+		letter-spacing: 0.18em;
 		color: rgb(var(--muted-light));
 		font-variant-numeric: tabular-nums;
-		padding-top: 0.35em;
 	}
-	.post-title {
-		font-size: 1.2rem;
+	.row-body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.28rem;
+		min-width: 0;
+	}
+	.row-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.76rem;
+		color: rgb(var(--muted-light));
+		letter-spacing: 0.02em;
+	}
+	.row-sep {
+		opacity: 0.6;
+	}
+	.row-title {
+		font-size: 1.13rem;
 		font-weight: 700;
-		color: rgb(var(--ink));
-		text-decoration: none;
 		line-height: 1.4;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
 	}
-	.post-title:hover {
+	.row-link:hover .row-title {
+		color: rgb(var(--accent-deep));
+	}
+	.row-desc {
+		font-size: 0.9rem;
+		line-height: 1.65;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.row-arrow {
+		margin-top: 0.35em;
+		color: rgb(var(--muted-light));
+		opacity: 0;
+		transform: translateX(-6px);
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.row-link:hover .row-arrow {
+		opacity: 1;
+		transform: none;
 		color: rgb(var(--accent));
 	}
-	.post-desc {
-		margin: 0.4em 0 0;
-		color: rgb(var(--muted));
-		font-size: 0.95rem;
-	}
-	.post-tags {
-		margin-top: 0.6em;
-	}
 	@media (max-width: 600px) {
-		.post-item {
+		.row-link {
 			grid-template-columns: 1fr;
-			gap: 0.3em;
-			padding: 1.3em 0;
+			gap: 0.2rem;
+			padding: 1rem 1.1rem;
+		}
+		.row-index {
+			display: none;
+		}
+		.row-arrow {
+			display: none;
 		}
 	}
 </style>

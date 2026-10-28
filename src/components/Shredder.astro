@@ -1,0 +1,263 @@
+---
+// 碎纸机：把 404 的标题、留言和装饰线切成竖条，让纸片逐条抖落。
+// 原生 DOM + CSS，无依赖；View Transitions 下可重复挂载。
+interface Props {
+	title?: string;
+	message?: string;
+	actionLabel?: string;
+	resetLabel?: string;
+	homeHref?: string;
+	homeLabel?: string;
+	width?: number;
+	height?: number;
+}
+const {
+	title = '404',
+	message = '这一页好像被人碎掉了。',
+	actionLabel = '把这一页也碎掉',
+	resetLabel = '复原',
+	homeHref = '/',
+	homeLabel = '回到首页',
+	width = 340,
+	height = 460,
+} = Astro.props;
+const rules = [88, 72, 81, 54]; // 装饰行宽度（%）
+---
+
+<div
+	class="shredder"
+	data-shredder
+	data-ready="0"
+	role="group"
+	aria-label="碎纸机"
+	style={`--w:${width}px;--h:${height}px`}
+>
+	<div class="machine">
+		<span class="brand">碎纸机 · shredder</span>
+		<div class="bay">
+			<div class="paper-wrap">
+				<div class="sheet" data-sheet>
+					<p class="sheet-code">SHEET · {title}</p>
+					<h2 class="sheet-title">{title}</h2>
+					<p class="sheet-message">{message}</p>
+					<div class="rules" aria-hidden="true">
+						{rules.map((rule) => <i style={`width:${rule}%`}></i>)}
+					</div>
+					<p class="sheet-foot" aria-hidden="true">— 这一页先躺下了 —</p>
+				</div>
+			</div>
+			<div class="stage" data-stage aria-hidden="true"></div>
+		</div>
+		<div class="slot" aria-hidden="true"></div>
+		<div class="tray" aria-hidden="true">
+			<span class="pile"><i></i><i></i><i></i><i></i></span>
+		</div>
+	</div>
+
+	<div class="controls">
+		<button class="btn btn-main" type="button" data-shred aria-pressed="false">{actionLabel}</button>
+		<button class="btn" type="button" data-reset>{resetLabel}</button>
+		<a class="home" href={homeHref}>{homeLabel} <span aria-hidden="true">→</span></a>
+	</div>
+	<p class="status" role="status" aria-live="polite" data-status></p>
+</div>
+
+<script>
+	// 页面可能反复挂载（View Transitions），用 data-ready 保证只绑定一次。
+	const busy = new WeakSet<HTMLElement>();
+	function init(root: HTMLElement) {
+		if (root.dataset.ready === '1') return;
+		root.dataset.ready = '1';
+		const sheet = root.querySelector<HTMLElement>('[data-sheet]');
+		const stage = root.querySelector<HTMLElement>('[data-stage]');
+		const status = root.querySelector<HTMLElement>('[data-status]');
+		const shredBtn = root.querySelector<HTMLButtonElement>('[data-shred]');
+		const resetBtn = root.querySelector<HTMLButtonElement>('[data-reset]');
+		if (!sheet || !stage || !status) return;
+
+		const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const settle = () => {
+			root.classList.add('is-shredded');
+			sheet.style.opacity = '';
+			shredBtn?.setAttribute('aria-pressed', 'true');
+			status.textContent = '已碎掉';
+			busy.delete(root);
+		};
+
+		const shred = () => {
+			if (busy.has(root) || root.classList.contains('is-shredded')) return;
+			busy.add(root);
+
+			// 减轻动效：不切条，直接快速淡出
+			if (reduced()) {
+				sheet.style.opacity = '0';
+				window.setTimeout(() => {
+					stage.replaceChildren();
+					settle();
+				}, 200);
+				return;
+			}
+
+			const rect = sheet.getBoundingClientRect();
+			const count = 14;
+			const stripWidth = rect.width / count;
+			for (let i = 0; i < count; i++) {
+				const strip = document.createElement('div');
+				strip.className = 'strip';
+				strip.style.left = `${i * stripWidth}px`;
+				strip.style.width = `${stripWidth + 0.6}px`;
+				strip.style.height = `${rect.height}px`;
+				strip.style.setProperty('--dx', `${(Math.random() - 0.5) * 42}px`);
+				strip.style.setProperty('--dy', `${rect.height + 80 + Math.random() * 90}px`);
+				strip.style.setProperty('--rot', `${(Math.random() - 0.5) * 18}deg`);
+				strip.style.setProperty('--delay', `${i * 30 + Math.round(Math.random() * 90)}ms`);
+
+				// 条带内是整张纸的克隆，再向左反偏移：等价于逐像素切图但无需 canvas
+				const copy = sheet.cloneNode(true) as HTMLElement;
+				copy.removeAttribute('data-sheet');
+				copy.classList.add('is-copy');
+				copy.style.left = `${-i * stripWidth}px`;
+				copy.style.width = `${rect.width}px`;
+				copy.style.height = `${rect.height}px`;
+				strip.append(copy);
+				stage.append(strip);
+			}
+
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					sheet.style.opacity = '0';
+					stage.querySelectorAll('.strip').forEach((el) => el.classList.add('is-falling'));
+				});
+			});
+			window.setTimeout(() => {
+				stage.replaceChildren();
+				settle();
+			}, 2150);
+		};
+
+		const restore = () => {
+			if (busy.has(root) || !root.classList.contains('is-shredded')) return;
+			busy.add(root);
+			root.classList.remove('is-shredded');
+			sheet.style.opacity = '';
+			shredBtn?.setAttribute('aria-pressed', 'false');
+			status.textContent = '已复原';
+			window.setTimeout(() => {
+				stage.replaceChildren();
+				busy.delete(root);
+			}, 320);
+		};
+
+		shredBtn?.addEventListener('click', shred);
+		resetBtn?.addEventListener('click', restore);
+	}
+
+	const boot = () => document.querySelectorAll<HTMLElement>('[data-shredder]').forEach(init);
+	document.addEventListener('astro:page-load', boot);
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+	else boot();
+</script>
+
+<style>
+	.shredder { display: flex; flex-direction: column; align-items: center; gap: 1em; }
+	.machine {
+		width: calc(var(--w, 340px) + 32px);
+		max-width: 100%;
+		padding: 16px;
+		border: 1px solid rgb(var(--line));
+		border-radius: 22px;
+		background: rgba(255, 253, 248, 0.6);
+		backdrop-filter: blur(14px);
+		box-shadow: 0 1px 2px rgba(90, 70, 45, 0.1), 0 18px 42px rgba(90, 70, 45, 0.14);
+	}
+	.brand { display: block; margin-bottom: 0.7em; text-align: center; font-size: 0.6rem; letter-spacing: 0.34em; text-transform: uppercase; color: rgb(var(--muted-light)); }
+	.bay { position: relative; width: 100%; height: var(--h, 460px); }
+	.paper-wrap, .stage { position: absolute; inset: 0; }
+	.paper-wrap { z-index: 1; transition: opacity 0.3s ease; }
+	.stage { z-index: 2; overflow: hidden; pointer-events: none; }
+	.sheet {
+		box-sizing: border-box;
+		display: flex; flex-direction: column;
+		width: 100%; height: 100%;
+		padding: 1.6em 1.5em; overflow: hidden;
+		border: 1px solid rgb(var(--line));
+		border-radius: 6px 6px 12px 12px;
+		background:
+			radial-gradient(140% 90% at 15% -10%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 55%),
+			repeating-linear-gradient(90deg, rgba(46, 39, 32, 0.02) 0 1px, transparent 1px 3px),
+			repeating-linear-gradient(0deg, rgba(46, 39, 32, 0.025) 0 1px, transparent 1px 4px),
+			rgb(var(--paper));
+		box-shadow: 0 1px 2px rgba(90, 70, 45, 0.1), 0 14px 28px rgba(90, 70, 45, 0.13);
+		transition: opacity 0.3s ease;
+	}
+	.sheet.is-copy { position: absolute; top: 0; box-shadow: none; transition: none; }
+	.sheet-code { margin: 0; font-size: 0.62rem; letter-spacing: 0.28em; color: rgb(var(--muted-light)); }
+	.sheet-title { margin: 0.4em 0 0; font-size: 3.6rem; line-height: 1; letter-spacing: 0.02em; color: rgb(var(--accent)); }
+	.sheet-message { margin: 0.9em 0 0; font-size: 0.92rem; line-height: 1.7; color: rgb(var(--muted)); }
+	.rules { display: flex; flex-direction: column; gap: 0.62em; margin-top: 1.6em; }
+	.rules i { display: block; height: 2px; border-radius: 2px; background: rgb(var(--line)); }
+	.sheet-foot { margin: auto 0 0; padding-top: 1.2em; font-size: 0.6rem; letter-spacing: 0.22em; color: rgb(var(--muted-light)); }
+
+	/* 动态创建的条带拿不到 Astro 作用域属性，需要 :global 兜底 */
+	.shredder :global(.strip) {
+		position: absolute; top: 0; overflow: hidden; opacity: 1;
+		transform: translate3d(0, 0, 0); will-change: transform, opacity; backface-visibility: hidden;
+		transition: transform 1.2s cubic-bezier(0.45, 0.05, 0.9, 0.35), opacity 0.5s ease-in;
+		transition-delay: var(--delay, 0ms), calc(var(--delay, 0ms) + 700ms);
+	}
+	.shredder :global(.strip.is-falling) {
+		opacity: 0; transform: translate3d(var(--dx, 0), var(--dy, 480px), 0) rotate(var(--rot, 0deg));
+	}
+
+	.slot {
+		height: 13px; margin-top: 12px; border-radius: 4px;
+		background: repeating-linear-gradient(90deg, rgba(46, 39, 32, 0.45) 0 2px, transparent 2px 8px),
+			linear-gradient(180deg, rgb(214, 200, 178), rgb(239, 231, 217));
+		box-shadow: inset 0 3px 5px rgba(46, 39, 32, 0.4), 0 1px 0 rgba(255, 255, 255, 0.8);
+	}
+	.tray {
+		position: relative; display: flex; align-items: flex-end; justify-content: center;
+		height: 58px; margin-top: 6px; padding: 0 10px 7px; overflow: hidden;
+		border: 1px solid rgb(var(--line)); border-radius: 8px 8px 14px 14px;
+		background: linear-gradient(180deg, rgba(46, 39, 32, 0.07), rgba(46, 39, 32, 0.02));
+	}
+	.pile {
+		display: flex; align-items: flex-end; gap: 3px;
+		width: 62%; height: 24px; opacity: 0; transform: translateY(8px);
+		transition: opacity 0.4s ease 0.15s, transform 0.4s ease 0.15s;
+	}
+	.pile i {
+		flex: 1; height: 100%; border: 1px solid rgb(var(--line)); border-radius: 2px;
+		background: rgb(var(--paper)); box-shadow: 0 1px 2px rgba(90, 70, 45, 0.18);
+	}
+	.pile i:nth-child(1) { height: 58%; transform: rotate(-8deg); }
+	.pile i:nth-child(2) { height: 100%; transform: rotate(5deg); }
+	.pile i:nth-child(3) { height: 74%; transform: rotate(-3deg); }
+	.pile i:nth-child(4) { height: 88%; transform: rotate(9deg); }
+	.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.7em; }
+	.btn {
+		padding: 0.45em 1.1em; border: 1px solid rgb(var(--line)); border-radius: 999px;
+		background: rgba(255, 253, 248, 0.6); backdrop-filter: blur(14px);
+		color: rgb(var(--ink)); font: inherit; font-size: 0.82rem; cursor: pointer;
+		transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+	}
+	.btn-main { color: rgb(var(--accent)); border-color: rgba(var(--accent), 0.45); }
+	.btn:hover { color: rgb(var(--accent)); border-color: rgba(var(--accent), 0.6); background: rgb(var(--surface)); }
+	.btn:focus-visible { outline: 2px solid rgba(var(--accent), 0.5); outline-offset: 2px; }
+	.home { font-size: 0.82rem; color: rgb(var(--muted)); text-decoration: none; border-bottom: 1px solid rgb(var(--line)); }
+	.home:hover { color: rgb(var(--accent)); }
+	.status { min-height: 1.2em; margin: 0; font-size: 0.7rem; letter-spacing: 0.16em; color: rgb(var(--muted-light)); }
+
+	[data-reset] { display: none; }
+	.is-shredded [data-reset] { display: inline-flex; }
+	.is-shredded [data-shred] { display: none; }
+	.is-shredded .paper-wrap { opacity: 0; pointer-events: none; }
+	.is-shredded .pile { opacity: 1; transform: none; }
+	@media (max-width: 420px) {
+		.sheet-title { font-size: 2.9rem; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.shredder :global(.strip) { display: none; }
+		.sheet, .paper-wrap, .pile { transition-duration: 0.12s; }
+	}
+</style>

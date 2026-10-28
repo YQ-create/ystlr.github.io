@@ -1,0 +1,156 @@
+---
+// 全站动效引擎（无依赖）：
+//   [data-reveal]  滚动进场（IntersectionObserver，进入视口后单次触发）
+//   [data-glow]    玻璃卡片上的指针高光，写入 --mx / --my
+//   [data-tilt]    卡片 3D 倾斜，角度由 data-tilt 指定
+//   [data-progress] 顶部阅读进度条（写入 --progress）
+// Astro View Transitions 会替换 <body>，所以所有初始化都挂在 astro:page-load 上，
+// 并用 data-* 标记避免重复绑定。
+---
+
+<script>
+	type Cleanup = () => void;
+	const cleanups: Cleanup[] = [];
+	let bound = false;
+
+	const prefersReduced = () =>
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const coarsePointer = () => window.matchMedia('(pointer: coarse)').matches;
+
+	/* ---------- 滚动进场 ---------- */
+	function initReveal() {
+		const nodes = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-reveal]:not([data-reveal-ready])'),
+		);
+		if (nodes.length === 0) return;
+
+		if (prefersReduced() || !('IntersectionObserver' in window)) {
+			nodes.forEach((n) => n.classList.add('is-in'));
+			return;
+		}
+
+		const io = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (!entry.isIntersecting) continue;
+					const el = entry.target as HTMLElement;
+					el.classList.add('is-in');
+					io.unobserve(el);
+				}
+			},
+			{ threshold: 0.14, rootMargin: '0px 0px -6% 0px' },
+		);
+
+		nodes.forEach((n) => {
+			n.dataset.revealReady = '1';
+			const delay = n.dataset.revealDelay;
+			if (delay) n.style.setProperty('--reveal-delay', `${delay}ms`);
+			io.observe(n);
+		});
+
+		cleanups.push(() => io.disconnect());
+	}
+
+	/* ---------- 指针高光 ---------- */
+	function initGlow() {
+		const nodes = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-glow]:not([data-glow-ready])'),
+		);
+		if (nodes.length === 0 || coarsePointer()) return;
+
+		for (const node of nodes) {
+			node.dataset.glowReady = '1';
+			const move = (e: PointerEvent) => {
+				const r = node.getBoundingClientRect();
+				node.style.setProperty('--mx', `${e.clientX - r.left}px`);
+				node.style.setProperty('--my', `${e.clientY - r.top}px`);
+			};
+			node.addEventListener('pointermove', move, { passive: true });
+			cleanups.push(() => node.removeEventListener('pointermove', move));
+		}
+	}
+
+	/* ---------- 3D 倾斜 ---------- */
+	function initTilt() {
+		const nodes = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-tilt]:not([data-tilt-ready])'),
+		);
+		if (nodes.length === 0 || coarsePointer() || prefersReduced()) return;
+
+		for (const node of nodes) {
+			node.dataset.tiltReady = '1';
+			const max = Number(node.dataset.tilt) || 8;
+			const target = node.querySelector<HTMLElement>('[data-tilt-inner]') ?? node;
+
+			const move = (e: PointerEvent) => {
+				const r = node.getBoundingClientRect();
+				const px = (e.clientX - r.left) / r.width - 0.5;
+				const py = (e.clientY - r.top) / r.height - 0.5;
+				target.style.transform = `perspective(900px) rotateX(${(-py * max).toFixed(2)}deg) rotateY(${(px * max).toFixed(2)}deg)`;
+			};
+			const leave = () => {
+				target.style.transform = '';
+			};
+
+			node.addEventListener('pointermove', move, { passive: true });
+			node.addEventListener('pointerleave', leave, { passive: true });
+			cleanups.push(() => {
+				node.removeEventListener('pointermove', move);
+				node.removeEventListener('pointerleave', leave);
+			});
+		}
+	}
+
+	/* ---------- 阅读进度 ---------- */
+	function initProgress() {
+		const bar = document.querySelector<HTMLElement>('[data-progress]');
+		if (!bar) return;
+
+		let raf = 0;
+		const update = () => {
+			raf = 0;
+			const doc = document.documentElement;
+			const max = doc.scrollHeight - window.innerHeight;
+			const p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+			bar.style.setProperty('--progress', p.toFixed(4));
+		};
+		const onScroll = () => {
+			if (raf) return;
+			raf = requestAnimationFrame(update);
+		};
+
+		update();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll, { passive: true });
+		cleanups.push(() => {
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onScroll);
+			if (raf) cancelAnimationFrame(raf);
+		});
+	}
+
+	/* ---------- 编排 ---------- */
+	let pageToken = 0;
+	let mountedToken = -1;
+
+	function mount() {
+		if (mountedToken === pageToken) return;
+		mountedToken = pageToken;
+		cleanups.forEach((fn) => fn());
+		cleanups.length = 0;
+		initReveal();
+		initGlow();
+		initTilt();
+		initProgress();
+	}
+
+	if (!bound) {
+		bound = true;
+		// 换页时令牌加一，page-load 才会重新挂载监听
+		document.addEventListener('astro:before-swap', () => {
+			pageToken += 1;
+		});
+		document.addEventListener('astro:page-load', mount);
+	}
+	mount();
+</script>

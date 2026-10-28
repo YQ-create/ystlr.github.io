@@ -1,9 +1,8 @@
 ---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DriftWall from '../../components/DriftWall.astro';
 import { getCollection } from 'astro:content';
-import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
-import Header from '../../components/Header.astro';
-import { Image } from 'astro:assets';
+import { Image, getImage } from 'astro:assets';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
 const photos = (await getCollection('gallery')).sort(
@@ -36,42 +35,98 @@ for (const photo of photos) {
 	month.items.push(photo);
 }
 
+// 大图地址在构建期算好，灯箱直接取，避免放大时糊
+const bigUrls = new Map<string, string>();
+for (const photo of photos) {
+	const big = await getImage({ src: photo.data.image, width: 1600, format: 'webp' });
+	bigUrls.set(photo.id, big.src);
+}
+
+const wallItems = photos.map((photo) => ({
+	image: photo.data.image,
+	title: photo.data.title ?? photo.data.caption ?? '',
+	href: '#',
+}));
+
 const monthLabel = (m: number) => `${m} 月`;
 ---
 
-<!doctype html>
-<html lang="zh-CN">
-	<head>
-		<BaseHead title={`照片墙 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<header class="page-head">
-				<h1>照片墙</h1>
-				<p>生活里的瞬间，按年月慢慢整理成墙。</p>
-			</header>
+<BaseLayout title={`照片墙 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main class="gallery-main">
+		<header class="page-head" data-reveal>
+			<span class="sec-head__index">PHOTOS / {String(photos.length).padStart(2, '0')}</span>
+			<h1>照片墙</h1>
+			<p>生活里的瞬间，按年月慢慢整理成墙。点开任意一张可以放大看。</p>
+		</header>
 
-			{photos.length === 0 ? (
-				<div class="empty-state">
-					<p>暂无照片，后续添加后会在这里按年月展示。</p>
+		{photos.length === 0 ? (
+			<p class="empty-hint">暂无照片，添加后这里会按年月排列起来。</p>
+		) : (
+			<>
+				<!-- 流动的照片带：向左漂移，作为进入照片墙的过渡 -->
+				<div class="drift-band" data-reveal="mask">
+					<DriftWall
+						items={wallItems}
+						columns={6}
+						rows={2}
+						tileWidth={180}
+						tileHeight={120}
+						gap={16}
+						tilt={10}
+						turn={-9}
+						perspective={1200}
+						depth={90}
+						speed={26}
+						direction="left"
+						variance={0.5}
+						parallax={0.5}
+						lift={48}
+						fade={0.5}
+						dim={0.18}
+						height="clamp(260px, 34vh, 380px)"
+					/>
 				</div>
-			) : (
-				yearGroups.map((year) => (
+
+				<div class="gallery-timeline">
+					{yearGroups.map((year) => (
 					<section class="year-section">
-						<h2 class="year-title">{year.year} 年</h2>
+						<h2 class="year-title" data-reveal>
+							{year.year}
+							<span class="year-count">年 · {year.months.reduce((n, m) => n + m.items.length, 0)} 张</span>
+						</h2>
+
 						{year.months.map((month) => (
 							<div class="month-group">
-								<h3 class="month-title">{monthLabel(month.month)}</h3>
+								<h3 class="month-title" data-reveal>{monthLabel(month.month)}</h3>
 								<div class="gallery-grid">
-									{month.items.map((photo) => (
-										<figure class="gallery-item">
-											<Image
-												src={photo.data.image}
-												alt={photo.data.caption ?? photo.data.title ?? ''}
-												width={640}
-												loading="lazy"
-											/>
+									{month.items.map((photo, i) => (
+										<figure class="shot" data-reveal="scale" data-reveal-delay={i * 70}>
+											<button
+												class="shot-btn"
+												type="button"
+												data-lightbox
+												data-full={bigUrls.get(photo.id)}
+												data-caption={`${photo.data.title ?? ''}${photo.data.caption ? ' · ' + photo.data.caption : ''}`}
+												aria-label={`放大查看：${photo.data.title ?? '照片'}`}
+											>
+												<Image
+													src={photo.data.image}
+													alt={photo.data.caption ?? photo.data.title ?? ''}
+													widths={[400, 640, 900]}
+													sizes="(max-width: 720px) 46vw, 300px"
+													loading="lazy"
+												/>
+												<span class="shot-zoom" aria-hidden="true">
+													<svg viewBox="0 0 16 16" width="14" height="14">
+														<path
+															fill="none"
+															stroke="currentColor"
+															stroke-width="1.6"
+															stroke-linecap="round"
+															d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
+													</svg>
+												</span>
+											</button>
 											{photo.data.caption && (
 												<figcaption>{photo.data.caption}</figcaption>
 											)}
@@ -81,79 +136,273 @@ const monthLabel = (m: number) => `${m} 月`;
 							</div>
 						))}
 					</section>
-				))
-			)}
-		</main>
-		<Footer />
-	</body>
-</html>
+				))}
+				</div>
+			</>
+		)}
+	</main>
+
+	<!-- 灯箱 -->
+	<div class="lightbox" data-lightbox-root hidden>
+		<div class="lightbox-veil" data-lightbox-close></div>
+		<figure class="lightbox-figure">
+			<img data-lightbox-img alt="" />
+			<figcaption>
+				<span data-lightbox-caption></span>
+				<button class="lightbox-close" type="button" data-lightbox-close aria-label="关闭">
+					×
+				</button>
+			</figcaption>
+		</figure>
+	</div>
+</BaseLayout>
+
+<script>
+	// 灯箱：View Transitions 下脚本只执行一次，元素每次导航后重新查询。
+	let lastFocus: HTMLElement | null = null;
+	let wired = false;
+
+	function closeLightbox() {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		const img = document.querySelector<HTMLImageElement>('[data-lightbox-img]');
+		if (!root) return;
+		root.classList.remove('is-open');
+		document.body.style.overflow = '';
+		window.setTimeout(() => {
+			root.hidden = true;
+			if (img) img.removeAttribute('src');
+		}, 220);
+		lastFocus?.focus();
+	}
+
+	function openLightbox(trigger: HTMLElement) {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		const img = document.querySelector<HTMLImageElement>('[data-lightbox-img]');
+		const caption = document.querySelector<HTMLElement>('[data-lightbox-caption]');
+		if (!root || !img) return;
+		lastFocus = trigger;
+		img.src = trigger.dataset.full ?? '';
+		if (caption) caption.textContent = trigger.dataset.caption ?? '';
+		root.hidden = false;
+		document.body.style.overflow = 'hidden';
+		requestAnimationFrame(() => root.classList.add('is-open'));
+		root.querySelector<HTMLElement>('[data-lightbox-close]')?.focus();
+	}
+
+	function init() {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		if (!root || root.dataset.wired === '1') return;
+		root.dataset.wired = '1';
+
+		root.addEventListener('click', (e) => {
+			if ((e.target as HTMLElement).closest('[data-lightbox-close]')) closeLightbox();
+		});
+
+		document.querySelectorAll<HTMLElement>('[data-lightbox]').forEach((t) => {
+			t.addEventListener('click', () => openLightbox(t));
+		});
+	}
+
+	if (!wired) {
+		wired = true;
+		document.addEventListener('keydown', (e) => {
+			const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+			if (e.key === 'Escape' && root && !root.hidden) closeLightbox();
+		});
+	}
+
+	document.addEventListener('astro:page-load', init);
+	if (document.readyState !== 'loading') init();
+	else document.addEventListener('DOMContentLoaded', init);
+</script>
 
 <style>
-	main {
-		max-width: 920px;
+	.gallery-main {
+		width: var(--w-page);
+		margin-inline: auto;
 	}
 	.page-head {
-		padding: 1em 0 1.2em;
-		border-bottom: 1px solid rgb(var(--line));
-		margin-bottom: 1.5em;
+		padding: 1rem 0 1.2rem;
 	}
 	.page-head h1 {
-		font-size: 2rem;
-		margin-bottom: 0.3em;
+		margin: 0.2em 0 0.35em;
 	}
 	.page-head p {
 		color: rgb(var(--muted));
 		margin: 0;
 	}
+
+	.drift-band {
+		/* 通栏溢出：照片带比正文更宽，视觉上像一条从画面外流过的河 */
+		margin: 0.5rem calc(50% - 50vw) clamp(1.6rem, 4vw, 2.6rem);
+	}
+
 	.year-section {
-		margin-bottom: 2.5em;
+		margin-bottom: clamp(2rem, 4vw, 3rem);
 	}
 	.year-title {
-		font-size: 1.3rem;
-		color: rgb(var(--accent));
-		border-left: 3px solid rgb(var(--accent));
-		padding-left: 0.7em;
-		margin-bottom: 1em;
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		font-size: 1.35rem;
+		color: rgb(var(--ink));
+		margin: 0 0 1.1rem;
+		padding-bottom: 0.6rem;
+		border-bottom: 1px solid rgba(var(--line), 1);
+	}
+	.year-count {
+		font-size: 0.74rem;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		color: rgb(var(--muted-light));
 	}
 	.month-group {
-		margin-bottom: 1.8em;
+		margin-bottom: 1.8rem;
 	}
 	.month-title {
-		font-size: 0.95rem;
-		color: rgb(var(--muted));
-		margin-bottom: 0.8em;
+		font-size: 0.82rem;
 		font-weight: 600;
+		letter-spacing: 0.2em;
+		color: rgb(var(--muted));
+		margin: 0 0 0.8rem;
+		text-transform: uppercase;
 	}
+
 	.gallery-grid {
 		columns: 3;
-		column-gap: 1em;
+		column-gap: clamp(0.7rem, 1.6vw, 1.1rem);
 	}
-	.gallery-item {
+	.shot {
 		break-inside: avoid;
-		margin: 0 0 1em;
-		background: rgb(var(--paper));
-		border: 1px solid rgb(var(--line));
-		border-radius: 14px;
+		margin: 0 0 clamp(0.7rem, 1.6vw, 1.1rem);
+		border-radius: var(--r-lg);
 		overflow: hidden;
-		box-shadow: var(--box-shadow);
+		background: rgba(255, 253, 248, 0.55);
+		border: 1px solid rgba(255, 255, 255, 0.7);
+		backdrop-filter: blur(10px);
+		box-shadow: var(--glass-shine), var(--shadow-sm);
+		transition:
+			transform var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out);
 	}
-	.gallery-item img {
+	.shot:hover {
+		transform: translateY(-3px);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
+	}
+	.shot-btn {
+		position: relative;
+		display: block;
+		width: 100%;
+		padding: 0;
+		border: none;
+		background: none;
+		cursor: zoom-in;
+	}
+	.shot-btn img {
 		display: block;
 		width: 100%;
 		border-radius: 0;
+		transition: transform 0.9s var(--ease-out);
 	}
-	.gallery-item figcaption {
-		padding: 0.7em 0.9em;
-		font-size: 0.88rem;
+	.shot:hover .shot-btn img {
+		transform: scale(1.04);
+	}
+	.shot-zoom {
+		position: absolute;
+		top: 0.7rem;
+		right: 0.7rem;
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		background: rgba(255, 253, 248, 0.85);
+		color: rgb(var(--ink-soft));
+		opacity: 0;
+		transform: scale(0.85);
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-spring);
+	}
+	.shot:hover .shot-zoom {
+		opacity: 1;
+		transform: none;
+	}
+	.shot figcaption {
+		padding: 0.6rem 0.85rem 0.75rem;
+		font-size: 0.82rem;
+		line-height: 1.55;
 		color: rgb(var(--muted));
-		line-height: 1.5;
 	}
-	.empty-state {
-		margin-top: 2em;
-		text-align: center;
-		color: rgb(var(--muted));
+
+	/* ---- 灯箱 ---- */
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: grid;
+		place-items: center;
+		padding: clamp(1rem, 4vw, 3rem);
 	}
-	@media (max-width: 720px) {
+	.lightbox-veil {
+		position: absolute;
+		inset: 0;
+		background: rgba(38, 32, 26, 0.72);
+		backdrop-filter: blur(14px);
+		opacity: 0;
+		transition: opacity 0.24s var(--ease-out);
+	}
+	.lightbox.is-open .lightbox-veil {
+		opacity: 1;
+	}
+	.lightbox-figure {
+		position: relative;
+		margin: 0;
+		max-width: min(1100px, 92vw);
+		transform: scale(0.96) translateY(10px);
+		opacity: 0;
+		transition:
+			transform 0.3s var(--ease-spring),
+			opacity 0.24s var(--ease-out);
+	}
+	.lightbox.is-open .lightbox-figure {
+		transform: none;
+		opacity: 1;
+	}
+	.lightbox-figure img {
+		display: block;
+		max-height: 78vh;
+		width: auto;
+		border-radius: var(--r-md);
+		box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
+	}
+	.lightbox-figure figcaption {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 0.8rem;
+		font-size: 0.86rem;
+		color: rgba(255, 253, 248, 0.82);
+	}
+	.lightbox-close {
+		flex-shrink: 0;
+		width: 34px;
+		height: 34px;
+		border-radius: 50%;
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		background: rgba(255, 255, 255, 0.1);
+		color: #fff;
+		font-size: 1.1rem;
+		line-height: 1;
+		cursor: pointer;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.lightbox-close:hover {
+		background: rgba(255, 255, 255, 0.22);
+	}
+
+	@media (max-width: 860px) {
 		.gallery-grid {
 			columns: 2;
 		}

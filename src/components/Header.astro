@@ -130,6 +130,7 @@ const navItems = [
 			raf = requestAnimationFrame(() => {
 				raf = 0;
 				shell.classList.toggle('is-scrolled', window.scrollY > 16);
+				shell.classList.toggle('is-top', document.body.dataset.hero === '1' && window.scrollY < 24);
 			});
 		};
 		onScroll();
@@ -276,6 +277,23 @@ const navItems = [
 		position: relative;
 		z-index: 1;
 	}
+	/* 首页：页头脱离文档流，Hero 从屏幕最顶端开始，两者同一张画面 */
+	:global(body[data-hero='1']) .site-head {
+		position: fixed;
+		inset: 0 0 auto;
+	}
+
+	/* 首页：页头浮在整屏画面上，不另起一块玻璃 */
+	.head-shell :global(.head-shell__glass) {
+		transition: opacity 0.55s var(--ease-out);
+	}
+	:global(body[data-hero='1']) .head-shell.is-top {
+		box-shadow: none;
+	}
+	:global(body[data-hero='1']) .head-shell.is-top :global(.head-shell__glass) {
+		opacity: 0;
+	}
+
 	.head-actions {
 		display: flex;
 		align-items: center;

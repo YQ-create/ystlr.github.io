@@ -43,7 +43,7 @@ const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => (
 const latest = posts[0]?.data.pubDate;
 ---
 
-<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION} hero>
 	<main class="home">
 		<!-- ============ Hero ============ -->
 		<section class="hero">
@@ -194,7 +194,7 @@ const latest = posts[0]?.data.pubDate;
 		</div>
 
 		<!-- ============ 照片墙 ============ -->
-		<section class="sec sec--gallery">
+		<section class="sec sec--gallery sec--wall">
 			<div class="wrap">
 				<header class="sec-head">
 					<div>
@@ -226,7 +226,7 @@ const latest = posts[0]?.data.pubDate;
 						<DepthCarousel
 							items={carouselItems}
 							depth={260}
-							spread={185}
+							spread={215}
 							tilt={26}
 							tiltDirection="right"
 							perspective={1400}
@@ -295,18 +295,30 @@ const latest = posts[0]?.data.pubDate;
 	/* ---------- Hero ---------- */
 	.hero {
 		position: relative;
-		min-height: min(92vh, 880px);
+		min-height: 100svh;
 		display: flex;
 		align-items: center;
-		padding: clamp(4rem, 10vh, 7rem) 0 clamp(5rem, 12vh, 8rem);
+		padding: clamp(6rem, 14vh, 9rem) 0 clamp(4rem, 9vh, 6rem);
 		overflow: hidden;
 		isolation: isolate;
 	}
 	.hero-waves {
 		position: absolute;
-		inset: -10% -10% 0;
+		inset: -16% -12% -10%;
 		z-index: -1;
-		opacity: 0.9;
+		opacity: 1;
+		transform: scale(1.08);
+	}
+	/* 让整屏像一张连续的画：底部压暗、左上角留一层暖雾 */
+	.hero::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background:
+			radial-gradient(120% 80% at 8% 6%, rgba(var(--bg), 0.66), transparent 46%),
+			linear-gradient(to bottom, transparent 58%, rgba(var(--bg), 0.88) 100%);
 	}
 	.hero-inner {
 		position: relative;
@@ -476,6 +488,16 @@ const latest = posts[0]?.data.pubDate;
 	}
 
 	/* ---------- 区块 ---------- */
+	/* 照片墙：往上压住 Hero 的底边，卡片像是从画面里浮出来 */
+	.sec--wall {
+		position: relative;
+		z-index: 2;
+	}
+	.sec--wall .wrap {
+		max-width: none;
+		padding-inline: clamp(0.25rem, 1.5vw, 1.5rem);
+	}
+
 	.sec {
 		padding: clamp(3.6rem, 8vw, 6.5rem) 0;
 	}

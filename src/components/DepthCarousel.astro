@@ -152,7 +152,7 @@ const start = 0;
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: clamp(150px, 18vw, 250px);
+		width: clamp(160px, 21vw, 300px);
 		aspect-ratio: 4 / 5;
 		margin: 0;
 		padding: 0;
@@ -341,7 +341,7 @@ const start = 0;
 			const k = scaleFactor();
 			const spread = cfg.spread * k;
 			const depth = cfg.depth * k;
-			const maxSide = n <= 4 ? 1 : Math.max(2, Math.ceil(cfg.visible / 2));
+			const maxSide = Math.max(2, Math.ceil(cfg.visible / 2));
 
 			cards.forEach((card, i) => {
 				const d = wrap(i - active);
@@ -358,7 +358,7 @@ const start = 0;
 				card.dataset.hidden = hidden ? '1' : '0';
 				card.dataset.active = d === 0 ? '1' : '0';
 				card.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), ${z}px) rotateY(${rot}deg) scale(${scale})`;
-				card.style.opacity = hidden ? '0' : String(Math.max(0, 1 - ad * cfg.falloff * 1.9));
+				card.style.opacity = hidden ? '0' : String(Math.max(0, 1 - ad * cfg.falloff * 2.2));
 				card.style.filter = ad > 0 && cfg.blur > 0 ? `blur(${(ad * cfg.blur).toFixed(1)}px)` : 'none';
 				card.style.zIndex = String(100 - Math.round(ad * 2));
 				card.tabIndex = d === 0 ? 0 : -1;

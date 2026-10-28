@@ -75,14 +75,22 @@ npm run preview
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
-| `SpectralDrape.astro` | 首页 Hero 的光点织物背景（透视铺开、褶皱起伏、指针顶包） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
+| `AcidSquares.astro` | 首页 Hero 的方格地面（WebGL2，透视凸块 + 波纹 + 指针按压） | `color`/`accentColor`/`secondaryColor`（可传 `--token`）、`tileSize`、`gap`、`roundness`、`bulge`、`rotation`、`gloss`、`speed`、`lighting`、`grain`、`fade`、`opacity`、`detail` |
+| `TechText.astro` | 首页大标题（canvas 逐字绘制，虚线线框 + 尺寸标注 + 入场动画） | `text`、`color`/`accentColor`（可传 `--token`）、`align`、`strokeWidth`、`lineStyle`、`reveal`、`labels`、`selection`、`sweep`、`intro`、`draggable` |
 | `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
 | `DepthCarousel.astro` | 3D 纵深照片轮播（首页、照片墙） | `items`、`depth`、`spread`、`tilt`、`tiltDirection`、`visibleCards`、`falloff`、`blur`、`autoplay`、`loop` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
 | `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
-| `MaskedHeading.astro` | 用图片/视频填充文字（首页大标题、副标题） | `text`、`mediaType`、`src`、`fillScale`、`parallax`、`spotlight`、`outline`、`strokeWidth`、`strokeColor` |
 | `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
 | `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
+| `SpectralDrape.astro` | 点阵织物背景（目前未被页面引用，留着备用） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
+| `MaskedHeading.astro` | 用图片/视频填充文字（目前未被页面引用，留着备用） | `text`、`mediaType`、`src`、`fillScale`、`parallax`、`spotlight`、`outline`、`strokeWidth`、`strokeColor` |
+
+`AcidSquares` 与 `TechText` 是 React Bits 同名组件的原生移植（不引入 React）。它们的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`：Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
+
+两者的配色都支持 `--token` 形式（如 `color="--bg-deep"`），运行时用 `getComputedStyle` 解析成 `rgb()`，所以深浅色切换不用改组件。`AcidSquares` 在主题切换时会重建实例（释放旧 WebGL 上下文），`TechText` 因为默认取 `currentColor`，只需重绘。
+
+`TechText` 的 `sweep` 默认是 `true`（指针不在时自动巡航扫描），用作标题时建议关掉——否则标题会长期有一个字处于线框态，影响可读性。
 
 `SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
 

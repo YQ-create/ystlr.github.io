@@ -18,3 +18,10 @@ export const SOCIAL_LINKS = {
 	x: '',
 	email: 'mailto:hello@ystlr.com',
 };
+
+// 管理后台（/admin）直连的仓库地址：换仓库账号时改这里
+export const ADMIN = {
+	owner: 'YQ-create',
+	repo: 'ystlr.github.io',
+	branch: 'main',
+};

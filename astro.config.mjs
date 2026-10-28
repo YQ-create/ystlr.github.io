@@ -14,7 +14,13 @@ export default defineConfig({
 		// 目录式 URL（/blog/post/），与 GitHub Pages 的目录结构保持一致
 		format: 'directory',
 	},
-	integrations: [mdx(), sitemap()],
+	integrations: [
+		mdx(),
+		sitemap({
+			// 管理后台不进 sitemap
+			filter: (page) => !page.includes('/admin'),
+		}),
+	],
 	fonts: [
 		{
 			provider: fontProviders.local(),

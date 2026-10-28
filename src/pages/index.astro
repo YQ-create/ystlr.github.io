@@ -42,18 +42,26 @@ import heroBg from '../assets/portfolio/hero-bg.jpg';
 					<h2>精选作品</h2>
 					<a href="/projects" class="more">全部作品 →</a>
 				</div>
-				<div class="rail">
-					{projects.map((project) => (
-						<a class="rail-card" href="/projects" aria-label={project.title}>
-							<div class="rail-cover">
-								<Image src={project.cover} alt={project.title} width={600} height={450} />
-							</div>
-							<div class="rail-meta">
-								<span class="rail-title">{project.title}</span>
-								<span class="rail-year">{project.year}</span>
-							</div>
-						</a>
-					))}
+				<div class="marquee" role="region" aria-label="精选作品，自动向左循环滚动">
+					<div class="marquee-track">
+						{[...projects, ...projects].map((project, index) => (
+							<a
+								class="rail-card"
+								href="/projects"
+								aria-label={project.title}
+								aria-hidden={index >= projects.length ? 'true' : undefined}
+								tabindex={index >= projects.length ? -1 : undefined}
+							>
+								<div class="rail-cover">
+									<Image src={project.cover} alt={project.title} width={600} height={450} />
+								</div>
+								<div class="rail-meta">
+									<span class="rail-title">{project.title}</span>
+									<span class="rail-year">{project.year}</span>
+								</div>
+							</a>
+						))}
+					</div>
 				</div>
 			</section>
 
@@ -189,18 +197,37 @@ import heroBg from '../assets/portfolio/hero-bg.jpg';
 	.more:hover {
 		color: rgb(var(--accent));
 	}
-	.rail {
-		display: flex;
-		gap: 1.4em;
-		overflow-x: auto;
+	/* ---- 作品自动横滚（无缝循环） ---- */
+	.marquee {
+		position: relative;
+		overflow: hidden;
 		padding-bottom: 1em;
-		scroll-snap-type: x mandatory;
-		scrollbar-width: thin;
-		scrollbar-color: rgb(var(--line)) transparent;
+		-webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+		mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+	}
+	.marquee-track {
+		display: flex;
+		width: max-content;
+		animation: marquee-scroll 42s linear infinite;
+		will-change: transform;
+	}
+	/* 悬停 / 键盘聚焦 / 触摸时暂停，方便看清和点击 */
+	.marquee:hover .marquee-track,
+	.marquee:focus-within .marquee-track,
+	.marquee.is-paused .marquee-track {
+		animation-play-state: paused;
+	}
+	@keyframes marquee-scroll {
+		from {
+			transform: translate3d(0, 0, 0);
+		}
+		to {
+			transform: translate3d(-50%, 0, 0);
+		}
 	}
 	.rail-card {
 		flex: 0 0 min(340px, 78vw);
-		scroll-snap-align: start;
+		margin-right: 1.4em;
 		text-decoration: none;
 	}
 	.rail-cover {
@@ -255,6 +282,16 @@ import heroBg from '../assets/portfolio/hero-bg.jpg';
 		color: rgb(var(--accent));
 		text-decoration: none;
 		font-weight: 600;
+	}
+
+	/* 系统开启“减少动态效果”时退化为可手动横滑 */
+	@media (prefers-reduced-motion: reduce) {
+		.marquee {
+			overflow-x: auto;
+		}
+		.marquee-track {
+			animation: none;
+		}
 	}
 
 	@media (max-width: 720px) {

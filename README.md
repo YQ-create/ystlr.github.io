@@ -30,19 +30,25 @@ npm run preview
 
 ```text
 ├── public/                  # 静态资源，原样复制到产物；CNAME 为自定义域名配置
+│   └── audio/               # 顶部播放器的音频文件（后台可上传）
 ├── src/
 │   ├── assets/
-│   │   ├── portfolio/      # 首页 Hero 背景、关于页头像
-│   │   └── works/          # 作品封面图（work-1 ~ work-6）
-│   ├── components/         # 页头、页脚、作品卡片、文章列表项等组件
-│   ├── content/blog/       # 所有博客文章（一篇文章一个 Markdown 文件）
-│   ├── data/projects.ts    # 作品列表：标题、简介、标签、年份、封面
-│   ├── layouts/            # 文章详情布局
-│   ├── pages/             # 路由：首页 /、作品 /projects、关于 /about、博客 /blog
-│   ├── styles/global.css   # 全局配色与排版变量（暗色主题 token 在顶部）
-│   └── consts.ts           # 站点标题、Hero 文案、作者、社交链接
+│   │   ├── blog/            # 文章题图（后台可上传）
+│   │   ├── portfolio/       # 首页 Hero 背景、关于页头像
+│   │   └── works/           # 作品封面图（后台可上传）
+│   ├── admin/               # 管理后台前端逻辑（GitHub API 客户端 + 界面）
+│   ├── components/          # 页头、页脚、音乐播放器、作品卡片、文章列表项等组件
+│   ├── content/blog/        # 所有博客文章（一篇文章一个 Markdown 文件）
+│   ├── data/
+│   │   ├── projects.json    # 作品数据（后台写入，页面读取）
+│   │   ├── projects.ts      # 读取 projects.json 并匹配封面图，输出给页面
+│   │   └── playlist.json    # 播放器曲目列表（后台写入）
+│   ├── layouts/             # 文章详情布局
+│   ├── pages/               # 路由：/、/projects、/about、/blog、/admin（后台）
+│   ├── styles/global.css    # 全局配色与排版变量（暗色主题 token 在顶部）
+│   └── consts.ts            # 站点标题、Hero 文案、作者、社交链接、后台仓库信息
 ├── .github/workflows/deploy.yml   # GitHub Pages 自动部署流程
-└── astro.config.mjs        # 站点域名与集成配置
+└── astro.config.mjs         # 站点域名与集成配置
 ```
 
 ## 常用修改位置
@@ -50,12 +56,14 @@ npm run preview
 | 想改什么 | 改哪里 |
 | --- | --- |
 | 站点标题、Hero 头衔与两行副标题、邮箱、GitHub 链接 | `src/consts.ts` |
-| 作品标题、简介、标签、年份、封面、跳转链接 | `src/data/projects.ts` |
+| 作品（增删改、换封面） | 后台 `/admin` → 作品；数据在 `src/data/projects.json` |
+| 博客文章（写作、发布、删除） | 后台 `/admin` → 博客；文件在 `src/content/blog/` |
+| 顶部播放器曲目（上传音乐） | 后台 `/admin` → 音乐；曲目在 `src/data/playlist.json` |
 | 首页 Hero 背景图、横滑作品条、简介区块 | `src/pages/index.astro` |
 | 作品页大图网格 | `src/pages/projects/index.astro` + `src/components/WorkCard.astro` |
 | 关于页简介、擅长方向、工具、经历时间线 | `src/pages/about.astro` |
 | 暗色配色（荧光绿、背景、文字、边框） | `src/styles/global.css` 顶部 CSS 变量 |
-| 导航菜单项 | `src/components/Header.astro` |
+| 导航菜单项、播放器位置 | `src/components/Header.astro` |
 | 站点域名 | `astro.config.mjs` 的 `site` 与 `public/CNAME` |
 
 ### 替换占位内容
@@ -63,9 +71,28 @@ npm run preview
 上线前需要把当前占位文案换成真实信息：
 
 1. `src/consts.ts`：`HERO.role`、两行 `tagline`、社交链接；
-2. `src/data/projects.ts`：六条作品的标题、描述、标签、年份与封面图；把新封面放进 `src/assets/works/` 并修改文件顶部 import；
+2. `src/data/projects.json`（或直接在 `/admin` 后台里改）：六条作品的标题、描述、标签、年份与封面图；
 3. `src/pages/about.astro`：头像、个人简介、两栏擅长方向与工具、`timeline` 经历条目；
 4. 头像替换：新图放进 `src/assets/portfolio/avatar.jpg`（保持同名覆盖即可）；Hero 背景替换 `src/assets/portfolio/hero-bg.jpg`。
+
+## 管理后台（/admin）
+
+浏览器打开 https://ystlr.com/admin/ （本地开发是 http://localhost:4321/admin/ ），用 GitHub Token 登录后即可：
+
+- **作品**：新建 / 编辑 / 删除，上传封面图（构建时自动转成 webp）；
+- **博客**：写 Markdown 正文、上传题图、发布或删除文章；
+- **音乐**：上传音频，立刻出现在顶部播放器里。
+
+原理：页面直接用 GitHub API 把改动提交到 `main` 分支（一次保存 = 一个 commit），GitHub Actions 随即重新构建发布，通常 1–2 分钟后线上生效。误操作时在 GitHub 上 revert 那次 commit 即可回滚。
+
+### 准备 Token（只需一次）
+
+1. 打开 https://github.com/settings/personal-access-tokens/new ；
+2. Repository access → **Only select repositories** → 勾选 `ystlr.github.io`；
+3. Permissions → Repository permissions → **Contents: Read and write**；
+4. 生成后复制 `github_pat_…`，粘贴到 `/admin` 的登录框，有效期建议 1 年。
+
+Token 存在浏览器本地存储里，等同于仓库写入权限：不要在公共电脑勾选「记住登录」；怀疑泄露时到 GitHub 撤销并重新生成即可。
 
 ## 写一篇新文章
 

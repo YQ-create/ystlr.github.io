@@ -1,0 +1,500 @@
+---
+// 顶部音乐播放器：曲目来自 src/data/playlist.json，音频文件放在 public/audio/。
+// 后台 /admin → 「音乐」可以上传音频并自动写入 playlist.json。
+
+import playlist from '../data/playlist.json';
+
+interface Track {
+	title: string;
+	artist?: string;
+	src: string;
+}
+
+const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
+	? (playlist as { tracks: Track[] }).tracks
+	: [];
+---
+
+<script type="application/json" data-music-tracks set:html={JSON.stringify(tracks)}></script>
+
+<div class="music" data-music data-count={tracks.length}>
+	<button class="music-btn" type="button" data-music-toggle aria-expanded="false" aria-label="音乐播放器">
+		<svg class="icon-note" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+			<path
+				fill="currentColor"
+				d="M13.5 1.6a.6.6 0 0 1 .7.6v8.1a2.4 2.4 0 1 1-1.2-2.1V4.3L6.5 5.7v6a2.4 2.4 0 1 1-1.2-2.1V3.4a.6.6 0 0 1 .47-.58l7.73-1.22Z"
+			></path>
+		</svg>
+		<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+	</button>
+
+	<div class="music-panel" data-music-panel hidden>
+		<div class="np">
+			<p class="np-title" data-music-title>尚未添加音乐</p>
+			<p class="np-artist" data-music-artist></p>
+		</div>
+
+		<div class="progress" data-music-bar>
+			<span class="progress-fill" data-music-progress></span>
+		</div>
+		<div class="time">
+			<span data-music-current>0:00</span>
+			<span data-music-duration>0:00</span>
+		</div>
+
+		<div class="controls">
+			<button type="button" data-music-prev aria-label="上一首" class="ctrl">⏮</button>
+			<button type="button" data-music-play aria-label="播放" class="ctrl ctrl-main">▶</button>
+			<button type="button" data-music-next aria-label="下一首" class="ctrl">⏭</button>
+		</div>
+
+		<ol class="list" data-music-list>
+			{tracks.map((track, index) => (
+				<li>
+					<button type="button" data-music-track={index} class="track">
+						<span class="track-index">{String(index + 1).padStart(2, '0')}</span>
+						<span class="track-name">{track.title}</span>
+					</button>
+				</li>
+			))}
+		</ol>
+
+		<p class="hint" data-music-empty hidden>
+			后台还没有曲目。登录 <a href="/admin/">/admin</a> → 「音乐」上传一首即可。
+		</p>
+
+		<audio data-music-audio transition:persist preload="metadata"></audio>
+	</div>
+</div>
+
+<script>
+	type Track = { title: string; artist?: string; src: string };
+
+	const MUSIC_STATE_KEY = 'ystlr:music';
+
+	let tracks: Track[] = [];
+	let currentIndex = -1;
+	let timer: number | undefined;
+
+	function audioEl(): HTMLAudioElement | null {
+		return document.querySelector<HTMLAudioElement>('[data-music-audio]');
+	}
+
+	function readTracks(): Track[] {
+		const node = document.querySelector<HTMLScriptElement>('script[data-music-tracks]');
+		if (!node?.textContent) return [];
+		try {
+			return JSON.parse(node.textContent) as Track[];
+		} catch {
+			return [];
+		}
+	}
+
+	function fmt(seconds: number): string {
+		if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+		const m = Math.floor(seconds / 60);
+		const s = Math.floor(seconds % 60);
+		return `${m}:${String(s).padStart(2, '0')}`;
+	}
+
+	function load(index: number, autoplay: boolean) {
+		const audio = audioEl();
+		if (!audio || !tracks[index]) return;
+		currentIndex = index;
+		const track = tracks[index];
+		if (audio.getAttribute('src') !== track.src) {
+			audio.setAttribute('src', track.src);
+			audio.load();
+		}
+		if (autoplay) void audio.play().catch(() => {});
+		render();
+	}
+
+	function next(step = 1) {
+		if (!tracks.length) return;
+		const index = (currentIndex + step + tracks.length) % tracks.length;
+		load(index, true);
+	}
+
+	function render() {
+		const root = document.querySelector<HTMLElement>('[data-music]');
+		if (!root) return;
+		const audio = audioEl();
+		const track = tracks[currentIndex];
+		const playing = !!audio && !audio.paused && !!audio.getAttribute('src');
+
+		root.classList.toggle('is-playing', playing);
+		root.setAttribute('data-count', String(tracks.length));
+
+		const title = root.querySelector<HTMLElement>('[data-music-title]');
+		const artist = root.querySelector<HTMLElement>('[data-music-artist]');
+		const playBtn = root.querySelector<HTMLButtonElement>('[data-music-play]');
+		const empty = root.querySelector<HTMLElement>('[data-music-empty]');
+		const list = root.querySelector<HTMLElement>('[data-music-list]');
+		const progress = root.querySelector<HTMLElement>('[data-music-progress]');
+		const current = root.querySelector<HTMLElement>('[data-music-current]');
+		const duration = root.querySelector<HTMLElement>('[data-music-duration]');
+		const matches = root.querySelectorAll<HTMLElement>('[data-music-track]');
+
+		if (title) title.textContent = track?.title ?? '尚未添加音乐';
+		if (artist) artist.textContent = track?.artist ?? '';
+		if (playBtn) {
+			playBtn.textContent = playing ? '⏸' : '▶';
+			playBtn.setAttribute('aria-label', playing ? '暂停' : '播放');
+		}
+		if (empty) empty.hidden = tracks.length > 0;
+		if (list) list.hidden = tracks.length === 0;
+
+		matches.forEach((node, index) => {
+			node.classList.toggle('active', index === currentIndex);
+		});
+
+		if (audio) {
+			const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
+			if (progress) progress.style.width = `${Math.min(100, ratio * 100)}%`;
+			if (current) current.textContent = fmt(audio.currentTime);
+			if (duration) duration.textContent = fmt(audio.duration);
+		}
+	}
+
+	function tick() {
+		const audio = audioEl();
+		if (!audio || !audio.getAttribute('src')) return;
+		const root = document.querySelector<HTMLElement>('[data-music]');
+		if (!root) return;
+		const progress = root.querySelector<HTMLElement>('[data-music-progress]');
+		const current = root.querySelector<HTMLElement>('[data-music-current]');
+		const duration = root.querySelector<HTMLElement>('[data-music-duration]');
+		const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
+		if (progress) progress.style.width = `${Math.min(100, ratio * 100)}%`;
+		if (current) current.textContent = fmt(audio.currentTime);
+		if (duration) duration.textContent = fmt(audio.duration);
+	}
+
+	function openPanel(open: boolean) {
+		const panel = document.querySelector<HTMLElement>('[data-music-panel]');
+		const toggle = document.querySelector<HTMLElement>('[data-music-toggle]');
+		if (!panel || !toggle) return;
+		panel.hidden = !open;
+		toggle.setAttribute('aria-expanded', String(open));
+	}
+
+	function bind() {
+		tracks = readTracks();
+		const audio = audioEl();
+		if (!audio) return;
+
+		// 首次进入：如果之前播放过，恢复曲目（浏览器会拦住自动播放，只恢复位置）
+		if (currentIndex < 0 && audio.getAttribute('src')) {
+			const src = audio.getAttribute('src');
+			const found = tracks.findIndex((track) => track.src === src);
+			currentIndex = found >= 0 ? found : 0;
+		}
+
+		if (currentIndex < 0 && tracks.length) load(0, false);
+		render();
+
+		window.clearInterval(timer);
+		timer = window.setInterval(tick, 500);
+	}
+
+	document.addEventListener('click', (event) => {
+		const target = event.target as HTMLElement;
+		const root = document.querySelector<HTMLElement>('[data-music]');
+		if (!root) return;
+
+		if (target.closest('[data-music-toggle]')) {
+			const panel = root.querySelector<HTMLElement>('[data-music-panel]');
+			openPanel(!!panel?.hidden);
+			return;
+		}
+
+		// 点击播放器外部时收起面板
+		if (!target.closest('[data-music]') && !root.querySelector('[data-music-panel]')?.hasAttribute('hidden')) {
+			openPanel(false);
+		}
+
+		const audio = audioEl();
+		if (!audio) return;
+
+		if (target.closest('[data-music-play]')) {
+			if (!tracks.length) return;
+			if (!audio.getAttribute('src')) load(0, true);
+			else if (audio.paused) void audio.play().catch(() => {});
+			else audio.pause();
+			return;
+		}
+
+		if (target.closest('[data-music-prev]')) {
+			next(-1);
+			return;
+		}
+
+		if (target.closest('[data-music-next]')) {
+			next(1);
+			return;
+		}
+
+		const trackButton = target.closest<HTMLElement>('[data-music-track]');
+		if (trackButton) {
+			const index = Number(trackButton.dataset.musicTrack);
+			load(index, true);
+			return;
+		}
+
+		const bar = target.closest('[data-music-bar]');
+		if (bar && audio.duration) {
+			const rect = bar.getBoundingClientRect();
+			const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+			audio.currentTime = ratio * audio.duration;
+			tick();
+		}
+	});
+
+	// 事件挂一次即可；播放器元素在页面切换时通过 transition:persist 保留
+	document.addEventListener('play', (event) => {
+		if ((event.target as HTMLElement).matches?.('[data-music-audio]')) {
+			render();
+			window.clearInterval(timer);
+			timer = window.setInterval(tick, 500);
+		}
+	}, true);
+	document.addEventListener('pause', (event) => {
+		if ((event.target as HTMLElement).matches?.('[data-music-audio]')) render();
+	}, true);
+	document.addEventListener('ended', (event) => {
+		if ((event.target as HTMLElement).matches?.('[data-music-audio]')) next(1);
+	}, true);
+
+	document.addEventListener('astro:page-load', bind);
+	if (document.readyState !== 'loading') bind();
+	else document.addEventListener('DOMContentLoaded', bind);
+
+	// 记录最后播放状态，供页面刷新后恢复
+	window.addEventListener('beforeunload', () => {
+		const audio = audioEl();
+		if (!audio?.getAttribute('src')) return;
+		sessionStorage.setItem(
+			MUSIC_STATE_KEY,
+			JSON.stringify({ src: audio.getAttribute('src'), time: audio.currentTime }),
+		);
+	});
+</script>
+
+<style>
+	.music {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.music-btn {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 34px;
+		height: 34px;
+		padding: 0;
+		border-radius: 50%;
+		border: 1px solid rgb(var(--line));
+		background: rgba(var(--surface), 0.9);
+		color: rgb(var(--muted));
+		cursor: pointer;
+		transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+	}
+	.music-btn:hover {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.55);
+	}
+	.icon-note {
+		width: 15px;
+		height: 15px;
+	}
+	/* 播放中：音符隐藏，显示跳动音柱 */
+	.bars {
+		display: none;
+		align-items: flex-end;
+		gap: 2px;
+		height: 13px;
+	}
+	.bars i {
+		width: 2px;
+		border-radius: 1px;
+		background: rgb(var(--accent));
+		animation: bar 0.9s ease-in-out infinite;
+	}
+	.bars i:nth-child(1) {
+		height: 6px;
+		animation-delay: 0s;
+	}
+	.bars i:nth-child(2) {
+		height: 11px;
+		animation-delay: 0.22s;
+	}
+	.bars i:nth-child(3) {
+		height: 8px;
+		animation-delay: 0.44s;
+	}
+	.is-playing .icon-note {
+		display: none;
+	}
+	.is-playing .bars {
+		display: flex;
+	}
+	.is-playing .music-btn {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.6);
+		box-shadow: 0 0 14px rgba(var(--accent), 0.25);
+	}
+	@keyframes bar {
+		0%,
+		100% {
+			transform: scaleY(0.45);
+		}
+		50% {
+			transform: scaleY(1);
+		}
+	}
+
+	.music-panel {
+		position: absolute;
+		top: calc(100% + 0.85em);
+		right: 0;
+		width: 248px;
+		padding: 0.95em 1em 0.8em;
+		border-radius: 16px;
+		border: 1px solid rgb(var(--line));
+		background: rgba(20, 23, 21, 0.97);
+		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(14px);
+		z-index: 40;
+	}
+	.np-title {
+		margin: 0;
+		font-size: 0.92rem;
+		font-weight: 600;
+		color: rgb(var(--ink));
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.np-artist {
+		margin: 0.15em 0 0;
+		font-size: 0.75rem;
+		color: rgb(var(--muted-light));
+		min-height: 1em;
+	}
+	.progress {
+		position: relative;
+		height: 4px;
+		margin-top: 0.85em;
+		border-radius: 999px;
+		background: rgb(var(--line));
+		cursor: pointer;
+	}
+	.progress-fill {
+		display: block;
+		height: 100%;
+		width: 0;
+		border-radius: 999px;
+		background: rgb(var(--accent));
+	}
+	.time {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.68rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		margin-top: 0.35em;
+	}
+	.controls {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.8em;
+		margin: 0.5em 0 0.2em;
+	}
+	.ctrl {
+		border: none;
+		background: transparent;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		font-size: 0.85rem;
+		padding: 0.25em;
+		border-radius: 8px;
+		line-height: 1;
+	}
+	.ctrl:hover {
+		color: rgb(var(--accent));
+	}
+	.ctrl-main {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		border: 1px solid rgba(var(--accent), 0.5);
+		color: rgb(var(--accent));
+		font-size: 0.8rem;
+	}
+	.ctrl-main:hover {
+		background: rgba(var(--accent), 0.12);
+	}
+	.list {
+		list-style: none;
+		margin: 0.5em 0 0;
+		padding: 0.5em 0 0;
+		border-top: 1px solid rgb(var(--line));
+		max-height: 128px;
+		overflow-y: auto;
+	}
+	.track {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6em;
+		width: 100%;
+		padding: 0.3em 0.4em;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		text-align: left;
+		font-size: 0.8rem;
+	}
+	.track:hover {
+		background: rgba(var(--accent), 0.08);
+		color: rgb(var(--ink));
+	}
+	.track.active {
+		color: rgb(var(--accent));
+	}
+	.track-index {
+		font-size: 0.65rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.track-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hint {
+		margin: 0.6em 0 0;
+		font-size: 0.75rem;
+		color: rgb(var(--muted-light));
+		line-height: 1.5;
+	}
+	.hint a {
+		color: rgb(var(--accent));
+	}
+
+	@media (max-width: 720px) {
+		.music-panel {
+			position: fixed;
+			top: auto;
+			bottom: 1em;
+			right: 1em;
+			left: 1em;
+			width: auto;
+		}
+	}
+</style>

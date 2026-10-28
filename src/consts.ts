@@ -5,9 +5,9 @@ export const SITE_DESCRIPTION = '一个记录写作、项目与日常的个人�
 export const SITE_URL = 'https://ystlr.com';
 export const AUTHOR_NAME = 'ystlr';
 
-// 社交链接（占位：上线前替换成你自己的账号地址；留空字符串则在页头隐藏对应入口）
+// 社交链接（留空字符串则在页头和页脚隐藏对应入口）
 export const SOCIAL_LINKS = {
-	github: '',
+	github: 'https://github.com/YQ-create',
 	x: '',
 	email: 'mailto:hello@ystlr.com',
 };

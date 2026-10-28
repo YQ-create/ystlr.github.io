@@ -15,7 +15,7 @@ export const projects: Project[] = [
 		description: '基于 Astro 搭建的静态个人站点，Markdown 写作，自动部署到 GitHub Pages，绑定自有域名。',
 		tags: ['Astro', '静态博客', 'GitHub Pages'],
 		year: '2026',
-		link: 'https://github.com/',
+		link: 'https://github.com/YQ-create/ystlr.github.io',
 	},
 	{
 		title: '待补充：第一个小工具',

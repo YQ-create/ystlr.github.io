@@ -16,7 +16,10 @@ export default defineConfig({
 	},
 	integrations: [
 		mdx(),
-		sitemap(),
+		// /admin 是纯前端后台：noindex，也不进 sitemap
+		sitemap({
+			filter: (page) => !new URL(page).pathname.startsWith('/admin'),
+		}),
 	],
 	fonts: [
 		{

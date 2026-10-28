@@ -343,17 +343,18 @@ const latest = posts[0]?.data.pubDate;
 		height: clamp(148px, 20vh, 236px);
 		z-index: 0;
 		pointer-events: none;
+		overflow: hidden;
 		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
 		mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
 	}
 	.hero-inner {
 		position: relative;
 		z-index: 1;
-		padding-bottom: clamp(12rem, 24vh, 16rem);
 		width: 100%;
 		max-width: var(--w-wide);
 		margin: 0 auto;
-		padding: 0 var(--gutter);
+		/* 底部留出 hero 照片带的高度（顺序别换，简写会把 padding-bottom 冲掉） */
+		padding: 0 var(--gutter) clamp(12rem, 24vh, 16rem);
 	}
 	.hero-eyebrow {
 		display: inline-flex;
@@ -676,6 +677,7 @@ const latest = posts[0]?.data.pubDate;
 		.hero {
 			min-height: auto;
 			padding-top: 3rem;
+			padding-bottom: 0;
 		}
 		.hero-stats {
 			gap: 1.6rem;

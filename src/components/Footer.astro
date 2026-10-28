@@ -34,6 +34,7 @@ const nav = [
 
 	<p class="foot-copy">
 		&copy; {year} {AUTHOR_NAME} · 用 Astro 构建，托管在 GitHub Pages
+		<a class="foot-manage" href="/admin/" rel="nofollow">管理</a>
 	</p>
 </footer>
 
@@ -83,6 +84,21 @@ const nav = [
 	}
 	.foot-nav a:hover,
 	.foot-contact a:hover {
+		color: rgb(var(--accent));
+	}
+	/* 不显眼的后台入口 */
+	.foot-manage {
+		margin-left: 0.7rem;
+		color: inherit;
+		opacity: 0.55;
+		text-decoration: none;
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.foot-manage:hover,
+	.foot-manage:focus-visible {
+		opacity: 1;
 		color: rgb(var(--accent));
 	}
 	.foot-copy {

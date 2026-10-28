@@ -50,11 +50,12 @@ npm run preview
 
 | 页面 | 路由 | 说明 |
 | --- | --- | --- |
-| 首页 | `/` | Hero 文案、最新文章、照片墙速览 |
+| 首页 | `/` | Hero（底部是缓慢左移的照片带）、精选文章、照片墙速览；默认深色 |
 | 文章 | `/blog` | 文章列表，支持关键词搜索与标签筛选 |
 | 照片墙 | `/gallery` | 照片按年、月分组的瀑布网格 |
 | 发现 | `/discover` | 收藏书签与推荐站点卡片，数据来自 `src/data/discover.json` |
 | 关于 | `/about` | 个人简介、记录方向与联系方式 |
+| 管理后台 | `/admin` | 纯前端发文/传图/传音乐，直接提交到 GitHub（见下方「管理后台」） |
 
 文章详情页底部接入 Giscus 评论；未配置 `repoId` / `categoryId` 时不渲染评论区，不影响其他内容。
 
@@ -95,7 +96,7 @@ npm run preview
 | 主题 | 浅色 / 深色 / 跟随系统 | `data-theme="light\|dark"` |
 | 玻璃 | 磨砂 / 透明 | `data-glass="frosted\|clear"` |
 
-两个维度正交，可以任意组合（深色+透明、浅色+磨砂……）。选择存在 `localStorage` 的 `ystlr:theme` 与 `ystlr:glass`，`data-theme-choice` 额外记住「跟随系统」这个意图，系统主题变化时会自动跟随。
+两个维度正交，可以任意组合（深色+透明、浅色+磨砂……）。**没选过时默认深色**；选「跟随系统」才交给系统决定。选择存在 `localStorage` 的 `ystlr:theme` 与 `ystlr:glass`，`data-theme-choice` 额外记住「跟随系统」这个意图，系统主题变化时会自动跟随。
 
 实现上没有一处是"深色单独写一套样式"：所有颜色都在 `src/styles/global.css` 顶部的两段 `:root` token 里（浅色一段、`:root[data-theme='dark']` 一段），深色只是把同一批 token 换成另一组值，组件一行都不用改。玻璃同理——`--glass-bg` / `--glass-blur` / `--glass-brd` 这几个 token 在 `:root[data-glass='clear']` 下换成更淡的底色和更重的模糊。
 
@@ -158,6 +159,26 @@ tags: ["生活", "风景"]
 `image` 是相对这个 `.md` 文件的路径；`title`、`caption`、`tags` 都可以省略。保存后照片会同时出现在照片墙和首页的流动照片带里；点开任意一张会放大，**放大状态下顶栏依然可以点**，切页时灯箱自动收起、页面滚动也会解锁。
 
 > 仓库里原有的示例照片已经清空，现在照片墙是空的，等你按上面的步骤慢慢加。
+
+## 管理后台（/admin）
+
+站上没有服务端，但有一个能用的小后台：打开 `/admin`，粘一个 GitHub Token，就能写文章、传照片、传音乐，保存后由浏览器直接调 GitHub API 提交到 `main`，Actions 构建完约 1 分钟生效。
+
+**准备 Token（只需一次）**：GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → 新建，Repository access 只勾 `YQ-create/ystlr.github.io`，Permissions → Repository permissions → **Contents = Read and write**，其它都不用给。生成的 `github_pat_…` 粘进后台即可。
+
+Token 只放在当前标签页的 `sessionStorage`（键 `ystlr:admin:token`），关掉页面就没了，不会写进仓库或日志。
+
+三个 Tab：
+
+| Tab | 能做什么 | 提交到哪 |
+| --- | --- | --- |
+| 文章 | 新建/编辑/删除 Markdown，改标题、描述、日期、标签、封面，勾「精品」或「草稿」 | `src/content/blog/<slug>.md` |
+| 照片 | 选图 + 标题/说明/日期，自动配一条记录 | `src/assets/gallery/<slug>.<ext>` + `src/content/gallery/<slug>.md` |
+| 音乐 | 选音频 + 标题/作者，自动追加到播放列表 | `public/audio/<slug>.<ext>` + `src/data/playlist.json` |
+
+「精品」对应 frontmatter 的 `featured: true`：首页「精选文章」会先放精品的（按时间倒序），不够 3 篇再用最新的补。`draft: true` 的文章不会出现在首页，但仍会构建出详情页。
+
+> 手工改文件也行，格式见下面几节；后台只是把同样的文件写出来。
 
 ## 评论系统（Giscus）
 

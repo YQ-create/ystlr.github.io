@@ -1,0 +1,648 @@
+---
+// 纯前端管理后台：没有服务端，所有写操作都由浏览器带用户自己粘贴的
+// GitHub Fine-grained PAT 直接调用 api.github.com 完成。
+// Token 只存在 sessionStorage（键 ystlr:admin:token），不会进入任何提交内容。
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE_TITLE } from '../../consts';
+---
+
+<BaseLayout
+	title={`管理后台 · ${SITE_TITLE}`}
+	description="纯前端管理后台：用 GitHub Token 直接提交文章、照片与音乐。"
+	noindex
+>
+	<main class="admin-shell" data-admin>
+		<header class="page-head">
+			<span class="sec-head__index">ADMIN / CONSOLE</span>
+			<h1>管理后台</h1>
+			<p>
+				这里没有服务端：页面直接拿你粘贴的 GitHub Token 调用 API，把文章、照片和音乐提交到
+				<code>{'YQ-create/ystlr.github.io'}</code> 的 <code>main</code> 分支。Token 只放在本标签页的
+				sessionStorage 里，关掉页面就没了，也不会写进任何文件。
+			</p>
+		</header>
+
+		<!-- ============ 未登录：登录卡 ============ -->
+		<section class="adm-login glass" data-admin-login>
+			<h2>连接 GitHub</h2>
+			<p class="adm-note">
+				需要一个 <strong>Fine-grained personal access token</strong>，只勾选仓库
+				<code>YQ-create/ystlr.github.io</code>，并把 <strong>Repository permissions → Contents</strong>
+				设为 <strong>Read and write</strong>。别的权限都不用给。
+			</p>
+
+			<form class="adm-form" data-login-form>
+				<label class="field">
+					<span>Personal Access Token</span>
+					<input
+						type="password"
+						data-token-input
+						placeholder="github_pat_..."
+						autocomplete="off"
+						spellcheck="false"
+					/>
+				</label>
+
+				<label class="adm-check">
+					<input type="checkbox" data-token-remember checked />
+					<span>记住这次会话（只存本标签页的 sessionStorage，关掉即失效）</span>
+				</label>
+
+				<p class="adm-status" data-login-status data-kind="idle" hidden></p>
+
+				<div class="adm-row">
+					<button class="btn" type="submit" data-login-btn>校验并进入</button>
+					<a
+						class="btn btn--ghost"
+						href="https://github.com/settings/personal-access-tokens/new"
+						target="_blank"
+						rel="noopener noreferrer">去创建 Token</a
+					>
+				</div>
+			</form>
+		</section>
+
+		<!-- ============ 已登录：主界面 ============ -->
+		<div class="adm-main" data-admin-main hidden>
+			<div class="adm-bar glass">
+				<div class="adm-who">
+					<span class="adm-who-label">当前账号</span>
+					<strong data-admin-login-name>—</strong>
+				</div>
+				<div class="adm-row">
+					<a
+						class="adm-link"
+						href="https://github.com/YQ-create/ystlr.github.io"
+						target="_blank"
+						rel="noopener noreferrer">打开仓库</a
+					>
+					<button class="btn btn--ghost" type="button" data-logout>退出</button>
+				</div>
+			</div>
+
+			<p class="adm-status" data-admin-status data-kind="idle">尚未操作。</p>
+
+			<div class="adm-tabs" role="tablist" aria-label="管理内容">
+				<button type="button" role="tab" data-tab="posts" aria-selected="true">文章</button>
+				<button type="button" role="tab" data-tab="photos" aria-selected="false">照片</button>
+				<button type="button" role="tab" data-tab="music" aria-selected="false">音乐</button>
+			</div>
+
+			<!-- ---------- 文章 ---------- -->
+			<section class="adm-panel glass" data-panel="posts">
+				<div class="adm-panel-head">
+					<div>
+						<h2>文章</h2>
+						<p class="adm-note">对应 <code>src/content/blog/*.md</code>，保存后 frontmatter 会按 content.config.ts 的字段重新拼好。</p>
+					</div>
+					<div class="adm-row">
+						<button class="btn btn--ghost" type="button" data-posts-refresh>刷新列表</button>
+						<button class="btn" type="button" data-post-new-toggle>新建文章</button>
+					</div>
+				</div>
+
+				<p class="adm-hint" data-posts-hint>登录后会自动读取文章列表。</p>
+				<ul class="adm-posts" data-post-list></ul>
+
+				<form class="adm-create" data-post-create hidden>
+					<label class="field">
+						<span>新文章 slug（英文小写、数字、连字符）</span>
+						<input data-new-slug placeholder="my-new-post" autocomplete="off" spellcheck="false" />
+					</label>
+					<div class="adm-row">
+						<button class="btn" type="submit">打开编辑器</button>
+						<button class="btn btn--ghost" type="button" data-post-create-cancel>取消</button>
+					</div>
+				</form>
+
+				<form class="adm-editor" data-post-editor hidden>
+					<p class="adm-path" data-editor-path></p>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>标题 title</span>
+							<input data-field="title" required />
+						</label>
+						<label class="field">
+							<span>发布日期 pubDate</span>
+							<input type="date" data-field="pubDate" required />
+						</label>
+					</div>
+
+					<label class="field">
+						<span>摘要 description</span>
+						<input data-field="description" required />
+					</label>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>标签 tags（逗号分隔）</span>
+							<input data-field="tags" placeholder="生活, 风景" />
+						</label>
+						<label class="field">
+							<span>封面 heroImage（可选）</span>
+							<input data-field="heroImage" placeholder="../../assets/blog/hero-01.jpg" spellcheck="false" />
+						</label>
+					</div>
+
+					<div class="adm-row">
+						<label class="adm-check">
+							<input type="checkbox" data-field="featured" />
+							<span>设为精品（首页精选优先展示）</span>
+						</label>
+						<label class="adm-check">
+							<input type="checkbox" data-field="draft" />
+							<span>草稿（不发布）</span>
+						</label>
+					</div>
+
+					<label class="field">
+						<span>正文（Markdown）</span>
+						<textarea data-field="body" rows="16" spellcheck="false"></textarea>
+					</label>
+
+					<div class="adm-row">
+						<button class="btn" type="submit" data-post-save>保存到 main</button>
+						<button class="btn btn--ghost" type="button" data-post-delete>删除这篇文章</button>
+						<button class="btn btn--ghost" type="button" data-post-close>收起编辑器</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- ---------- 照片 ---------- -->
+			<section class="adm-panel glass" data-panel="photos" hidden>
+				<div class="adm-panel-head">
+					<div>
+						<h2>照片</h2>
+						<p class="adm-note">
+							会提交两个文件：<code>src/assets/gallery/&lt;slug&gt;.&lt;ext&gt;</code> 和
+							<code>src/content/gallery/&lt;slug&gt;.md</code>。
+						</p>
+					</div>
+				</div>
+
+				<form class="adm-form" data-photo-form>
+					<label class="field">
+						<span>选择本地图片（jpg / png / webp / gif / avif，≤ 8MB）</span>
+						<input
+							class="adm-file"
+							type="file"
+							data-photo-file
+							accept=".jpg,.jpeg,.png,.webp,.gif,.avif,image/jpeg,image/png,image/webp,image/gif,image/avif"
+						/>
+					</label>
+					<p class="adm-hint" data-photo-file-info>尚未选择图片。</p>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>标题 title（可选）</span>
+							<input data-photo-title />
+						</label>
+						<label class="field">
+							<span>拍摄日期 date</span>
+							<input type="date" data-photo-date />
+						</label>
+					</div>
+
+					<label class="field">
+						<span>说明 caption（可选）</span>
+						<input data-photo-caption />
+					</label>
+
+					<label class="field">
+						<span>标签 tags（逗号分隔）</span>
+						<input data-photo-tags placeholder="生活, 风景" />
+					</label>
+
+					<div class="adm-row">
+						<button class="btn" type="submit" data-photo-submit>上传并提交</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- ---------- 音乐 ---------- -->
+			<section class="adm-panel glass" data-panel="music" hidden>
+				<div class="adm-panel-head">
+					<div>
+						<h2>音乐</h2>
+						<p class="adm-note">
+							会提交 <code>public/audio/&lt;slug&gt;.&lt;ext&gt;</code>，并把曲目追加到
+							<code>src/data/playlist.json</code> 的 <code>tracks</code> 数组。
+						</p>
+					</div>
+				</div>
+
+				<form class="adm-form" data-music-form>
+					<label class="field">
+						<span>选择本地音频（mp3 / m4a / aac / ogg / wav / flac，≤ 25MB）</span>
+						<input
+							class="adm-file"
+							type="file"
+							data-music-file
+							accept=".mp3,.m4a,.aac,.ogg,.wav,.flac,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/flac"
+						/>
+					</label>
+					<p class="adm-hint" data-music-file-info>尚未选择音频。</p>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>曲目标题 title</span>
+							<input data-music-title />
+						</label>
+						<label class="field">
+							<span>艺术家 artist（可选）</span>
+							<input data-music-artist />
+						</label>
+					</div>
+
+					<div class="adm-row">
+						<button class="btn" type="submit" data-music-submit>上传并加入播放列表</button>
+					</div>
+				</form>
+			</section>
+		</div>
+	</main>
+</BaseLayout>
+
+<script>
+	import { boot } from '../../admin/app';
+
+	boot();
+</script>
+
+<style>
+	.admin-shell {
+		width: min(100% - var(--gutter) * 2, 1040px);
+		max-width: none;
+	}
+
+	/* 页面里所有用 hidden 控制的块都真的收起来（flex/grid 会覆盖 [hidden]） */
+	.admin-shell [hidden] {
+		display: none !important;
+	}
+
+	.page-head {
+		padding: 1rem 0 1.4rem;
+	}
+	.page-head h1 {
+		margin: 0.2em 0 0.35em;
+	}
+	.page-head p {
+		max-width: 62ch;
+		margin: 0;
+		color: rgb(var(--muted));
+		line-height: 1.8;
+	}
+
+	.adm-login {
+		max-width: 680px;
+		padding: clamp(1.2rem, 3vw, 1.8rem);
+		border-radius: var(--r-lg);
+	}
+	.adm-login h2 {
+		font-size: 1.25rem;
+		margin-bottom: 0.5em;
+	}
+
+	.adm-note {
+		margin: 0 0 1rem;
+		font-size: 0.88rem;
+		line-height: 1.75;
+		color: rgb(var(--muted));
+	}
+	.adm-note code {
+		font-size: 0.86em;
+	}
+
+	.adm-form,
+	.adm-editor,
+	.adm-create {
+		display: grid;
+		gap: 0.9rem;
+	}
+
+	.field {
+		display: grid;
+		gap: 0.4rem;
+	}
+	.field > span {
+		font-size: 0.76rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted));
+	}
+	.field input,
+	.field textarea {
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	.adm-form .field input,
+	.adm-form .field textarea {
+		background: var(--glass-bg-strong);
+	}
+
+	textarea {
+		resize: vertical;
+		min-height: 8rem;
+		line-height: 1.7;
+	}
+
+	.adm-editor textarea[data-field='body'] {
+		min-height: 260px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 0.92rem;
+	}
+
+	.adm-file {
+		font-size: 0.85rem;
+		padding: 0.4rem 0.5rem;
+		cursor: pointer;
+	}
+	.adm-file::file-selector-button {
+		margin-right: 0.7rem;
+		padding: 0.38em 0.95em;
+		border: 1px solid var(--glass-brd);
+		border-radius: var(--r-pill);
+		background: var(--chip-bg-strong);
+		color: rgb(var(--ink));
+		font: inherit;
+		font-size: 0.82rem;
+		cursor: pointer;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.adm-file::file-selector-button:hover {
+		background: rgba(var(--accent), 0.18);
+	}
+
+	.adm-check {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		color: rgb(var(--ink-soft));
+		cursor: pointer;
+	}
+	.adm-check input[type='checkbox'] {
+		width: 1.05em;
+		height: 1.05em;
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
+		accent-color: rgb(var(--accent));
+		cursor: pointer;
+	}
+	.adm-check input[type='checkbox']:focus {
+		box-shadow: none;
+	}
+
+	.adm-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	/* 状态条：固定在页头下方，长表单里也能看到最近一次结果 */
+	.adm-status {
+		position: sticky;
+		top: 4.4rem;
+		z-index: 25;
+		margin: 0.9rem 0 1rem;
+		padding: 0.65em 1em;
+		font-size: 0.85rem;
+		line-height: 1.65;
+		color: rgb(var(--ink-soft));
+		background: var(--glass-bg-strong);
+		backdrop-filter: blur(16px) saturate(1.3);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		border: 1px solid var(--glass-brd-dim);
+		border-left: 3px solid rgba(var(--muted), 0.5);
+		border-radius: var(--r-md);
+		box-shadow: var(--shadow-sm);
+	}
+	.adm-status[data-kind='busy'] {
+		border-left-color: rgba(var(--accent), 0.75);
+	}
+	.adm-status[data-kind='ok'] {
+		border-left-color: rgba(var(--sage), 0.9);
+		color: rgb(var(--ink));
+	}
+	.adm-status[data-kind='err'] {
+		border-left-color: rgb(var(--rose));
+		color: rgb(var(--ink));
+		font-weight: 600;
+	}
+	.adm-login .adm-status {
+		position: static;
+		margin: 0;
+	}
+
+	.adm-main {
+		display: grid;
+		gap: 0.9rem;
+		padding-bottom: 2rem;
+	}
+
+	.adm-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		padding: 0.8rem 1.1rem;
+		border-radius: var(--r-md);
+	}
+	.adm-who {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+	}
+	.adm-who-label {
+		font-size: 0.7rem;
+		letter-spacing: 0.18em;
+		color: rgb(var(--muted-light));
+	}
+	.adm-who strong {
+		font-size: 1rem;
+		color: rgb(var(--ink));
+	}
+	.adm-link {
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		text-decoration: none;
+	}
+	.adm-link:hover {
+		color: rgb(var(--accent));
+	}
+
+	.adm-tabs {
+		display: inline-flex;
+		gap: 0.2rem;
+		justify-self: start;
+		padding: 0.28rem;
+		border-radius: var(--r-pill);
+		background: var(--chip-bg);
+		border: 1px solid var(--glass-brd-dim);
+	}
+	.adm-tabs button {
+		border: 1px solid transparent;
+		background: transparent;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.86rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		padding: 0.42em 1.25em;
+		border-radius: var(--r-pill);
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
+	}
+	.adm-tabs button:hover {
+		color: rgb(var(--ink));
+		background: var(--chip-bg-strong);
+	}
+	.adm-tabs button[aria-selected='true'] {
+		color: rgb(var(--paper));
+		background: rgb(var(--accent));
+		box-shadow: var(--shadow-sm);
+	}
+
+	.adm-panel {
+		padding: clamp(1rem, 2.6vw, 1.5rem);
+		border-radius: var(--r-lg);
+	}
+	.adm-panel-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.9rem;
+	}
+	.adm-panel-head h2 {
+		font-size: 1.2rem;
+		margin: 0 0 0.2em;
+	}
+	/* 面板里的表单与标题之间留一点呼吸 */
+	.adm-panel > .adm-form {
+		margin-top: 1.1rem;
+	}
+	.adm-panel-head .adm-note {
+		margin: 0;
+		max-width: 52ch;
+	}
+
+	.adm-hint {
+		margin: 0.9rem 0 0;
+		font-size: 0.82rem;
+		color: rgb(var(--muted-light));
+	}
+
+	.adm-posts {
+		list-style: none;
+		margin: 0.9rem 0 0;
+		padding: 0;
+		display: grid;
+		gap: 0.35rem;
+	}
+	.adm-posts:empty {
+		display: none;
+	}
+	/* 文章行由 app.ts 动态创建，拿不到 Astro 的 scoped 属性，所以走 :global() */
+	:global(.adm-post-btn) {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.1rem 0.7rem;
+		width: 100%;
+		padding: 0.7em 0.9em;
+		text-align: left;
+		font: inherit;
+		color: rgb(var(--ink));
+		background: var(--chip-bg-dim);
+		border: 1px solid transparent;
+		border-radius: var(--r-md);
+		cursor: pointer;
+		transition:
+			background-color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out);
+	}
+	:global(.adm-post-btn:hover) {
+		background: var(--chip-bg-strong);
+		border-color: rgba(var(--accent), 0.35);
+		transform: translateX(2px);
+	}
+	:global(.adm-post-title) {
+		font-weight: 700;
+		font-size: 0.98rem;
+	}
+	:global(.adm-post-meta) {
+		font-size: 0.74rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	:global(.adm-post-badges) {
+		display: inline-flex;
+		gap: 0.3rem;
+		margin-left: auto;
+	}
+	:global(.adm-badge) {
+		font-size: 0.64rem;
+		letter-spacing: 0.12em;
+		padding: 0.12em 0.6em;
+		border-radius: var(--r-pill);
+		border: 1px solid;
+		white-space: nowrap;
+	}
+	:global(.adm-badge--ok) {
+		color: rgb(var(--accent-deep));
+		border-color: rgba(var(--accent), 0.4);
+		background: rgba(var(--accent), 0.14);
+	}
+	:global(.adm-badge--dim) {
+		color: rgb(var(--muted));
+		border-color: rgba(var(--muted), 0.3);
+		background: var(--chip-bg-dim);
+	}
+	:global(.adm-badge--err) {
+		color: rgb(var(--rose));
+		border-color: rgba(var(--rose), 0.45);
+		background: rgba(var(--rose), 0.14);
+	}
+
+	.adm-create {
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid rgba(var(--line), 1);
+	}
+
+	.adm-editor {
+		margin-top: 1.1rem;
+		padding-top: 1.1rem;
+		border-top: 1px solid rgba(var(--line), 1);
+	}
+	.adm-path {
+		margin: 0;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 0.78rem;
+		color: rgb(var(--muted-light));
+		overflow-wrap: anywhere;
+	}
+	.adm-grid2 {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		gap: 0.9rem;
+	}
+
+	@media (max-width: 640px) {
+		.adm-status {
+			position: static;
+		}
+		:global(.adm-post-badges) {
+			margin-left: 0;
+		}
+	}
+</style>

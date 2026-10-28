@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "photo": "node scripts/new-photo.mjs",
     "astro": "astro"
   },
   "dependencies": {

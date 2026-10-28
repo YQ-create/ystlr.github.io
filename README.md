@@ -42,6 +42,8 @@ npm run preview
 │   ├── pages/              # 路由：/、/blog、/gallery、/discover、/about、/404
 │   ├── styles/global.css   # 全局配色、玻璃质感与排版变量（token 在顶部）
 │   └── consts.ts           # 站点标题、Hero 文案、作者、社交链接
+├── scripts/
+│   └── new-photo.mjs        # npm run photo：压图 + 生成照片墙记录的录入接口
 ├── .github/workflows/deploy.yml   # GitHub Pages 自动部署流程
 └── astro.config.mjs         # 站点域名与集成配置
 ```
@@ -83,16 +85,12 @@ npm run preview
 | `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
 | `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
 | `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
-| `SpectralDrape.astro` | 点阵织物背景（目前未被页面引用，留着备用） | `preset`（ember/spectral/ice）、`density`、`rows`、`amp`、`speed`、`pointer` |
-| `MaskedHeading.astro` | 用图片/视频填充文字（目前未被页面引用，留着备用） | `text`、`mediaType`、`src`、`fillScale`、`parallax`、`spotlight`、`outline`、`strokeWidth`、`strokeColor` |
 
 `AcidSquares` 与 `TechText` 是 React Bits 同名组件的原生移植（不引入 React）。它们的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`：Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
 
 两者的配色都支持 `--token` 形式（如 `color="--bg-deep"`），运行时用 `getComputedStyle` 解析成 `rgb()`，所以深浅色切换不用改组件。`AcidSquares` 在主题切换时会重建实例（释放旧 WebGL 上下文），`TechText` 因为默认取 `currentColor`，只需重绘。
 
 `TechText` 的 `sweep` 默认是 `true`（指针不在时自动巡航扫描），用作标题时建议关掉——否则标题会长期有一个字处于线框态，影响可读性。
-
-`SpectralDrape` 是纯 Canvas 2D（没有 WebGL、没有第三方依赖）：一块点阵布从地平线铺到画面底部，按透视收束，三条慢波把布面推起褶皱，褶皱脊线更亮更大；指针经过会把布顶起一个包。它自己会做这几件事——离屏或切到别的标签页时暂停、窗口尺寸变化时重建点阵、手机宽度下把点数砍掉约一半、`prefers-reduced-motion` 时只画一帧。想换气质就换 `preset`：`ember`（赭石琥珀，默认，配暖纸底）、`spectral`（全光谱）、`ice`（冷青）。
 
 `SpecularButton` 把 React Bits 的 `SpecularButton` 用原生 WebGL2 重写了一遍（不引入 React）：圆角矩形的周长被映射到 0–1 的参数空间，光斑是这个参数上的一个余弦瓣，鼠标靠近时瓣会滑到离指针最近的边缘点；`autoAnimate` 会让这道光自己绕一周。传 `href` 渲染成 `<a>`，否则是 `<button>`；浏览器不支持 WebGL2 时自动退化成普通玻璃按钮。
 
@@ -127,7 +125,7 @@ npm run preview
 | --- | --- |
 | 站点标题、Hero 头衔与两行副标题、邮箱、GitHub 链接 | `src/consts.ts` |
 | 博客文章（写作、发布、删除） | `src/content/blog/`，frontmatter 格式见下文 |
-| 照片墙照片与说明 | 图片放 `src/assets/gallery/`，记录写 `src/content/gallery/`，`date` 决定所属年月 |
+| 照片墙照片与说明 | `npm run photo -- <图片>` 一条命令搞定，见「照片墙记录格式」 |
 | 发现页书签、推荐站点 | `src/data/discover.json` |
 | 顶部播放器曲目 | `src/data/playlist.json`，音频文件放入 `public/audio/` |
 | 首页 Hero、最新文章与照片墙区块 | `src/pages/index.astro` |
@@ -156,12 +154,42 @@ tags: ['标签一', '标签二']
 
 3. 保存后 `npm run dev` 即可在本地预览；提交并推送代码后，GitHub Actions 自动构建上线。
 
-## 照片墙记录格式
+## 照片墙记录格式（加照片的三种入口）
 
-照片分两步加：**图片放 `src/assets/gallery/`，记录写 `src/content/gallery/`**。`date` 为拍摄日期，页面按年、月自动分组。
+一张照片 = **一张图 + 一条记录**：图片放 `src/assets/gallery/`，记录（`.md`）放 `src/content/gallery/`。`date` 是拍摄日期，页面按年、月自动分组排序。三种加法的产物完全一样，可以混着用。
 
-1. 把照片（jpg / png / webp 都行）放进 `src/assets/gallery/`，例如 `my-photo.jpg`；
-2. 在 `src/content/gallery/` 新建一个 `.md`（文件名随意，只作记录 id）：
+### 入口一：本地命令行（推荐，能顺便压缩）
+
+```bash
+npm run photo -- ./照片.jpg                     # 最省事：一张图
+npm run photo -- ./国庆/                        # 整个文件夹批量（不进子目录）
+npm run photo -- ./IMG_2043.HEIC \
+  -t "江边的傍晚" -c "落日把江面染成暖橙色。" -g 生活,风景 -d 2026-10-22
+npm run photo -- ./照片.jpg -n                  # 只看会写什么，不落盘
+npm run photo -- --remove 123                   # 删掉一条记录和它的图
+```
+
+| 选项 | 作用 |
+| --- | --- |
+| `-t, --title` | 标题（批量时忽略，改用各自文件名） |
+| `-c, --caption` | 图注 |
+| `-g, --tags` | 标签，逗号分隔 |
+| `-d, --date` | 拍摄日期 `YYYY-MM-DD`，缺省读 EXIF，再退到文件修改时间 |
+| `-s, --slug` | 自定义文件名（只能用 `a-z 0-9 - _`） |
+| `--keep` | 不压缩，原图直接复制（动图请用它） |
+| `--force` | 同名记录已存在时覆盖 |
+| `-n, --dry-run` | 只打印计划 |
+| `--remove <slug…>` | 删除记录及它引用的图片 |
+
+脚本会按 EXIF 方向摆正、长边压到 2400px、丢掉元数据（实测 35KB→11KB、41KB→10KB），然后写出同名的 `.md`。中文文件名会掉成空串，自动回落成 `photo-20261029-002545`；撞名自动顺延 `-2`、`-3`。输出文件与 `/admin` 上传、手写记录三者格式一致。
+
+### 入口二：网页后台 `/admin` → 照片
+
+打开 `/admin`，粘 GitHub Token，选图填字段，点「上传并提交」。走浏览器直连 GitHub API，不用本地环境（Token 怎么建见下方「管理后台」）。
+
+### 入口三：手写记录
+
+图片丢进 `src/assets/gallery/my-photo.jpg`，再新建 `src/content/gallery/任意名字.md`：
 
 ```yaml
 ---
@@ -173,9 +201,19 @@ tags: ["生活", "风景"]
 ---
 ```
 
-`image` 是相对这个 `.md` 文件的路径；`title`、`caption`、`tags` 都可以省略。保存后照片会同时出现在照片墙和首页的流动照片带里；点开任意一张会放大，**放大状态下顶栏依然可以点**，切页时灯箱自动收起、页面滚动也会解锁。
+### 字段契约（`src/content.config.ts` 的 gallery schema）
 
-> 仓库里原有的示例照片已经清空，现在照片墙是空的，等你按上面的步骤慢慢加。
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `date` | date | ✅ | 拍摄日期，决定年月分组与排序 |
+| `image` | Image | ✅ | 相对 `.md` 的路径，如 `../../assets/gallery/x.jpg` |
+| `title` | string | | 标题，出现在轮播与灯箱 |
+| `caption` | string | | 图注，显示在缩略图下方 |
+| `tags` | string[] | | 默认 `[]`，目前不参与分组，留给以后的筛选 |
+
+改完 `npm run dev` 即可预览。照片会同时出现在照片墙、首页流动照片带和首页「照片墙速览」里；点开任意一张放大，**放大状态下顶栏依然可以点**，切页时灯箱自动收起、页面滚动也会解锁。
+
+> 仓库里现在只剩一张名叫 `123` 的测试图。想清空就 `npm run photo -- --remove 123`，照片墙会退回到空状态并显示录入说明。
 
 ## 管理后台（/admin）
 

@@ -65,8 +65,8 @@
 
 	/* 版心 */
 	--w-read: 720px;
-	--w-page: 920px;
-	--w-wide: 1120px;
+	--w-page: 1120px;
+	--w-wide: 1480px;
 	--gutter: clamp(1.1rem, 4vw, 2.5rem);
 
 	/* 动效曲线：柔和进场，精准收束 */

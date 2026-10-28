@@ -3,6 +3,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SpectralDrape from '../components/SpectralDrape.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import DepthCarousel from '../components/DepthCarousel.astro';
+import MaskedHeading from '../components/MaskedHeading.astro';
+import heroFillImage from '../assets/blog/hero-01.jpg';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
@@ -93,10 +95,24 @@ const latest = posts[0]?.data.pubDate;
 					{HERO.role}
 				</p>
 
-				<h1 class="hero-title">
-					<span class="hero-line"><span>在这里记录日常</span></span>
-					<span class="hero-line hero-line--outline"><span>想法与读过的东西</span></span>
-				</h1>
+				<div class="hero-head">
+				<MaskedHeading
+					class="hero-title"
+					text="在这里记录日常"
+					src={heroFillImage.src}
+					fillScale={1.4}
+					parallax={42}
+					spotlight
+					spotlightRadius={220}
+				/>
+				<MaskedHeading
+					class="hero-sub"
+					tag="div"
+					text="想法与读过的东西"
+					outline
+					parallax={18}
+				/>
+				</div>
 
 				<p class="hero-lede">{HERO.tagline2}。</p>
 
@@ -432,12 +448,22 @@ const latest = posts[0]?.data.pubDate;
 		}
 	}
 
-	.hero-title {
-		margin: 0 0 1.5rem;
-		font-size: clamp(2.5rem, 7.2vw, 5.4rem);
-		line-height: 1.02;
-		letter-spacing: -0.03em;
-		font-weight: 800;
+	/* 标题在子组件里，样式要 :global 才能命中 */
+	.hero-head {
+		display: grid;
+		gap: 1rem;
+		margin: 0 0 1.6rem;
+	}
+	:global(.hero-title) {
+		font-size: clamp(2.4rem, 7.4vw, 5.9rem);
+	}
+	:global(.hero-title .masked__text) {
+		/* 让图片填充别太跳，和暖色调统一 */
+		filter: saturate(0.72) contrast(1.12) sepia(0.12);
+	}
+	:global(.hero-sub) {
+		font-size: clamp(1.4rem, 3.4vw, 2.4rem);
+		font-weight: 500;
 	}
 	.hero-line {
 		display: block;

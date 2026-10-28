@@ -1,4 +1,4 @@
-﻿---
+---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SpectralDrape from '../components/SpectralDrape.astro';
 import SpecularButton from '../components/SpecularButton.astro';
@@ -8,10 +8,12 @@ import FormattedDate from '../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
 import { HERO, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
-const featured = posts.slice(0, 3);
+const posts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+// 精选 = 手动标了 featured 的（按时间倒序），不足 3 篇时用最新的补齐
+const pinned = posts.filter((post) => post.data.featured);
+const featured = [...pinned, ...posts.filter((post) => !post.data.featured)].slice(0, 3);
 
 const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
@@ -22,6 +24,17 @@ const galleryItems = photos.map((photo) => ({
 	title: photo.data.title ?? photo.data.caption ?? '',
 	href: '/gallery/',
 }));
+
+// 照片墙还是空的时候，用文章封面把流动照片带撑起来，首页不至于空一块
+const coverItems = posts
+	.filter((post) => post.data.heroImage)
+	.slice(0, 6)
+	.map((post) => ({
+		image: post.data.heroImage!,
+		title: post.data.title,
+		href: `/blog/${post.id}/`,
+	}));
+const wallItems = galleryItems.length >= 3 ? galleryItems : [...galleryItems, ...coverItems];
 
 const latest = posts[0]?.data.pubDate;
 ---
@@ -128,6 +141,29 @@ const latest = posts[0]?.data.pubDate;
 						d="M8 2v18M3 15l5 5 5-5"></path>
 				</svg>
 			</a>
+
+			<div class="hero-wall" aria-hidden="true">
+				<DriftWall
+					items={wallItems}
+					columns={7}
+					rows={2}
+					tileWidth={188}
+					tileHeight={124}
+					gap={16}
+					tilt={11}
+					turn={-8}
+					perspective={1300}
+					depth={80}
+					speed={22}
+					direction="left"
+					variance={0.5}
+					parallax={0.4}
+					lift={38}
+					fade={0.5}
+					dim={0.22}
+					height="clamp(148px, 20vh, 236px)"
+				/>
+			</div>
 		</section>
 
 		<!-- ============ 精选文章 ============ -->
@@ -205,7 +241,7 @@ const latest = posts[0]?.data.pubDate;
 			) : (
 				<div class="wall-stage" data-reveal="mask">
 					<DriftWall
-						items={galleryItems}
+						items={wallItems}
 						columns={5}
 						rows={3}
 						tileWidth={200}
@@ -288,10 +324,10 @@ const latest = posts[0]?.data.pubDate;
 	/* ---------- Hero ---------- */
 	.hero {
 		position: relative;
-		min-height: min(92vh, 880px);
+		min-height: min(96vh, 940px);
 		display: flex;
 		align-items: center;
-		padding: clamp(4rem, 10vh, 7rem) 0 clamp(5rem, 12vh, 8rem);
+		padding: clamp(3.5rem, 9vh, 6rem) 0 clamp(2.5rem, 6vh, 4rem);
 		overflow: hidden;
 		isolation: isolate;
 	}
@@ -301,7 +337,19 @@ const latest = posts[0]?.data.pubDate;
 		z-index: -1;
 		opacity: 0.9;
 	}
+	.hero-wall {
+		position: absolute;
+		inset: auto 0 0 0;
+		height: clamp(148px, 20vh, 236px);
+		z-index: 0;
+		pointer-events: none;
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
+		mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
+	}
 	.hero-inner {
+		position: relative;
+		z-index: 1;
+		padding-bottom: clamp(12rem, 24vh, 16rem);
 		width: 100%;
 		max-width: var(--w-wide);
 		margin: 0 auto;

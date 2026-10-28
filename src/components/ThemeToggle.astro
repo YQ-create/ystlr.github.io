@@ -211,7 +211,7 @@
 
 	function themeChoice(): ThemeChoice {
 		const saved = read(KEY_THEME);
-		return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+		return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'dark';
 	}
 	function glassChoice(): GlassChoice {
 		return read(KEY_GLASS) === 'clear' ? 'clear' : 'frosted';

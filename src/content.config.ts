@@ -15,6 +15,9 @@ const blog = defineCollection({
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
 			tags: z.array(z.string()).default([]),
+			// 首页「精选文章」优先展示 featured: true 的几篇，不够再用最新的补
+			featured: z.boolean().default(false),
+			draft: z.boolean().default(false),
 		}),
 });
 

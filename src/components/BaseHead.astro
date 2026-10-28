@@ -28,7 +28,7 @@ const ogImage = new URL(image.src, Astro.url);
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="theme-color" content="#f6f0e5" />
+<meta name="theme-color" content="#181512" />
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" href="/favicon.ico" />
@@ -41,21 +41,30 @@ const ogImage = new URL(image.src, Astro.url);
 />
 <meta name="generator" content={Astro.generator} />
 <script is:inline>
-	/* 首屏前置：在样式生效前把主题写进 <html>，避免刷新时闪一下浅色 */
+	/* 首屏前置：在样式生效前把主题写进 <html>，避免刷新时闪一下
+	   View Transitions 切页时 Astro 会用新文档的 <html> 属性覆盖当前节点（新的 HTML 里没有这些 data-*），
+	   所以 after-swap 立刻再写一次，保证切页后主题不丢。 */
 	(() => {
 		const d = document.documentElement;
-		try {
-			const t = localStorage.getItem('ystlr:theme');
-			const g = localStorage.getItem('ystlr:glass');
-			const sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			d.dataset.themeChoice = t || 'system';
-			d.dataset.theme = t === 'light' || t === 'dark' ? t : sys ? 'dark' : 'light';
-			d.dataset.glass = g === 'clear' ? 'clear' : 'frosted';
-		} catch {
-			d.dataset.themeChoice = 'system';
-			d.dataset.theme = 'light';
-			d.dataset.glass = 'frosted';
-		}
+		const sync = () => {
+			try {
+				const t = localStorage.getItem('ystlr:theme');
+				const g = localStorage.getItem('ystlr:glass');
+				const sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				d.dataset.themeChoice = t || 'dark';
+				// 没选过就默认深色；选过 system 才跟着系统走
+				d.dataset.theme =
+					t === 'light' || t === 'dark' ? t : t === 'system' ? (sys ? 'dark' : 'light') : 'dark';
+				d.dataset.glass = g === 'clear' ? 'clear' : 'frosted';
+			} catch {
+				d.dataset.themeChoice = 'dark';
+				d.dataset.theme = 'dark';
+				d.dataset.glass = 'frosted';
+			}
+		};
+		sync();
+		document.addEventListener('astro:after-swap', sync);
+		document.addEventListener('astro:page-load', sync);
 	})();
 </script>
 {noindex && <meta name="robots" content="noindex" />}

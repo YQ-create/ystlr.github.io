@@ -16,34 +16,80 @@ const GISCUS_CONFIG = {
 	reactionsEnabled: '1',
 	emitMetadata: '0',
 	inputPosition: 'top',
-	theme: 'light',
+	theme: 'dark',
 	lang: 'zh-CN',
 };
 
 const enabled = Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId);
 ---
 
-{enabled && (
-	<section class="giscus-section" id="comments">
-		<h3 class="giscus-title">评论</h3>
-		<script
-			src="https://giscus.app/client.js"
-			data-repo={GISCUS_CONFIG.repo}
-			data-repo-id={GISCUS_CONFIG.repoId}
-			data-category={GISCUS_CONFIG.category}
-			data-category-id={GISCUS_CONFIG.categoryId}
-			data-mapping={GISCUS_CONFIG.mapping}
-			data-strict={GISCUS_CONFIG.strict}
-			data-reactions-enabled={GISCUS_CONFIG.reactionsEnabled}
-			data-emit-metadata={GISCUS_CONFIG.emitMetadata}
-			data-input-position={GISCUS_CONFIG.inputPosition}
-			data-theme={GISCUS_CONFIG.theme}
-			data-lang={GISCUS_CONFIG.lang}
-			crossorigin="anonymous"
-			async
-		></script>
-	</section>
-)}
+{
+	enabled && (
+		<section class="giscus-section" id="comments">
+			<h3 class="giscus-title">评论</h3>
+			<div class="giscus-host">
+				<script
+					src="https://giscus.app/client.js"
+					data-repo={GISCUS_CONFIG.repo}
+					data-repo-id={GISCUS_CONFIG.repoId}
+					data-category={GISCUS_CONFIG.category}
+					data-category-id={GISCUS_CONFIG.categoryId}
+					data-mapping={GISCUS_CONFIG.mapping}
+					data-strict={GISCUS_CONFIG.strict}
+					data-reactions-enabled={GISCUS_CONFIG.reactionsEnabled}
+					data-emit-metadata={GISCUS_CONFIG.emitMetadata}
+					data-input-position={GISCUS_CONFIG.inputPosition}
+					data-theme={GISCUS_CONFIG.theme}
+					data-lang={GISCUS_CONFIG.lang}
+					crossorigin="anonymous"
+					async
+				></script>
+			</div>
+		</section>
+	)
+}
+
+<script>
+	// giscus 的 iframe 读不到站点的 <html data-theme>，只能通过 postMessage 换肤。
+	// iframe 刚插入时还是 about:blank（继承本站 origin），此时发消息会被浏览器拦下并报错，
+	// 所以只在它的 load 事件之后发。
+	const GISCUS_ORIGIN = 'https://giscus.app';
+	const ready = new WeakSet<HTMLIFrameElement>();
+
+	function pushTheme(frame: HTMLIFrameElement) {
+		if (!ready.has(frame) || !frame.contentWindow) return;
+		const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+		frame.contentWindow.postMessage({ giscus: { setConfig: { theme } } }, GISCUS_ORIGIN);
+	}
+
+	function hookFrame() {
+		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+		if (!frame || frame.dataset.themeHooked === '1') return;
+		frame.dataset.themeHooked = '1';
+		frame.addEventListener('load', () => {
+			ready.add(frame);
+			pushTheme(frame);
+		});
+	}
+
+	document.addEventListener('astro:page-load', hookFrame);
+	// 监听 <html>（切页时只有 body 被替换，html 一直在，观察器不会失效）
+	new MutationObserver(hookFrame).observe(document.documentElement, {
+		childList: true,
+		subtree: true,
+	});
+
+	// 主题切换后再推一次（这时 iframe 早已加载完）
+	new MutationObserver(() => {
+		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+		if (frame) pushTheme(frame);
+	}).observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ['data-theme'],
+	});
+
+	if (document.readyState !== 'loading') hookFrame();
+</script>
 
 <style>
 	.giscus-section {
@@ -52,8 +98,21 @@ const enabled = Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId);
 		border-top: 1px solid rgb(var(--line));
 	}
 	.giscus-title {
-		font-size: 1.2rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 1.05rem;
 		margin-bottom: 1.2em;
 		color: rgb(var(--muted));
+	}
+	.giscus-title::before {
+		content: '';
+		width: 3px;
+		height: 0.9em;
+		border-radius: 2px;
+		background: rgb(var(--accent));
+	}
+	.giscus-host {
+		min-height: 120px;
 	}
 </style>

@@ -4,11 +4,10 @@ interface Props {
 }
 
 const { date } = Astro.props;
-const formatted = date.toLocaleDateString('zh-CN', {
-	year: 'numeric',
-	month: '2-digit',
-	day: '2-digit',
-});
+// 统一成 2026-10-20 这种写法：与「最新动态」「后台列表」保持一致。
+// 用 UTC 取值，避免构建机时区不同把日期推到前一天。
+const pad = (n: number) => String(n).padStart(2, '0');
+const formatted = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 ---
 
 <time datetime={date.toISOString()}>{formatted}</time>

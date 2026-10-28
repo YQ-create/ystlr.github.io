@@ -4,12 +4,19 @@ import PostListItem from '../../components/PostListItem.astro';
 import { getCollection } from 'astro:content';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+// 草稿只在本地/详情页可见，不进公开列表
+const posts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// 汇总全站标签，供顶部标签筛选展示
-const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
+// 汇总全站标签：按出现次数排序，常用的排前面（同次数按拼音）
+const tagCount = new Map<string, number>();
+for (const post of posts) {
+	for (const tag of post.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
+}
+const allTags = [...tagCount.entries()]
+	.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'))
+	.map(([tag]) => tag);
 ---
 
 <BaseLayout title={`文章 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
@@ -78,7 +85,8 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 
 		for (const item of items) {
 			const text = item.textContent?.toLowerCase() ?? '';
-			const tags = item.dataset.tags ?? '';
+			// 精确匹配标签：用 includes 会把「生活」误判成命中「生活片段」
+			const tags = (item.dataset.tags ?? '').split(',').filter(Boolean);
 			const matchTag = !activeTag || tags.includes(activeTag);
 			const matchQuery = !q || text.includes(q);
 			const show = matchTag && matchQuery;
@@ -88,6 +96,20 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 
 		if (resultCount) resultCount.textContent = visible > 0 ? `共 ${visible} 篇` : '';
 		if (emptyState) emptyState.hidden = visible !== 0;
+	}
+
+	/** 地址栏跟着筛选走：刷新、分享、从文章页返回都能还原状态 */
+	function syncUrl() {
+		const url = new URL(location.href);
+		if (activeTag) url.searchParams.set('tag', activeTag);
+		else url.searchParams.delete('tag');
+		history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+	}
+
+	function setActive(button: HTMLButtonElement) {
+		document
+			.querySelectorAll('#tag-filter .tag-chip')
+			.forEach((b) => b.classList.toggle('is-active', b === button));
 	}
 
 	function init() {
@@ -108,10 +130,21 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 		tagButtons.forEach((btn) => {
 			btn.addEventListener('click', () => {
 				activeTag = btn.dataset.tag ?? '';
-				tagButtons.forEach((b) => b.classList.toggle('is-active', b === btn));
+				setActive(btn);
+				syncUrl();
 				applyFilter();
 			});
 		});
+
+		// 首页标签条跳过来是 /blog/?tag=日常，这里要把对应标签点亮
+		const initial = new URLSearchParams(location.search).get('tag') ?? '';
+		if (initial) {
+			const match = tagButtons.find((btn) => (btn.dataset.tag ?? '') === initial);
+			if (match) {
+				activeTag = initial;
+				setActive(match);
+			}
+		}
 
 		applyFilter();
 	}
@@ -158,16 +191,18 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 
 	.toolbar {
 		position: sticky;
-		top: calc(0.75rem + 62px);
+		top: calc(var(--head-h) + 0.35rem);
 		z-index: 20;
 		display: flex;
-		flex-direction: column;
-		gap: 0.8rem;
-		padding: 0.9rem 1rem;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.55rem 1rem;
+		padding: 0.6rem 0.75rem;
 		border-radius: var(--r-lg);
-		margin-bottom: 1.2rem;
+		margin-bottom: 1.1rem;
 	}
 	.search {
+		flex: 1 1 240px;
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
@@ -202,7 +237,7 @@ const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
 		padding: 0.28rem 0.8rem;
 		border-radius: var(--r-pill);
 		border: 1px solid rgba(var(--line), 1);
-		background: rgba(255, 255, 255, 0.4);
+		background: var(--chip-bg);
 		color: rgb(var(--muted));
 		cursor: pointer;
 		transition: all var(--dur-fast) var(--ease-out);

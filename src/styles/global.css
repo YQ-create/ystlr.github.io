@@ -28,7 +28,8 @@
 	--ink: 42, 36, 29;
 	--ink-soft: 68, 58, 47;
 	--muted: 122, 110, 95;
-	--muted-light: 158, 146, 130;
+	/* 次要文字（标签、序号）：浅色纸上再浅一档就会掉到 3:1 以下，这里守住可读下限 */
+	--muted-light: 140, 128, 112;
 
 	/* 玻璃 */
 	--glass-bg: rgba(255, 252, 245, 0.24);
@@ -68,6 +69,8 @@
 	--w-page: 1120px;
 	--w-wide: 1480px;
 	--gutter: clamp(1.1rem, 4vw, 2.5rem);
+	/* 页头总高（吸顶控件据此避让，别再写魔法数字） */
+	--head-h: 74px;
 
 	/* 动效曲线：柔和进场，精准收束 */
 	--ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -199,6 +202,13 @@ a:hover {
 
 p {
 	margin-bottom: 1em;
+	text-wrap: pretty;
+}
+
+/* 数字统一等宽，统计区切换时不跳 */
+.num {
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
 }
 
 img {
@@ -235,11 +245,18 @@ pre > code {
 }
 
 blockquote {
-	border-left: 2px solid rgba(var(--accent), 0.5);
-	padding: 0.2em 0 0.2em 1.2em;
-	margin: 1.8em 0;
-	color: rgb(var(--muted));
-	font-style: italic;
+	position: relative;
+	margin: 2em 0;
+	padding: 1.1em 1.4em 1.1em 1.5em;
+	border: 1px solid var(--glass-brd-dim);
+	border-left: 2px solid rgba(var(--accent), 0.55);
+	border-radius: 0 var(--r-md) var(--r-md) 0;
+	background: var(--glass-bg);
+	font-style: normal;
+	color: rgb(var(--ink-soft));
+}
+blockquote p:last-child {
+	margin-bottom: 0;
 }
 
 hr {
@@ -440,7 +457,9 @@ select:focus {
 }
 
 /* ============ 滚动进场（Motion.astro 添加 .is-in） ============ */
-[data-reveal] {
+/* 初始隐藏只在 <html class="js"> 时生效：BaseHead 的首屏脚本会立刻打上这个类。
+   这样禁用 JS / 脚本加载失败时内容仍然可见，而不是整站空白。 */
+:root.js [data-reveal] {
 	opacity: 0;
 	transform: translate3d(0, 26px, 0);
 	filter: blur(5px);
@@ -451,13 +470,13 @@ select:focus {
 	transition-delay: var(--reveal-delay, 0ms);
 	will-change: opacity, transform;
 }
-[data-reveal='left'] {
+:root.js [data-reveal='left'] {
 	transform: translate3d(-30px, 0, 0);
 }
-[data-reveal='right'] {
+:root.js [data-reveal='right'] {
 	transform: translate3d(30px, 0, 0);
 }
-[data-reveal='scale'] {
+:root.js [data-reveal='scale'] {
 	transform: scale(0.94);
 }
 @property --reveal-wipe {
@@ -469,7 +488,7 @@ select:focus {
 /* 用 mask 做「擦除式」揭示：clip-path 会把元素自身裁成 0 高，
    导致 IntersectionObserver 永远认为它没有进入视口（进场动画与图片懒加载都会卡死）。
    mask 只影响绘制，不改几何，所以观察器能正常触发。 */
-[data-reveal='mask'] {
+:root.js [data-reveal='mask'] {
 	opacity: 1;
 	transform: none;
 	filter: none;
@@ -487,10 +506,10 @@ select:focus {
 	);
 	transition: --reveal-wipe 1.05s var(--ease-out);
 }
-[data-reveal='mask'].is-in {
+:root.js [data-reveal='mask'].is-in {
 	--reveal-wipe: 130%;
 }
-[data-reveal].is-in {
+:root.js [data-reveal].is-in {
 	opacity: 1;
 	transform: none;
 	filter: blur(0);
@@ -511,27 +530,43 @@ select:focus {
 }
 
 /* ============ 文章正文 ============ */
+/* 中文正文不要斜体（浏览器合成斜体很难看），强调交给字重与颜色 */
 .prose {
-	font-size: 1.02rem;
-	line-height: 1.9;
+	font-size: 1.05rem;
+	line-height: 1.88;
+	color: rgb(var(--ink-soft));
 }
 .prose p {
-	margin-bottom: 1.6em;
+	margin-bottom: 1.5em;
+}
+.prose > p:first-child {
+	color: rgb(var(--ink));
+}
+.prose h2,
+.prose h3,
+.prose h4 {
+	scroll-margin-top: calc(var(--head-h) + 1rem);
 }
 .prose h2 {
-	margin: 2.4em 0 0.8em;
-	font-size: 1.55rem;
+	margin: 2.4em 0 1em;
+	padding-bottom: 0.4em;
+	font-size: 1.5rem;
+	border-bottom: 1px solid rgba(var(--line), 0.9);
 }
 .prose h3 {
 	margin: 2em 0 0.6em;
+	font-size: 1.18rem;
 }
 .prose ul,
 .prose ol {
-	padding-left: 1.3em;
-	margin-bottom: 1.6em;
+	padding-left: 1.35em;
+	margin-bottom: 1.5em;
 }
 .prose li {
-	margin-bottom: 0.45em;
+	margin-bottom: 0.5em;
+}
+.prose li::marker {
+	color: rgba(var(--accent), 0.65);
 }
 .prose img {
 	margin: 2em 0;
@@ -539,6 +574,30 @@ select:focus {
 }
 .prose hr {
 	margin: 3em 0;
+}
+.prose a {
+	text-decoration-color: rgba(var(--accent), 0.4);
+}
+.prose a:hover {
+	text-decoration-color: currentColor;
+}
+.prose table {
+	width: 100%;
+	margin: 1.8em 0;
+	border-collapse: collapse;
+	font-size: 0.94rem;
+}
+.prose th,
+.prose td {
+	padding: 0.62em 0.8em;
+	border-bottom: 1px solid rgb(var(--line));
+	text-align: left;
+}
+.prose th {
+	font-size: 0.82rem;
+	letter-spacing: 0.06em;
+	color: rgb(var(--muted));
+	border-bottom-color: rgba(var(--ink), 0.22);
 }
 
 /* ============ 页脚区（组件内只用这个工具类） ============ */
@@ -596,6 +655,8 @@ select:focus {
 		transform: none !important;
 		filter: none !important;
 		clip-path: none !important;
+		-webkit-mask-image: none !important;
+		mask-image: none !important;
 	}
 }
 

@@ -46,7 +46,11 @@ const ogImage = new URL(image.src, Astro.url);
 	   所以 after-swap 立刻再写一次，保证切页后主题不丢。 */
 	(() => {
 		const d = document.documentElement;
+		// 有 JS 才启用「滚动进场」的初始隐藏，脚本挂了内容也不会消失
+		d.classList.add('js');
 		const sync = () => {
+			// 切页时 Astro 会用新文档的 <html> 属性覆盖，js 类要重新补上
+			d.classList.add('js');
 			try {
 				const t = localStorage.getItem('ystlr:theme');
 				const g = localStorage.getItem('ystlr:glass');
@@ -70,6 +74,20 @@ const ogImage = new URL(image.src, Astro.url);
 {noindex && <meta name="robots" content="noindex" />}
 
 <Font cssVariable="--font-atkinson" preload />
+
+<!-- 没有 JS 时把「滚动进场」的初始隐藏关掉，内容照常可见 -->
+<noscript>
+	<style>
+		[data-reveal] {
+			opacity: 1 !important;
+			transform: none !important;
+			filter: none !important;
+			clip-path: none !important;
+			-webkit-mask-image: none !important;
+			mask-image: none !important;
+		}
+	</style>
+</noscript>
 
 <link rel="canonical" href={canonicalURL} />
 

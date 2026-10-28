@@ -1,0 +1,65 @@
+---
+/**
+ * CountUp — 数字滚动（React Bits 的 CountUp 的原生实现，不引入 React）。
+ *
+ * 服务端直接渲染最终值，没有 JS 也能看到正确数字；有 JS 时首次进入视口才从
+ * from 滚到 to，避免首屏还没看清就跳完。
+ *
+ * 动画逻辑统一放在 Motion.astro（和其他动效一起），这里只输出标记，
+ * 所以同一页里用多次也不会重复打包脚本。
+ */
+interface Props {
+	to: number;
+	from?: number;
+	/** 动画时长（秒） */
+	duration?: number;
+	/** 延迟（秒） */
+	delay?: number;
+	decimals?: number;
+	/** 千分位，例如 ',' */
+	separator?: string;
+	prefix?: string;
+	suffix?: string;
+	class?: string;
+}
+
+const {
+	to,
+	from = 0,
+	duration = 1.1,
+	delay = 0,
+	decimals = 0,
+	separator = '',
+	prefix = '',
+	suffix = '',
+	class: className = '',
+} = Astro.props;
+
+const format = (value: number) => {
+	const fixed = value.toFixed(decimals);
+	const [int, dec] = fixed.split('.');
+	const grouped = separator ? int.replace(/\B(?=(\d{3})+(?!\d))/g, separator) : int;
+	return dec ? `${grouped}.${dec}` : grouped;
+};
+---
+
+<span
+	class:list={['count-up', 'num', className]}
+	data-count-up
+	data-to={to}
+	data-from={from}
+	data-duration={duration}
+	data-delay={delay}
+	data-decimals={decimals}
+	data-separator={separator}
+	data-prefix={prefix}
+	data-suffix={suffix}>{prefix}{format(to)}{suffix}</span>
+
+<style>
+	.count-up {
+		display: inline-block;
+		font-variant-numeric: tabular-nums;
+		/* 等宽数字 + 固定最小宽度，滚动时右侧内容不会抖 */
+		white-space: nowrap;
+	}
+</style>

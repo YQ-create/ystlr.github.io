@@ -2,6 +2,7 @@
 // 全站骨架：页头 + 内容 + 页脚 + 动效引擎。
 // 所有页面都用它包一层，页头页脚只写一遍。
 import BaseHead from '../components/BaseHead.astro';
+import ClickSpark from '../components/ClickSpark.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Motion from '../components/Motion.astro';
@@ -14,13 +15,15 @@ interface Props {
 	noindex?: boolean;
 	/** 给 <body> 追加类名，便于单页定制 */
 	bodyClass?: string;
+	/** 首屏整屏 Hero：页头改成固定定位，融入画面 */
+	hero?: boolean;
 }
 
 const { title, description, image, noindex, bodyClass, hero = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="js">
 	<head>
 		<BaseHead title={title} description={description} image={image} noindex={noindex} />
 	</head>
@@ -30,5 +33,6 @@ const { title, description, image, noindex, bodyClass, hero = false } = Astro.pr
 		<slot />
 		<Footer />
 		<Motion />
+		<ClickSpark size={11} radius={24} count={7} />
 	</body>
 </html>

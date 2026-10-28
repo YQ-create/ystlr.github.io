@@ -4,6 +4,8 @@
 //   [data-glow]    玻璃卡片上的指针高光，写入 --mx / --my
 //   [data-tilt]    卡片 3D 倾斜，角度由 data-tilt 指定
 //   [data-progress] 顶部阅读进度条（写入 --progress）
+//   [data-count-up] 数字滚动（CountUp.astro 只负责标记，逻辑在这里统一跑，
+//                   避免同一页里出现多份相同脚本）
 // Astro View Transitions 会替换 <body>，所以所有初始化都挂在 astro:page-load 上，
 // 并用 data-* 标记避免重复绑定。
 ---
@@ -129,6 +131,72 @@
 		});
 	}
 
+	/* ---------- 数字滚动 ---------- */
+	const formatNumber = (value: number, decimals: number, separator: string) => {
+		const [int, dec] = value.toFixed(decimals).split('.');
+		const grouped = separator ? int.replace(/\B(?=(\d{3})+(?!\d))/g, separator) : int;
+		return dec ? `${grouped}.${dec}` : grouped;
+	};
+
+	function initCountUp() {
+		const nodes = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-count-up]:not([data-count-ready])'),
+		);
+		if (nodes.length === 0) return;
+
+		const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+		for (const el of nodes) {
+			el.dataset.countReady = '1';
+
+			const to = Number(el.dataset.to) || 0;
+			const from = Number(el.dataset.from) || 0;
+			const duration = Math.max(0, Number(el.dataset.duration) || 1.1) * 1000;
+			const delay = Math.max(0, Number(el.dataset.delay) || 0) * 1000;
+			const decimals = Math.max(0, Number(el.dataset.decimals) || 0);
+			const separator = el.dataset.separator ?? '';
+			const prefix = el.dataset.prefix ?? '';
+			const suffix = el.dataset.suffix ?? '';
+
+			const write = (value: number) => {
+				el.textContent = `${prefix}${formatNumber(value, decimals, separator)}${suffix}`;
+			};
+
+			if (prefersReduced() || duration === 0) {
+				write(to);
+				continue;
+			}
+
+			// 服务端已渲染终值，这里先回到起点，等进入视口再滚
+			const run = () => {
+				const start = performance.now() + delay;
+				const step = (now: number) => {
+					if (now < start) {
+						requestAnimationFrame(step);
+						return;
+					}
+					const p = Math.min(1, (now - start) / duration);
+					write(from + (to - from) * easeOut(p));
+					if (p < 1) requestAnimationFrame(step);
+					else write(to);
+				};
+				requestAnimationFrame(step);
+			};
+
+			const io = new IntersectionObserver(
+				(entries) => {
+					if (!entries.some((e) => e.isIntersecting)) return;
+					io.disconnect();
+					write(from);
+					window.setTimeout(run, 60);
+				},
+				{ threshold: 0.4 },
+			);
+			io.observe(el);
+			cleanups.push(() => io.disconnect());
+		}
+	}
+
 	/* ---------- 编排 ---------- */
 	let pageToken = 0;
 	let mountedToken = -1;
@@ -142,6 +210,7 @@
 		initGlow();
 		initTilt();
 		initProgress();
+		initCountUp();
 	}
 
 	if (!bound) {

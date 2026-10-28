@@ -1,4 +1,4 @@
-﻿---
+---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DepthCarousel from '../../components/DepthCarousel.astro';
 import { getCollection } from 'astro:content';
@@ -78,22 +78,24 @@ tags: ["生活", "风景"]
 			</div>
 		) : (
 			<>
-				<div class="gallery-carousel" data-reveal="scale">
-					<DepthCarousel
-						items={carouselItems}
-						depth={200}
-						spread={100}
-						tilt={20}
-						perspective={1400}
-						visibleCards={4}
-						falloff={0.2}
-						blur={4}
-						autoplay
-						loop
-						interval={3800}
-						height="clamp(320px, 44vh, 460px)"
-					/>
-				</div>
+				{carouselItems.length >= 3 && (
+					<div class="gallery-carousel" data-reveal="scale">
+						<DepthCarousel
+							items={carouselItems}
+							depth={200}
+							spread={100}
+							tilt={20}
+							perspective={1400}
+							visibleCards={4}
+							falloff={0.2}
+							blur={4}
+							autoplay
+							loop
+							interval={3800}
+							height="clamp(320px, 44vh, 460px)"
+						/>
+					</div>
+				)}
 
 				<div class="gallery-timeline">
 					{yearGroups.map((year) => (
@@ -417,6 +419,12 @@ tags: ["生活", "风景"]
 		display: grid;
 		place-items: center;
 		padding: clamp(1rem, 4vw, 3rem);
+		overscroll-behavior: contain;
+	}
+	/* 关键：.lightbox 自己设了 display:grid，会盖掉浏览器给 [hidden] 的 display:none，
+	   于是「藏起来」的灯箱仍然铺满屏幕、吃掉所有点击。这里显式兜住。 */
+	.lightbox[hidden] {
+		display: none !important;
 	}
 	.lightbox-veil {
 		position: absolute;

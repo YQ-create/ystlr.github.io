@@ -24,6 +24,12 @@ interface Props {
 	spotlightRadius?: number;
 	/** 只保留描边 */
 	outline?: boolean;
+	/** outline 模式下的描边粗细（em，随字号自动缩放） */
+	strokeWidth?: number;
+	/** outline 模式下的描边浓度 0–1（strokeColor 未指定时生效） */
+	strokeAlpha?: number;
+	/** outline 模式下的描边颜色，任意 CSS 颜色 */
+	strokeColor?: string;
 	class?: string;
 	tag?: 'h1' | 'h2' | 'div';
 }
@@ -40,6 +46,9 @@ const {
 	spotlight = false,
 	spotlightRadius = 180,
 	outline = false,
+	strokeWidth = 0.045,
+	strokeAlpha = 0.5,
+	strokeColor,
 	class: className = '',
 	tag = 'h1',
 } = Astro.props;
@@ -55,7 +64,16 @@ const Tag = tag;
 	data-scale={fillScale}
 	data-spot={spotlight ? spotlightRadius : 0}
 	data-trigger={trigger}
-	style={fillUrl ? `--masked-img:url(${fillUrl});--masked-scale:${fillScale}` : undefined}
+	style={[
+		fillUrl ? `--masked-img:url(${fillUrl});--masked-scale:${fillScale}` : '',
+		outline
+			? `--masked-stroke:${strokeWidth}em;--masked-stroke-color:${
+					strokeColor ?? `rgba(var(--ink), ${strokeAlpha})`
+				}`
+			: '',
+	]
+		.filter(Boolean)
+		.join(';') || undefined}
 	aria-label={text}
 >
 	<span class="masked__text" aria-hidden="true">{text}</span>
@@ -90,7 +108,17 @@ const Tag = tag;
 	.masked--outline .masked__text {
 		background: transparent;
 		-webkit-text-fill-color: transparent;
-		-webkit-text-stroke: 1.4px rgba(var(--ink), 0.5);
+		-webkit-text-stroke: var(--masked-stroke, 0.045em)
+			var(--masked-stroke-color, rgba(var(--ink), 0.5));
+	}
+
+	/* 小屏字号小，描边会挤掉字腔（汉字尤其明显，糊成一团），
+	   所以窄屏改成实心同色，只丢描边、不丢层次 */
+	@media (max-width: 640px) {
+		.masked--outline .masked__text {
+			-webkit-text-stroke-width: 0;
+			-webkit-text-fill-color: var(--masked-stroke-color, rgba(var(--ink), 0.5));
+		}
 	}
 
 	/* 鼠标处提亮：叠一层白雾，mask 随指针移动 */

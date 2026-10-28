@@ -9,19 +9,24 @@ interface Props {
 	post: CollectionEntry<'blog'>;
 	index?: number;
 	delay?: number;
+	/** 头图位（首页精选的第一张）：不要封面图，改用大号序号做装饰 */
+	lead?: boolean;
 }
 
-const { post, index, delay = 0 } = Astro.props;
+const { post, index, delay = 0, lead = false } = Astro.props;
 const { title, description, pubDate, heroImage, tags } = post.data;
 ---
 
 <article
-	class="card glass glass-hover"
+	class:list={['card', 'glass', 'glass-hover', { 'card--lead': lead }]}
 	data-glow
 	data-tilt="5"
 	data-reveal="scale"
 	data-reveal-delay={delay}
 >
+	{lead && typeof index === 'number' && (
+		<span class="card-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+	)}
 	<a class="card-link" href={`/blog/${post.id}/`} aria-label={title}>
 		<div class:list={['card-media', { 'has-image': Boolean(heroImage) }]}>
 			{heroImage ? (
@@ -70,6 +75,40 @@ const { title, description, pubDate, heroImage, tags } = post.data;
 		border-radius: var(--r-xl);
 		overflow: hidden;
 		height: 100%;
+	}
+	/* 头图位的大号序号：只描边，压在右上角当装饰。
+	   注意 top 不能为负：.card 有 overflow:hidden，负偏移会把字顶裁掉。 */
+	.card-num {
+		position: absolute;
+		top: 0;
+		right: 0.22em;
+		font-size: clamp(3.6rem, 6vw, 5.4rem);
+		font-weight: 800;
+		line-height: 1;
+		letter-spacing: -0.05em;
+		color: transparent;
+		-webkit-text-stroke: 1px rgba(var(--accent), 0.26);
+		pointer-events: none;
+		user-select: none;
+	}
+	.card--lead .card-body {
+		padding: 1.6rem 1.8rem 1.7rem;
+		gap: 0.55rem;
+	}
+	.card--lead .card-title {
+		font-size: clamp(1.28rem, 1.6vw, 1.5rem);
+		max-width: 22ch;
+	}
+	.card--lead .card-desc {
+		max-width: 48ch;
+		font-size: 0.94rem;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+	}
+	@media (max-width: 760px) {
+		.card-num {
+			display: none;
+		}
 	}
 	.card-link {
 		display: flex;

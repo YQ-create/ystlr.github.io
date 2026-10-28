@@ -4,6 +4,7 @@ import SpectralDrape from '../components/SpectralDrape.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import DepthCarousel from '../components/DepthCarousel.astro';
 import MaskedHeading from '../components/MaskedHeading.astro';
+import CountUp from '../components/CountUp.astro';
 import heroFillImage from '../assets/blog/hero-01.jpg';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
@@ -40,6 +41,7 @@ const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => (
 	image: it.image,
 	alt: it.title,
 	title: it.title,
+	href: it.href,
 }));
 
 // 标签云 + 最新动态 + 站点统计（门户式版块用）
@@ -61,11 +63,11 @@ const firstDate = posts.length ? new Date(Math.min(...posts.map((p) => p.data.pu
 const days = firstDate ? Math.max(1, Math.ceil((Date.now() - firstDate.valueOf()) / 86400000)) : 0;
 
 const stats = [
-	{ label: '文章', value: `${posts.length} 篇` },
-	{ label: '照片', value: `${photos.length} 张` },
-	{ label: '标签', value: `${tagCount.size} 个` },
-	{ label: '总字数', value: totalWords > 9999 ? `${(totalWords / 1000).toFixed(1)}k` : String(totalWords) },
-	{ label: '运行', value: `${days} 天` },
+	{ label: '文章', value: posts.length, unit: '篇' },
+	{ label: '照片', value: photos.length, unit: '张' },
+	{ label: '标签', value: tagCount.size, unit: '个' },
+	{ label: '总字数', value: totalWords, unit: '字' },
+	{ label: '运行', value: days, unit: '天' },
 ];
 
 const latest = posts[0]?.data.pubDate;
@@ -78,12 +80,12 @@ const latest = posts[0]?.data.pubDate;
 			<div class="hero-waves" aria-hidden="true">
 				<SpectralDrape
 					preset="ember"
-					density={104}
-					rows={42}
-					speed={0.85}
+					density={96}
+					rows={40}
+					speed={0.8}
 					amp={0.95}
-					dotSize={1.6}
-					opacity={0.95}
+					dotSize={1.5}
+					opacity={0.78}
 					pointer
 					pointerStrength={1}
 				/>
@@ -110,6 +112,8 @@ const latest = posts[0]?.data.pubDate;
 					tag="div"
 					text="想法与读过的东西"
 					outline
+					strokeWidth={0.052}
+					strokeColor="rgba(var(--accent-deep), 0.88)"
 					parallax={18}
 				/>
 				</div>
@@ -161,11 +165,11 @@ const latest = posts[0]?.data.pubDate;
 				<dl class="hero-stats">
 					<div>
 						<dt>文章</dt>
-						<dd>{posts.length}<span>篇</span></dd>
+						<dd><CountUp to={posts.length} /><span>篇</span></dd>
 					</div>
 					<div>
 						<dt>照片</dt>
-						<dd>{photos.length}<span>张</span></dd>
+						<dd><CountUp to={photos.length} /><span>张</span></dd>
 					</div>
 					<div>
 						<dt>最近更新</dt>
@@ -236,7 +240,9 @@ const latest = posts[0]?.data.pubDate;
 							<p class="empty-hint">还没有文章。第一篇文章写好后，会出现在这里。</p>
 						) : (
 							<div class="post-grid">
-								{featured.map((post, i) => <PostCard post={post} index={i} delay={i * 90} />)}
+								{featured.map((post, i) => (
+									<PostCard post={post} index={i} delay={i * 90} lead={i === 0} />
+								))}
 							</div>
 						)}
 					</div>
@@ -259,7 +265,10 @@ const latest = posts[0]?.data.pubDate;
 							<h4 class="portal__title">站点统计</h4>
 							<ul class="stats">
 								{stats.map((s) => (
-									<li><span>{s.label}</span><b>{s.value}</b></li>
+									<li>
+										<span>{s.label}</span>
+										<b><CountUp to={s.value} separator="," /><em>{s.unit}</em></b>
+									</li>
 								))}
 							</ul>
 						</section>
@@ -455,37 +464,22 @@ const latest = posts[0]?.data.pubDate;
 		margin: 0 0 1.7rem;
 	}
 	:global(.hero-title) {
-		font-size: clamp(2.4rem, 7.4vw, 5.9rem);
+		font-size: clamp(2.35rem, 7.1vw, 5.7rem);
+		max-width: 14ch;
 	}
+	/* 照片填充先转灰再上暖色：保留「字里透出照片」的质感，
+	   又不会把绿/紫直接怼进整站唯一的暖色画面里 */
 	:global(.hero-title .masked__text) {
-		/* 让图片填充别太跳，和暖色调统一 */
-		filter: saturate(0.72) contrast(1.12) sepia(0.12);
+		filter: grayscale(1) sepia(0.95) saturate(1.9) brightness(1.04) contrast(1.05);
+	}
+	/* 浅色纸上要压深，不然金色字会糊在同色背景里 */
+	:root[data-theme='light'] :global(.hero-title .masked__text) {
+		filter: grayscale(1) sepia(1) saturate(2.1) brightness(0.58) contrast(1.2);
 	}
 	:global(.hero-sub) {
-		font-size: clamp(1.4rem, 3.4vw, 2.4rem);
-		font-weight: 500;
-	}
-	.hero-line {
-		display: block;
-		overflow: hidden;
-		padding-bottom: 0.06em;
-	}
-	.hero-line > span {
-		display: inline-block;
-		transform: translateY(110%);
-		animation: line-rise 1.05s var(--ease-out) forwards;
-	}
-	.hero-line:nth-child(2) > span {
-		animation-delay: 0.12s;
-	}
-	.hero-line--outline > span {
-		color: transparent;
-		-webkit-text-stroke: 1.4px rgba(var(--ink), 0.55);
-	}
-	@keyframes line-rise {
-		to {
-			transform: translateY(0);
-		}
+		font-size: clamp(1.28rem, 3vw, 2.15rem);
+		font-weight: 600;
+		letter-spacing: 0.01em;
 	}
 
 	.hero-lede {
@@ -791,6 +785,13 @@ const latest = posts[0]?.data.pubDate;
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 	}
+	.stats b em {
+		margin-left: 0.22em;
+		font-style: normal;
+		font-size: 0.72rem;
+		font-weight: 500;
+		color: rgb(var(--muted));
+	}
 	@media (max-width: 1080px) {
 		.bloggrid {
 			grid-template-columns: 210px minmax(0, 1fr);
@@ -865,7 +866,94 @@ const latest = posts[0]?.data.pubDate;
 	}
 
 	/* ---------- 照片墙 ---------- */
-	.hero-stats {
+	.sec--wall {
+		padding-top: clamp(2.2rem, 5vw, 3.6rem);
+	}
+
+	/* ---------- 关于 ---------- */
+	.about-card {
+		display: grid;
+		grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+		gap: clamp(1.4rem, 4vw, 3.2rem);
+		align-items: start;
+		padding: clamp(1.5rem, 3.6vw, 2.6rem);
+		border-radius: var(--r-xl);
+	}
+	.about-main h2 {
+		margin: 0.3em 0 0.55em;
+		font-size: clamp(1.4rem, 2.6vw, 1.85rem);
+	}
+	.about-main p {
+		margin: 0 0 1.15rem;
+		max-width: 44ch;
+		font-size: 0.96rem;
+		line-height: 1.8;
+		color: rgb(var(--muted));
+	}
+	.about-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: rgb(var(--accent));
+		text-decoration: none;
+		transition: gap var(--dur-fast) var(--ease-out);
+	}
+	.about-link:hover {
+		gap: 0.65rem;
+		color: rgb(var(--accent-deep));
+	}
+	.about-facts {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0;
+	}
+	.about-facts li {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.72rem 0;
+		font-size: 0.9rem;
+		color: rgb(var(--ink-soft));
+		border-bottom: 1px dashed rgba(var(--line), 0.95);
+	}
+	.about-facts li:first-child {
+		padding-top: 0.2rem;
+	}
+	.about-facts li:last-child {
+		border-bottom: none;
+	}
+	.about-facts span {
+		flex-shrink: 0;
+		font-size: 0.76rem;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+	}
+
+	@media (max-width: 860px) {
+		.about-card {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.about-facts li:first-child {
+			padding-top: 0.72rem;
+			border-top: 1px dashed rgba(var(--line), 0.95);
+		}
+	}
+
+	/* ---------- 小屏 ---------- */
+	@media (max-width: 640px) {
+		.hero {
+			min-height: 92svh;
+			padding-top: clamp(5rem, 20vh, 7rem);
+		}
+		.hero-head {
+			gap: 1.3rem;
+		}
+		.hero-stats {
 			gap: 1.6rem;
 		}
 		.post-grid {

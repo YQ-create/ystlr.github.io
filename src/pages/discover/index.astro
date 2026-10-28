@@ -34,7 +34,7 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 				<section class="group">
 					<header class="group-head" data-reveal>
 						<h2 class="group-title">{group.category}</h2>
-						<span class="group-count">{group.links.length}</span>
+						<span class="group-count">{group.links.length} 个站点</span>
 					</header>
 					<div class="link-grid">
 						{group.links.map((link, i) => (
@@ -113,6 +113,11 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 	.discover {
 		width: var(--w-page);
 	}
+	/* .link-card 用了 display:flex，会盖掉 [hidden] 的 display:none，
+	   搜索过滤必须显式兜一层，否则「隐藏」的卡片还留在原位 */
+	.discover [hidden] {
+		display: none !important;
+	}
 	.page-head {
 		padding: 1rem 0 1.4rem;
 	}
@@ -126,11 +131,11 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 
 	.filter {
 		position: sticky;
-		top: calc(0.75rem + 62px);
+		top: calc(var(--head-h) + 0.35rem);
 		z-index: 20;
-		padding: 0.55rem 0.75rem;
+		padding: 0.4rem 0.55rem;
 		border-radius: var(--r-pill);
-		margin-bottom: 1.6rem;
+		margin-bottom: 1.8rem;
 		max-width: 380px;
 	}
 	.search {
@@ -152,31 +157,42 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 		box-shadow: none;
 	}
 
+	/* 分组做成「左侧分类 + 右侧卡片」的书签册版式：
+	   分类名当侧栏标签，卡片自动铺满右侧，不会出现半行空白 */
 	.group {
-		margin-bottom: clamp(1.8rem, 4vw, 2.6rem);
+		display: grid;
+		grid-template-columns: minmax(120px, 168px) minmax(0, 1fr);
+		gap: clamp(0.9rem, 2.4vw, 2rem);
+		align-items: start;
+		padding-top: clamp(1.1rem, 2.6vw, 1.6rem);
+		margin-bottom: clamp(1.1rem, 2.6vw, 1.6rem);
+		border-top: 1px solid rgba(var(--line), 0.9);
 	}
 	.group-head {
 		display: flex;
-		align-items: baseline;
-		gap: 0.7rem;
-		margin-bottom: 0.9rem;
-		padding-bottom: 0.6rem;
-		border-bottom: 1px solid rgba(var(--line), 1);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.3rem;
+		margin: 0;
+		padding: 0;
+		border-bottom: none;
 	}
 	.group-title {
-		font-size: 1.05rem;
+		font-size: 1rem;
 		margin: 0;
+		letter-spacing: 0.01em;
 	}
 	.group-count {
-		font-size: 0.72rem;
+		font-size: 0.7rem;
 		letter-spacing: 0.16em;
 		color: rgb(var(--muted-light));
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* 用 grid + auto-fit：两条链接就两等分，三条就三等分，永远铺满整行 */
 	.link-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 		gap: clamp(0.7rem, 1.6vw, 1rem);
 	}
 	.link-card {
@@ -184,7 +200,7 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
-		padding: 1.15rem 1.25rem 1.2rem;
+		padding: 1.1rem 1.2rem 1.15rem;
 		border-radius: var(--r-lg);
 		text-decoration: none;
 		color: rgb(var(--ink));
@@ -246,6 +262,15 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 		.filter {
 			position: static;
 			max-width: none;
+		}
+		.group {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 0.8rem;
+		}
+		.group-head {
+			flex-direction: row;
+			align-items: baseline;
+			gap: 0.6rem;
 		}
 	}
 </style>

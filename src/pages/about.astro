@@ -7,6 +7,11 @@ import { AUTHOR_NAME, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../cons
 const posts = await getCollection('blog');
 const photos = await getCollection('gallery');
 
+const published = posts
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const recent = published.slice(0, 3);
+
 const startedAt = posts.reduce<Date | null>((earliest, post) => {
 	const d = post.data.pubDate;
 	return !earliest || d < earliest ? d : earliest;
@@ -44,7 +49,9 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 
 				{startedAt && (
 					<p class="since" data-reveal data-reveal-delay="240">
-						从 <FormattedDate date={startedAt} /> 开始记录
+						<span>从</span>
+						<FormattedDate date={startedAt} />
+						<span>开始记录</span>
 					</p>
 				)}
 			</div>
@@ -89,6 +96,42 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 				))}
 			</dl>
 		</section>
+
+		{recent.length > 0 && (
+			<section class="wrap about-recent">
+				<header class="about-recent__head" data-reveal>
+					<div>
+						<span class="sec-head__index">RECENT / {String(recent.length).padStart(2, '0')}</span>
+						<h2>最近写的</h2>
+					</div>
+					<a class="sec-head__more" href="/blog">
+						全部文章
+						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+							<path
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"
+							/>
+						</svg>
+					</a>
+				</header>
+
+				<ul class="recent-list">
+					{recent.map((post, i) => (
+						<li data-reveal data-reveal-delay={i * 70}>
+							<a href={`/blog/${post.id}/`}>
+								<span class="recent-date"><FormattedDate date={post.data.pubDate} /></span>
+								<span class="recent-title">{post.data.title}</span>
+								<span class="recent-desc">{post.data.description}</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		)}
 	</main>
 </BaseLayout>
 
@@ -110,20 +153,20 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 	}
 	.about-hero__blob {
 		position: absolute;
-		top: 2%;
-		right: 1%;
-		width: min(540px, 64vw);
+		top: -6%;
+		right: -4%;
+		width: min(620px, 78vw);
 		aspect-ratio: 1;
 		z-index: -1;
 		border-radius: 50%;
 		background:
-			radial-gradient(circle at 35% 35%, rgba(var(--accent), 0.22), transparent 62%),
-			radial-gradient(circle at 65% 60%, rgba(176, 134, 68, 0.2), transparent 58%);
-		filter: blur(48px);
+			radial-gradient(circle at 38% 34%, rgba(var(--accent), 0.15), transparent 58%),
+			radial-gradient(circle at 64% 62%, rgba(var(--ochre), 0.13), transparent 56%);
+		filter: blur(64px);
 		/* 光晕自己在边缘淡出，免得被 .about-hero 的 overflow 裁成一块硬边矩形 */
-		-webkit-mask-image: radial-gradient(closest-side circle, #000 42%, transparent 76%);
-		mask-image: radial-gradient(closest-side circle, #000 42%, transparent 76%);
-		animation: blob-drift 18s var(--ease-out) infinite alternate;
+		-webkit-mask-image: radial-gradient(closest-side circle, #000 30%, transparent 72%);
+		mask-image: radial-gradient(closest-side circle, #000 30%, transparent 72%);
+		animation: blob-drift 22s var(--ease-out) infinite alternate;
 	}
 	@keyframes blob-drift {
 		to {
@@ -153,8 +196,10 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 	}
 	.since {
 		display: inline-flex;
-		margin-top: 0.6rem;
-		padding: 0.3rem 0.85rem;
+		align-items: baseline;
+		gap: 0.4em;
+		margin-top: 0.9rem;
+		padding: 0.3rem 0.95rem;
 		border-radius: var(--r-pill);
 		background: var(--glass-bg);
 		border: 1px solid var(--glass-brd);
@@ -238,7 +283,7 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 	}
 
 	.about-facts {
-		padding-bottom: clamp(3rem, 6vw, 5rem);
+		padding-bottom: clamp(2rem, 4vw, 3rem);
 	}
 	.fact-grid {
 		display: grid;
@@ -281,6 +326,79 @@ const topics = ['日常随笔', '阅读笔记', '生活片段', '随想与思考
 	}
 	@media (max-width: 520px) {
 		.fact-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* ---- 最近写的 ---- */
+	.about-recent {
+		padding-bottom: clamp(2.5rem, 5vw, 4rem);
+	}
+	.about-recent__head {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1.1rem;
+	}
+	.about-recent__head h2 {
+		margin: 0;
+		font-size: clamp(1.3rem, 2.4vw, 1.6rem);
+	}
+	.recent-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: clamp(0.7rem, 1.8vw, 1rem);
+	}
+	.recent-list a {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		height: 100%;
+		padding: 1.05rem 1.15rem;
+		border-radius: var(--r-lg);
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--glass-bg);
+		backdrop-filter: blur(14px);
+		text-decoration: none;
+		transition:
+			transform var(--dur) var(--ease-out),
+			border-color var(--dur) var(--ease-out);
+	}
+	.recent-list a:hover {
+		transform: translateY(-3px);
+		border-color: rgba(var(--accent), 0.35);
+	}
+	.recent-date {
+		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.recent-title {
+		font-size: 1rem;
+		font-weight: 700;
+		line-height: 1.45;
+		color: rgb(var(--ink));
+	}
+	.recent-list a:hover .recent-title {
+		color: rgb(var(--accent-deep));
+	}
+	.recent-desc {
+		font-size: 0.82rem;
+		line-height: 1.6;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	@media (max-width: 860px) {
+		.recent-list {
 			grid-template-columns: 1fr;
 		}
 	}

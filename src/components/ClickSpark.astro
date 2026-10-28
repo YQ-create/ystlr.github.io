@@ -1,0 +1,158 @@
+---
+/**
+ * ClickSpark — 点击处迸出火花（React Bits 的 ClickSpark 的原生实现，不引入 React）。
+ *
+ * 一张固定定位、不吃事件的 canvas，在 pointerdown 位置甩出几根短线，随后淡出。
+ * 触屏、`prefers-reduced-motion` 下自动不启用。
+ */
+interface Props {
+	/** 火花颜色；auto = 跟随站点强调色 */
+	color?: string;
+	/** 火花长度（px） */
+	size?: number;
+	/** 扩散半径（px） */
+	radius?: number;
+	/** 每次点击的火花数 */
+	count?: number;
+	/** 单次动画时长（ms） */
+	duration?: number;
+}
+
+const {
+	color = 'auto',
+	size = 12,
+	radius = 26,
+	count = 8,
+	duration = 480,
+} = Astro.props;
+---
+
+<canvas
+	class="click-spark"
+	data-click-spark
+	data-color={color}
+	data-size={size}
+	data-radius={radius}
+	data-count={count}
+	data-duration={duration}
+	aria-hidden="true"
+></canvas>
+
+<style>
+	.click-spark {
+		position: fixed;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		z-index: 200;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.click-spark {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	type Spark = {
+		x: number;
+		y: number;
+		angle: number;
+		speed: number;
+	};
+
+	const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const coarse = () => window.matchMedia('(pointer: coarse)').matches;
+
+	/** 把 --accent 这类 RGB 三元组 token 拼成 canvas 能用的颜色 */
+	function resolveColor(raw: string): string {
+		if (raw && raw !== 'auto') return raw;
+		const triplet = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+		return triplet ? `rgb(${triplet})` : 'rgb(150, 84, 52)';
+	}
+
+	function boot(canvas: HTMLCanvasElement) {
+		if (canvas.dataset.sparkReady === '1') return;
+		canvas.dataset.sparkReady = '1';
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+
+		const size = Math.max(2, Number(canvas.dataset.size) || 12);
+		const radius = Math.max(6, Number(canvas.dataset.radius) || 26);
+		const count = Math.max(1, Number(canvas.dataset.count) || 8);
+		const duration = Math.max(120, Number(canvas.dataset.duration) || 480);
+
+		let sparks: Spark[] = [];
+		let raf = 0;
+		let started = 0;
+		let origin = { x: 0, y: 0 };
+
+		const resize = () => {
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			canvas.width = Math.round(window.innerWidth * dpr);
+			canvas.height = Math.round(window.innerHeight * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+
+		const draw = (now: number) => {
+			raf = 0;
+			const t = Math.min(1, (now - started) / duration);
+			const ease = 1 - Math.pow(1 - t, 3);
+			const fade = 1 - t;
+			ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+			ctx.strokeStyle = resolveColor(canvas.dataset.color ?? 'auto');
+			ctx.lineWidth = 1.6;
+			ctx.lineCap = 'round';
+			ctx.globalAlpha = Math.max(0, fade);
+
+			for (const spark of sparks) {
+				const dist = radius * ease * spark.speed;
+				const x = origin.x + Math.cos(spark.angle) * dist;
+				const y = origin.y + Math.sin(spark.angle) * dist;
+				const len = size * (0.35 + 0.65 * spark.speed) * (1 - ease * 0.55);
+				ctx.beginPath();
+				ctx.moveTo(x, y);
+				ctx.lineTo(x - Math.cos(spark.angle) * len, y - Math.sin(spark.angle) * len);
+				ctx.stroke();
+			}
+
+			if (t < 1) raf = requestAnimationFrame(draw);
+			else {
+				ctx.globalAlpha = 1;
+				ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+				sparks = [];
+			}
+		};
+
+		const spark = (event: PointerEvent) => {
+			if (reduced() || coarse()) return;
+			const target = event.target as HTMLElement | null;
+			// 输入框里单击是选字，别糊一层火花上去
+			if (target?.closest('input, textarea, select, [contenteditable]')) return;
+
+			origin = { x: event.clientX, y: event.clientY };
+			started = performance.now();
+			sparks = Array.from({ length: count }, (_, i) => ({
+				x: origin.x,
+				y: origin.y,
+				angle: (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5,
+				speed: 0.55 + Math.random() * 0.75,
+			}));
+			if (!raf) raf = requestAnimationFrame(draw);
+		};
+
+		resize();
+		window.addEventListener('resize', resize, { passive: true });
+		window.addEventListener('pointerdown', spark, { passive: true });
+	}
+
+	function init() {
+		document.querySelectorAll<HTMLCanvasElement>('[data-click-spark]').forEach(boot);
+	}
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+	else init();
+	// 切页后 canvas 会被换成新节点，需要重新挂
+	document.addEventListener('astro:page-load', init);
+</script>

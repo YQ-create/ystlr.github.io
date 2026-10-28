@@ -94,6 +94,13 @@ npm run preview
 
 Token 存在浏览器本地存储里，等同于仓库写入权限：不要在公共电脑勾选「记住登录」；怀疑泄露时到 GitHub 撤销并重新生成即可。
 
+登录失败时页面会逐项列出体检结果（Token 是否有效 / 仓库能否访问 / Contents 读写权限 / 分支是否存在）。最常见的两种：
+
+- `Resource not accessible by personal access token`：Token 没有该仓库的写权限。回 Token 设置把 Repository access 改成 **Only select repositories** 并勾选 `ystlr.github.io`，Contents 设为 **Read and write**，保存后重新登录（权限变更后旧登录会失效）。
+- `Bad credentials`：Token 复制不完整或已过期，重新生成一个。
+
+音乐支持 mp3 / m4a / aac / flac / wav / ogg，单曲 40MB 以内；mp3 兼容性最好，flac 在个别手机浏览器上可能无法播放。
+
 ## 写一篇新文章
 
 1. 在 `src/content/blog/` 下新建一个 `.md` 文件，文件名即文章网址，例如 `my-note.md`；

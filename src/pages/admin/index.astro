@@ -196,7 +196,8 @@ import { ADMIN } from '../../consts';
 						<div>
 							<h2>音乐</h2>
 							<p class="note">
-								上传的音频放在 <code>public/audio/</code>，按顺序出现在顶部播放器里。建议 mp3，单曲 25MB 以内。
+								上传的音频放在 <code>public/audio/</code>，按顺序出现在顶部播放器里。支持 mp3 / m4a / aac / flac /
+								wav / ogg，单曲 40MB 以内；mp3 兼容性最好，flac 在个别手机浏览器上可能放不出来。
 							</p>
 						</div>
 					</div>
@@ -217,7 +218,12 @@ import { ADMIN } from '../../consts';
 						</div>
 						<label>
 							<span>音频文件</span>
-							<input name="file" type="file" accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav" required />
+							<input
+								name="file"
+								type="file"
+								accept="audio/mpeg,audio/mp4,audio/aac,audio/flac,audio/x-flac,audio/wav,audio/x-wav,audio/ogg,.mp3,.m4a,.aac,.flac,.wav,.ogg"
+								required
+							/>
 						</label>
 						<div class="actions">
 							<button class="primary" type="submit">上传并添加</button>
@@ -563,6 +569,8 @@ import { ADMIN } from '../../consts';
 		margin: 0.2em 0 0;
 		color: var(--danger);
 		font-size: 0.82rem;
+		white-space: pre-line;
+		line-height: 1.55;
 	}
 
 	.toast {

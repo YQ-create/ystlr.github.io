@@ -266,6 +266,13 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		if ((event.target as HTMLElement).matches?.('[data-music-audio]')) next(1);
 	}, true);
 
+	// 音频解码失败（格式不被浏览器支持、文件缺失等）时给出提示
+	document.addEventListener('error', (event) => {
+		if (!(event.target as HTMLElement).matches?.('[data-music-audio]')) return;
+		const artist = document.querySelector<HTMLElement>('[data-music-artist]');
+		if (artist) artist.textContent = '这个格式当前浏览器放不出来，建议换成 mp3';
+	}, true);
+
 	document.addEventListener('astro:page-load', bind);
 	if (document.readyState !== 'loading') bind();
 	else document.addEventListener('DOMContentLoaded', bind);

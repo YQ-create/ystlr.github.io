@@ -83,14 +83,67 @@ export async function whoAmI(repo: Repo): Promise<{ login: string; avatar?: stri
 	return { login: data.login, avatar: data.avatar_url };
 }
 
-/** 检查是否对该仓库有写入权限 */
-export async function canPush(repo: Repo): Promise<boolean> {
+/** 体检结果的一项 */
+export interface DiagStep {
+	label: string;
+	ok: boolean;
+	detail?: string;
+}
+
+function messageOf(error: unknown): string {
+	if (error instanceof GitHubError) return error.message;
+	if (error instanceof Error) return error.message;
+	return String(error);
+}
+
+/**
+ * 逐项体检 Token：身份 → 仓库（含写入权限）→ Contents 读取 → 分支引用。
+ * 返回失败项，调用方据此给出可操作的提示。
+ */
+export async function diagnose(repo: Repo): Promise<{ login?: string; steps: DiagStep[] }> {
+	const steps: DiagStep[] = [];
+	let login: string | undefined;
+
 	try {
-		const data = await request<{ permissions?: { push?: boolean } }>(repo, `/repos/${repo.owner}/${repo.repo}`);
-		return data.permissions?.push ?? true;
-	} catch {
-		return true;
+		const me = await request<{ login: string }>(repo, '/user');
+		login = me.login;
+		steps.push({ label: `Token 有效（${me.login}）`, ok: true });
+	} catch (error) {
+		steps.push({ label: 'Token 有效', ok: false, detail: messageOf(error) });
+		return { steps };
 	}
+
+	try {
+		const info = await request<{ permissions?: { push?: boolean } }>(repo, `/repos/${repo.owner}/${repo.repo}`);
+		const push = info.permissions?.push;
+		steps.push({ label: '仓库可访问', ok: true });
+		steps.push({
+			label: 'Contents 读写权限',
+			ok: push !== false,
+			detail: push === false ? 'Token 对这个仓库是只读，需要设为 Read and write' : undefined,
+		});
+	} catch (error) {
+		steps.push({ label: '仓库可访问', ok: false, detail: messageOf(error) });
+	}
+
+	try {
+		await request(
+			repo,
+			`/repos/${repo.owner}/${repo.repo}/contents/package.json?ref=${encodeURIComponent(repo.branch)}`,
+		);
+		steps.push({ label: '读取仓库文件', ok: true });
+	} catch (error) {
+		steps.push({ label: '读取仓库文件', ok: false, detail: messageOf(error) });
+	}
+
+	try {
+		await request(repo, `/repos/${repo.owner}/${repo.repo}/git/ref/heads/${repo.branch}`);
+		steps.push({ label: `分支 ${repo.branch}`, ok: true });
+	} catch (error) {
+		steps.push({ label: `分支 ${repo.branch}`, ok: false, detail: messageOf(error) });
+	}
+
+	return { login, steps };
 }
 
 /** 读取文本文件；不存在返回 null */

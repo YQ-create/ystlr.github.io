@@ -1,7 +1,7 @@
 // 管理后台前端逻辑：登录、作品 / 博客 / 音乐 的增删改，全部通过 GitHub API 提交。
 // 没有后端服务，所有写操作都变成一次 commit，然后由 GitHub Actions 重新构建发布。
 
-import { commitFiles, listDir, readTextFile, whoAmI, canPush, GitHubError, type Repo, type RepoFile } from './github';
+import { commitFiles, listDir, readTextFile, diagnose, GitHubError, type Repo, type RepoFile } from './github';
 
 interface ProjectItem {
 	id: string;
@@ -29,6 +29,9 @@ const FILES = {
 };
 
 const SESSION_KEY = 'ystlr:admin:session';
+
+/** 播放器可用的音频扩展名；浏览器对 mp3 兼容性最好 */
+const AUDIO_EXT = new Set(['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'oga']);
 
 let repo: Repo | null = null;
 let projects: ProjectItem[] = [];
@@ -74,11 +77,21 @@ function loadSession(): Repo | null {
 }
 
 async function startSession(next: Repo) {
-	const me = await whoAmI(next);
-	const allowed = await canPush(next);
-	if (!allowed) throw new Error(`账号 ${me.login} 对该仓库没有写入权限，请换一个有 Contents 读写的 Token`);
+	const result = await diagnose(next);
+	if (result.steps.some((step) => !step.ok)) {
+		const lines = ['登录检查没通过：'];
+		for (const step of result.steps) {
+			lines.push(`${step.ok ? '✓' : '✗'} ${step.label}${step.detail ? `\n   ${step.detail}` : ''}`);
+		}
+		lines.push('');
+		lines.push('到 https://github.com/settings/personal-access-tokens 打开这个 Token 检查：');
+		lines.push(`① Repository access 是否勾选了 ${next.owner}/${next.repo}`);
+		lines.push('② Repository permissions → Contents 是否为 Read and write');
+		lines.push('③ Token 是否已过期（改完权限要重新登录一次）');
+		throw new Error(lines.join('\n'));
+	}
 	repo = next;
-	showApp(me.login);
+	showApp(result.login ?? '');
 	await Promise.all([loadProjects(), loadBlog(), loadMusic()]);
 }
 
@@ -461,10 +474,13 @@ async function addTrack() {
 	const artist = String(data.get('artist') ?? '').trim();
 	const file = (form.elements.namedItem('file') as HTMLInputElement).files?.[0];
 	if (!title) return setFormError('[data-music-error]', '请填写曲名');
-	if (!file) return setFormError('[data-music-error]', '请选择音频文件（mp3 / m4a）');
-	if (file.size > 25 * 1024 * 1024) return setFormError('[data-music-error]', '音频请控制在 25MB 以内');
+	if (!file) return setFormError('[data-music-error]', '请选择音频文件（mp3 / m4a / aac / flac / wav / ogg）');
+	if (file.size > 40 * 1024 * 1024) return setFormError('[data-music-error]', '音频请控制在 40MB 以内（flac 建议转成 mp3）');
 
-	const ext = (file.name.split('.').pop() ?? 'mp3').toLowerCase();
+	const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+	if (!AUDIO_EXT.has(ext)) {
+		return setFormError('[data-music-error]', `不支持 .${ext || '未知'} 格式，请用 mp3 / m4a / aac / flac / wav / ogg`);
+	}
 	const fileName = `${slugify(title)}-${Date.now().toString(36)}.${ext}`;
 	const next = [...tracks, { title, artist, src: `/audio/${fileName}` }];
 
@@ -536,8 +552,8 @@ export function boot() {
 	const loginForm = $<HTMLFormElement>('[data-login-form]');
 	if (remembered) {
 		void startSession(remembered).catch((error) => {
-			toast(`自动登录失败：${friendly(error)}`, 'err');
 			showLogin();
+			setFormError('[data-login-error]', friendly(error));
 		});
 	}
 

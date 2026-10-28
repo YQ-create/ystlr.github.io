@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostListItem from '../../components/PostListItem.astro';
+import SubmitPost from '../../components/SubmitPost.astro';
 import { getCollection } from 'astro:content';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
@@ -26,6 +27,8 @@ const allTags = [...tagCount.entries()]
 			<h1>文章</h1>
 			<p>记录日常、想法与读过的东西，按时间倒序排列。</p>
 		</header>
+
+		<SubmitPost />
 
 		<div class="toolbar glass" data-reveal data-reveal-delay="80">
 			<label class="search">

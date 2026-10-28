@@ -3,7 +3,6 @@
 // 导航标签刻意保持两个汉字，等宽排列，高亮块才能滑动得干净。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import MusicPlayer from './MusicPlayer.astro';
-import ThemeToggle from './ThemeToggle.astro';
 import GlassSurface from './GlassSurface.astro';
 
 const navItems = [
@@ -34,7 +33,6 @@ const navItems = [
 		</nav>
 
 		<div class="head-actions">
-			<ThemeToggle />
 			<div class="social">
 				{SOCIAL_LINKS.github && (
 					<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener" aria-label="GitHub">

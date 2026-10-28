@@ -18,3 +18,20 @@ export const SOCIAL_LINKS = {
 	x: '',
 	email: 'mailto:hello@ystlr.com',
 };
+
+// 投稿：访客在 /blog 点「投稿」，会创建一个带「投稿」label 的 GitHub Issue，
+// 管理员在 Issues 里审核通过后转成文章。创建 Issue 需要认证（GitHub 不允许匿名），
+// 所以这里需要一个专用机器人的 PAT——只勾「这个仓库的 Issues 写入」权限，别给代码权限。
+//
+// 生成步骤：GitHub → Settings → Developer settings → Personal access tokens →
+// Fine-grained tokens → 新建 → Repository access 只选 YQ-create/ystlr.github.io →
+// Permissions → Repository permissions → Issues = Read and write（其余全部 No access）。
+// 生成后把 github_pat_… 填到 SUBMIT_TOKEN；留空则整站不显示投稿按钮。
+export const SUBMIT_REPO = {
+	owner: 'YQ-create',
+	repo: 'ystlr.github.io',
+};
+
+// TODO(你)：去 GitHub 生成一个「仅 Issues 写权限」的 Fine-grained PAT，替换下面这行。
+// 不填 = 关闭投稿入口。
+export const SUBMIT_TOKEN = '';

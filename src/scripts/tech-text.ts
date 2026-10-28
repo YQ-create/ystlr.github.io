@@ -1020,7 +1020,7 @@ const signed = (value: number) => (value > 0 ? '+' + value : value < 0 ? '−' +
     intersectionObserver.observe(container);
     const themeObserver = new MutationObserver(wake);
     for (const node of [document.documentElement, document.body]) {
-      if (node) themeObserver.observe(node, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+      if (node) themeObserver.observe(node, { attributes: true, attributeFilter: ['class', 'style'] });
     }
     const schemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
     schemeQuery?.addEventListener?.('change', wake);

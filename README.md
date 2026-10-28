@@ -52,14 +52,27 @@ npm run preview
 
 | 页面 | 路由 | 说明 |
 | --- | --- | --- |
-| 首页 | `/` | Hero（底部是缓慢左移的照片带）、精选文章、照片墙速览；默认深色 |
-| 文章 | `/blog` | 文章列表，支持关键词搜索与标签筛选 |
+| 首页 | `/` | Hero（底部是缓慢左移的照片带）、精选文章、照片墙速览 |
+| 文章 | `/blog` | 文章列表，支持关键词搜索与标签筛选，顶部有「投稿」入口 |
 | 照片墙 | `/gallery` | 照片按年、月分组的瀑布网格 |
 | 发现 | `/discover` | 收藏书签与推荐站点卡片，数据来自 `src/data/discover.json` |
 | 关于 | `/about` | 个人简介、记录方向与联系方式 |
 | 管理后台 | `/admin` | 纯前端发文/传图/传音乐，直接提交到 GitHub（见下方「管理后台」） |
 
 文章详情页底部接入 Giscus 评论；未配置 `repoId` / `categoryId` 时不渲染评论区，不影响其他内容。
+
+## 文章投稿与审核
+
+访客在 `/blog` 顶部点「投稿」，填写标题、正文（支持 Markdown）、标签和署名，提交后会以「投稿」label 创建一条 GitHub Issue。你在 GitHub 仓库的 Issues 里审核，通过后把内容转成 `src/content/blog/*.md`（用 `/admin` 或本地 `npm run photo` 之外的常规发文流程）即可发布。
+
+投稿走的是 GitHub Issue API，创建 Issue 必须认证、匿名访客无法直接提交，所以需要一个**专用机器人 PAT**（只有「这个仓库的 Issues 写入」权限，没有代码权限，最坏情况是被用来灌 issue，可随时撤销）：
+
+1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → 新建；
+2. Repository access 只选 `YQ-create/ystlr.github.io`；
+3. Permissions → Repository permissions → **Issues = Read and write**，其余全部 No access；
+4. 把生成的 `github_pat_…` 填进 `src/consts.ts` 的 `SUBMIT_TOKEN`（留空则整站不显示投稿按钮）。
+
+Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投稿」脚注；标题用投稿标题，label 是 `投稿`。审核时直接看 Issues 列表即可，GitHub 也会给你发邮件通知。
 
 ## 视觉与动效
 
@@ -102,22 +115,13 @@ npm run preview
 
 > 注意：`src/components/BaseHead.astro` 里有一段极短的 `moveBefore` 兜底补丁。Chromium 137+ 的 `Element.moveBefore()` 不允许跨文档或把元素挪到 `<html>` 下，而 Astro 的 `transition:persist` 正好会这么做，不补丁会抛 `HierarchyRequestError` 导致点导航后地址栏不更新。等 Astro 上游修好后可以删掉这段。
 
-## 深浅色与玻璃
+## 配色（固定深色）
 
-页头右侧那个太阳/月亮按钮是**外观设置**，面板里有两组选项：
+站点**固定深色主题**，不再提供浅色/跟随系统的切换，页头右侧的外观按钮已移除。
 
-| 组 | 选项 | 落到 `<html>` 上 |
-| --- | --- | --- |
-| 主题 | 浅色 / 深色 / 跟随系统 | `data-theme="light\|dark"` |
-| 玻璃 | 磨砂 / 透明 | `data-glass="frosted\|clear"` |
+所有颜色都在 `src/styles/global.css` 顶部的 `:root` token 里（只有一份，深色值），组件统一用 `rgb(var(--token))` 引用。想调色就改 `:root` 里的那一组值：强调色 `--accent`（赭石陶土棕）、纸面层次 `--bg` / `--paper` / `--surface`、文字 `--ink` / `--muted`、玻璃 `--glass-bg` / `--glass-brd` 等。`BaseHead.astro` 里有一小段内联脚本，在首屏渲染前就把 `data-theme="dark"` 落到 `<html>` 上，刷新不会闪白。
 
-两个维度正交，可以任意组合（深色+透明、浅色+磨砂……）。**没选过时默认深色**；选「跟随系统」才交给系统决定。选择存在 `localStorage` 的 `ystlr:theme` 与 `ystlr:glass`，`data-theme-choice` 额外记住「跟随系统」这个意图，系统主题变化时会自动跟随。
-
-实现上没有一处是"深色单独写一套样式"：所有颜色都在 `src/styles/global.css` 顶部的两段 `:root` token 里（浅色一段、`:root[data-theme='dark']` 一段），深色只是把同一批 token 换成另一组值，组件一行都不用改。玻璃同理——`--glass-bg` / `--glass-blur` / `--glass-brd` 这几个 token 在 `:root[data-glass='clear']` 下换成更淡的底色和更重的模糊。
-
-想加自己的颜色：在 `:root` 里加变量，再在深色那段补一个对应值即可。`BaseHead.astro` 里有一小段内联脚本，在首屏渲染前就把 `data-theme` 落到 `<html>` 上，所以刷新时不会先白闪一下再变黑。
-
-切换的动画是给 `<html>` 加 380ms 的 `is-theme-anim` 类，让 `background-color` / `color` / `border-color` 平滑过渡；`prefers-reduced-motion` 下自动关掉。
+玻璃质感保留一档 `:root[data-glass='clear']` 的备选 token（`--glass-bg` 更淡、模糊更重），目前没有 UI 入口，默认走 `frosted`；以后想加回来，给 `<html>` 写 `data-glass="clear"` 即可。
 
 ## 常用修改位置
 

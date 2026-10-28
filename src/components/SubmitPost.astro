@@ -1,0 +1,500 @@
+---
+/**
+ * SubmitPost — 访客投稿入口。
+ *
+ * /blog 顶部一个「投稿」按钮，点开弹窗表单，填标题/正文/标签/署名后，
+ * 用一只专用 GitHub 机器人的 PAT（只有「该仓库 Issues 写入」权限、没有代码权限）
+ * 调用 POST /repos/{owner}/{repo}/issues 创建一个带「投稿」label 的 issue。
+ * 管理员在 GitHub Issues 里审核，通过后把内容转成 src/content/blog/*.md 发布。
+ *
+ * 为什么用 Issue 而不是直接写文件：站点是纯静态的，没有后端；GitHub 官方
+ * API 无法匿名创建 Issue，而让访客用自己的账号门槛太高。专用机器人的 token
+ * 只具备 issue 写入这一项能力，最坏情况是被用来灌 issue，可随时撤销。
+ */
+import { SUBMIT_REPO, SUBMIT_TOKEN } from '../consts';
+
+// 没有配置 token 时整个组件不渲染，页面也不出现投稿按钮
+const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(SUBMIT_REPO.repo);
+---
+
+{enabled && (
+	<div class="submit-root" data-submit-root>
+		<button class="submit-trigger" type="button" data-submit-open>
+			<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.7"
+					stroke-linecap="round"
+					d="M8 3.2v9.6M3.2 8h9.6"></path>
+			</svg>
+			投稿
+		</button>
+
+		<!-- 弹窗：遮罩 + 居中卡片 -->
+		<div class="submit-dialog" data-submit-dialog hidden>
+			<div class="submit-veil" data-submit-close></div>
+			<form class="submit-card" data-submit-form role="dialog" aria-modal="true" aria-label="投稿">
+				<header class="submit-head">
+					<div>
+						<h2>投稿</h2>
+						<p class="submit-note">写好发给我，审核通过后会作为一篇文章发布。也可以附上你的联系方式方便沟通。</p>
+					</div>
+					<button class="submit-x" type="button" data-submit-close aria-label="关闭">×</button>
+				</header>
+
+				<label class="field">
+					<span>标题 <em>*</em></span>
+					<input data-submit-title required placeholder="想分享的标题" autocomplete="off" />
+				</label>
+
+				<label class="field">
+					<span>正文 <em>*</em></span>
+					<textarea data-submit-body required rows="10" placeholder="支持 Markdown：**加粗**、[链接](url)、- 列表……"></textarea>
+				</label>
+
+				<div class="submit-grid2">
+					<label class="field">
+						<span>标签（逗号分隔）</span>
+						<input data-submit-tags placeholder="生活, 想法" autocomplete="off" />
+					</label>
+					<label class="field">
+						<span>署名 / 联系方式（选填）</span>
+						<input data-submit-author placeholder="昵称 或 邮箱" autocomplete="off" />
+					</label>
+				</div>
+
+				<p class="submit-status" data-submit-status data-kind="idle" hidden></p>
+
+				<div class="submit-actions">
+					<button class="btn" type="submit" data-submit-send>提交投稿</button>
+					<button class="btn btn--ghost" type="button" data-submit-close>取消</button>
+				</div>
+			</form>
+		</div>
+	</div>
+)}
+
+<style>
+	.submit-root {
+		display: flex;
+		justify-content: flex-end;
+		margin: -0.2rem 0 0.4rem;
+	}
+	.submit-trigger {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.42rem 0.95rem;
+		border-radius: var(--r-pill);
+		border: 1px solid rgba(var(--accent), 0.5);
+		background: rgb(var(--accent));
+		color: rgb(var(--paper));
+		font-size: 0.86rem;
+		font-weight: 600;
+		cursor: pointer;
+		box-shadow: var(--shadow-sm);
+		transition:
+			transform var(--dur-fast) var(--ease-out),
+			box-shadow var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
+	}
+	.submit-trigger:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+		background: rgb(var(--accent-deep));
+	}
+	.submit-trigger:active {
+		transform: none;
+	}
+
+	/* ---- 弹窗 ---- */
+	.submit-dialog {
+		position: fixed;
+		inset: 0;
+		z-index: 200;
+		display: grid;
+		place-items: center;
+		padding: clamp(1rem, 4vw, 3rem);
+		overscroll-behavior: contain;
+	}
+	.submit-dialog[hidden] {
+		display: none !important;
+	}
+	.submit-veil {
+		position: absolute;
+		inset: 0;
+		background: rgba(24, 21, 18, 0.66);
+		backdrop-filter: blur(10px);
+		opacity: 0;
+		transition: opacity 0.24s var(--ease-out);
+	}
+	.submit-dialog.is-open .submit-veil {
+		opacity: 1;
+	}
+	.submit-card {
+		position: relative;
+		width: min(560px, 100%);
+		max-height: min(88vh, 720px);
+		overflow-y: auto;
+		padding: clamp(1.1rem, 3vw, 1.6rem);
+		border-radius: var(--r-lg);
+		background: rgb(var(--paper));
+		border: 1px solid var(--glass-brd);
+		box-shadow: var(--shadow-lg);
+		transform: scale(0.96) translateY(12px);
+		opacity: 0;
+		transition:
+			transform 0.3s var(--ease-spring),
+			opacity 0.24s var(--ease-out);
+	}
+	.submit-dialog.is-open .submit-card {
+		transform: none;
+		opacity: 1;
+	}
+
+	.submit-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+	.submit-head h2 {
+		margin: 0 0 0.3rem;
+		font-size: 1.2rem;
+	}
+	.submit-note {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.6;
+		color: rgb(var(--muted));
+	}
+	.submit-x {
+		flex-shrink: 0;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		color: rgb(var(--muted));
+		font-size: 1.2rem;
+		line-height: 1;
+		cursor: pointer;
+		transition: all var(--dur-fast) var(--ease-out);
+	}
+	.submit-x:hover {
+		color: rgb(var(--ink));
+		background: var(--chip-bg-strong);
+	}
+
+	.field {
+		display: block;
+		margin-bottom: 0.85rem;
+	}
+	.field span {
+		display: block;
+		margin-bottom: 0.35rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		color: rgb(var(--ink-soft));
+	}
+	.field em {
+		color: rgb(var(--accent));
+		font-style: normal;
+	}
+	.field input,
+	.field textarea {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 0.55rem 0.75rem;
+		border-radius: var(--r-md);
+		border: 1px solid rgba(var(--line), 1);
+		background: var(--chip-bg);
+		color: rgb(var(--ink));
+		font-size: 0.92rem;
+		font-family: inherit;
+		line-height: 1.6;
+		transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+	}
+	.field textarea {
+		resize: vertical;
+		min-height: 180px;
+	}
+	.field input:focus,
+	.field textarea:focus {
+		outline: none;
+		border-color: rgba(var(--accent), 0.55);
+		box-shadow: 0 0 0 4px rgba(var(--accent), 0.12);
+	}
+
+	.submit-grid2 {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0 0.85rem;
+	}
+	@media (max-width: 520px) {
+		.submit-grid2 {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.submit-status {
+		margin: 0 0 0.85rem;
+		padding: 0.55rem 0.7rem;
+		border-radius: var(--r-md);
+		font-size: 0.82rem;
+		line-height: 1.5;
+		background: var(--chip-bg-dim);
+		color: rgb(var(--muted));
+	}
+	.submit-status[data-kind='err'] {
+		background: rgba(var(--rose), 0.16);
+		color: rgb(var(--rose));
+	}
+	.submit-status[data-kind='ok'] {
+		background: rgba(var(--sage), 0.2);
+		color: rgb(var(--sage));
+	}
+	.submit-status[data-kind='busy'] {
+		background: rgba(var(--accent), 0.14);
+		color: rgb(var(--accent-deep));
+	}
+
+	.submit-actions {
+		display: flex;
+		gap: 0.6rem;
+		justify-content: flex-end;
+	}
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.5rem 1.1rem;
+		border-radius: var(--r-pill);
+		border: 1px solid transparent;
+		background: rgb(var(--accent));
+		color: rgb(var(--paper));
+		font-size: 0.88rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all var(--dur-fast) var(--ease-out);
+	}
+	.btn:hover {
+		background: rgb(var(--accent-deep));
+	}
+	.btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.btn--ghost {
+		background: transparent;
+		border-color: var(--glass-brd);
+		color: rgb(var(--muted));
+	}
+	.btn--ghost:hover {
+		background: var(--chip-bg);
+		color: rgb(var(--ink));
+	}
+</style>
+
+<script>
+	import { SUBMIT_REPO, SUBMIT_TOKEN } from '../consts';
+
+	interface Settings {
+		owner: string;
+		repo: string;
+		token: string;
+		label: string;
+	}
+
+	const settings: Settings = {
+		owner: SUBMIT_REPO.owner,
+		repo: SUBMIT_REPO.repo,
+		token: SUBMIT_TOKEN,
+		label: '投稿',
+	};
+
+	class SubmitError extends Error {
+		status: number;
+		constructor(status: number, message: string) {
+			super(message);
+			this.name = 'SubmitError';
+			this.status = status;
+		}
+	}
+
+	function describeError(error: unknown): string {
+		if (error instanceof SubmitError) return error.message;
+		if (error instanceof Error) return error.message || error.name;
+		return String(error);
+	}
+
+	function parseTags(raw: string): string[] {
+		const seen = new Set<string>();
+		for (const part of raw.split(/[,，]/)) {
+			const tag = part.trim();
+			if (tag) seen.add(tag);
+		}
+		return [...seen];
+	}
+
+	/** 把投稿拼成一段可读的 Markdown issue 正文 */
+	function buildBody(input: { title: string; body: string; tags: string[]; author: string }): string {
+		const lines: string[] = [input.body.trim()];
+		if (input.tags.length) lines.push('', '---', '', `**标签**：${input.tags.join('、')}`);
+		if (input.author) lines.push(`**署名**：${input.author}`);
+		lines.push('', '> 这是来自 ystlr.com 的文章投稿，审核通过后会作为文章发布。');
+		return lines.join('\n');
+	}
+
+	async function createIssue(title: string, body: string, labels: string[]): Promise<{ number: number; html_url: string }> {
+		const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/issues`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${settings.token}`,
+				Accept: 'application/vnd.github+json',
+				'X-GitHub-Api-Version': '2022-11-28',
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ title, body, labels }),
+		});
+
+		if (!res.ok) {
+			let detail = '';
+			try {
+				const data = (await res.json()) as { message?: unknown };
+				if (data && typeof data.message === 'string') detail = data.message;
+			} catch {
+				/* 响应不是 JSON 时忽略 */
+			}
+			let hint: string;
+			switch (res.status) {
+				case 401:
+					hint = '投稿服务暂不可用（凭证失效），请稍后再试，或直接发邮件给我。';
+					break;
+				case 403:
+					hint = '投稿服务暂不可用（权限或限流），请稍后再试。';
+					break;
+				case 404:
+					hint = '投稿服务暂不可用（仓库未找到），请直接发邮件给我。';
+					break;
+				case 422:
+					hint = '投稿内容无法提交（可能标题或正文缺失），请检查后重试。';
+					break;
+				default:
+					hint = `投稿失败（HTTP ${res.status}），请稍后再试。`;
+			}
+			throw new SubmitError(res.status, detail ? `${hint}（${detail}）` : hint);
+		}
+
+		const data = (await res.json()) as { number?: number; html_url?: string };
+		if (typeof data.number !== 'number') {
+			throw new SubmitError(0, '投稿已提交但没拿到回执，请确认后联系我。');
+		}
+		return { number: data.number, html_url: data.html_url ?? '' };
+	}
+
+	function boot() {
+		const root = document.querySelector<HTMLElement>('[data-submit-root]');
+		if (!root || root.dataset.wired === '1') return;
+		root.dataset.wired = '1';
+
+		const dialog = root.querySelector<HTMLElement>('[data-submit-dialog]');
+		const form = root.querySelector<HTMLFormElement>('[data-submit-form]');
+		const status = root.querySelector<HTMLElement>('[data-submit-status]');
+		const sendBtn = root.querySelector<HTMLButtonElement>('[data-submit-send]');
+		const openBtn = root.querySelector<HTMLButtonElement>('[data-submit-open]');
+		if (!dialog || !form || !openBtn) return;
+
+		const titleInput = form.querySelector<HTMLInputElement>('[data-submit-title]');
+		const bodyInput = form.querySelector<HTMLTextAreaElement>('[data-submit-body]');
+		const tagsInput = form.querySelector<HTMLInputElement>('[data-submit-tags]');
+		const authorInput = form.querySelector<HTMLInputElement>('[data-submit-author]');
+
+		function setStatus(kind: 'idle' | 'busy' | 'ok' | 'err', text: string) {
+			if (!status) return;
+			status.dataset.kind = kind;
+			status.textContent = text;
+			status.hidden = !text;
+		}
+
+		function setBusy(busy: boolean, label?: string) {
+			if (!sendBtn) return;
+			if (busy) {
+				if (!sendBtn.dataset.label) sendBtn.dataset.label = sendBtn.textContent ?? '';
+				sendBtn.disabled = true;
+				if (label) sendBtn.textContent = label;
+			} else {
+				sendBtn.disabled = false;
+				if (sendBtn.dataset.label) {
+					sendBtn.textContent = sendBtn.dataset.label;
+					delete sendBtn.dataset.label;
+				}
+			}
+		}
+
+		function open() {
+			dialog!.hidden = false;
+			document.documentElement.style.overflow = 'hidden';
+			document.body.style.overflow = 'hidden';
+			requestAnimationFrame(() => dialog!.classList.add('is-open'));
+			setStatus('idle', '');
+			form!.reset();
+			window.setTimeout(() => titleInput?.focus(), 50);
+		}
+
+		function close() {
+			dialog!.classList.remove('is-open');
+			document.documentElement.style.removeProperty('overflow');
+			document.body.style.removeProperty('overflow');
+			window.setTimeout(() => {
+				dialog!.hidden = true;
+			}, 220);
+		}
+
+		openBtn!.addEventListener('click', open);
+		root.querySelectorAll<HTMLElement>('[data-submit-close]').forEach((el) => el.addEventListener('click', close));
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && !dialog!.hidden) close();
+		});
+
+		form!.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const title = titleInput?.value.trim() ?? '';
+			const body = bodyInput?.value.trim() ?? '';
+			const tags = parseTags(tagsInput?.value ?? '');
+			const author = authorInput?.value.trim() ?? '';
+
+			if (!title) {
+				setStatus('err', '请填一个标题。');
+				titleInput?.focus();
+				return;
+			}
+			if (!body) {
+				setStatus('err', '正文不能为空。');
+				bodyInput?.focus();
+				return;
+			}
+
+			setBusy(true, '提交中…');
+			setStatus('busy', '正在提交投稿…');
+			try {
+				const issue = await createIssue(title, buildBody({ title, body, tags, author }), [settings.label]);
+				setBusy(false);
+				setStatus('ok', `投稿成功！已创建 #${issue.number}，审核通过后会作为文章发布，感谢你的分享。`);
+				window.setTimeout(() => close(), 2400);
+			} catch (error) {
+				setBusy(false);
+				setStatus('err', describeError(error));
+			}
+		});
+
+		// View Transitions 切页后重新绑定（组件在 /blog 里，离开再回来时 DOM 是新的）
+	}
+
+	document.addEventListener('astro:page-load', boot);
+	if (document.readyState !== 'loading') boot();
+	else document.addEventListener('DOMContentLoaded', boot);
+</script>

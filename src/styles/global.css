@@ -7,54 +7,53 @@
 
 /* ============ 设计变量 ============ */
 :root {
-	/* 强调色：赭石陶土棕 */
-	--accent: 150, 84, 52;
-	--accent-soft: 184, 120, 86;
-	--accent-deep: 112, 60, 36;
-	--ochre: 176, 134, 68;
+	/* 强调色：赭石陶土棕（深色主题下提亮一档） */
+	--accent: 208, 132, 92;
+	--accent-soft: 224, 158, 118;
+	--accent-deep: 238, 180, 140;
+	--ochre: 214, 168, 96;
 	/* 补一个低饱和的灰绿，用于渐变里的冷暖对比 */
-	--sage: 122, 138, 116;
-	--rose: 190, 132, 118;
+	--sage: 146, 166, 138;
+	--rose: 212, 152, 136;
 
-	/* 纸面层次 */
-	--bg: 248, 244, 236;
-	--bg-deep: 243, 238, 228;
-	--paper: 253, 250, 244;
-	--surface: 255, 253, 248;
-	--line: 228, 216, 196;
-	--line-soft: 236, 227, 210;
+	/* 纸面层次（固定深色） */
+	--bg: 24, 21, 18;
+	--bg-deep: 17, 15, 13;
+	--paper: 36, 32, 28;
+	--surface: 44, 39, 34;
+	--line: 66, 58, 49;
+	--line-soft: 52, 46, 39;
 
 	/* 文字 */
-	--ink: 42, 36, 29;
-	--ink-soft: 68, 58, 47;
-	--muted: 122, 110, 95;
-	/* 次要文字（标签、序号）：浅色纸上再浅一档就会掉到 3:1 以下，这里守住可读下限 */
-	--muted-light: 140, 128, 112;
+	--ink: 236, 229, 217;
+	--ink-soft: 214, 203, 187;
+	--muted: 168, 155, 140;
+	--muted-light: 132, 120, 106;
 
 	/* 玻璃 */
-	--glass-bg: rgba(255, 252, 245, 0.24);
-	--glass-bg-strong: rgba(255, 253, 248, 0.46);
-	--glass-brd: rgba(255, 255, 255, 0.58);
-	--glass-brd-dim: rgba(255, 255, 255, 0.38);
+	--glass-bg: rgba(38, 33, 28, 0.58);
+	--glass-bg-strong: rgba(31, 27, 23, 0.84);
+	--glass-brd: rgba(255, 255, 255, 0.14);
+	--glass-brd-dim: rgba(255, 255, 255, 0.08);
 	--glass-blur: 26px;
-	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 	/* 小控件（胶囊、输入框、tag）的填充 */
-	--chip-bg: rgba(255, 255, 255, 0.3);
-	--chip-bg-dim: rgba(255, 255, 255, 0.2);
-	--chip-bg-strong: rgba(255, 255, 255, 0.62);
-	/* 阴影颜色：深浅色各一套 */
-	--shadow-color: 90, 70, 45;
+	--chip-bg: rgba(255, 255, 255, 0.08);
+	--chip-bg-dim: rgba(255, 255, 255, 0.05);
+	--chip-bg-strong: rgba(255, 255, 255, 0.16);
+	/* 阴影颜色 */
+	--shadow-color: 0, 0, 0;
 	/* 背景三团光晕的浓度 */
-	--glow-accent: 0.18;
-	--glow-ochre: 0.16;
-	--glow-sage: 0.13;
+	--glow-accent: 0.15;
+	--glow-ochre: 0.11;
+	--glow-sage: 0.09;
 	/* 按钮底色（SpecularButton 用） */
-	--btn-tint: 255, 246, 234;
+	--btn-tint: 52, 45, 38;
 
 	/* 阴影 */
-	--shadow-sm: 0 1px 2px rgba(90, 70, 45, 9%), 0 6px 18px -8px rgba(90, 70, 45, 18%);
-	--shadow-md: 0 2px 4px rgba(90, 70, 45, 8%), 0 18px 40px -18px rgba(90, 70, 45, 26%);
-	--shadow-lg: 0 30px 70px -30px rgba(90, 70, 45, 38%), 0 2px 6px rgba(90, 70, 45, 8%);
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 9%), 0 6px 18px -8px rgba(0, 0, 0, 18%);
+	--shadow-md: 0 2px 4px rgba(0, 0, 0, 8%), 0 18px 40px -18px rgba(0, 0, 0, 26%);
+	--shadow-lg: 0 30px 70px -30px rgba(0, 0, 0, 38%), 0 2px 6px rgba(0, 0, 0, 8%);
 	--box-shadow: var(--shadow-md);
 
 	/* 圆角与节奏 */
@@ -88,7 +87,7 @@
 }
 
 html {
-	color-scheme: light;
+	color-scheme: dark;
 	scroll-behavior: smooth;
 	-webkit-text-size-adjust: 100%;
 }
@@ -687,82 +686,20 @@ select:focus {
 	}
 }
 
-/* ============ 深色主题 ============ */
-/* 只在 :root 上换值，组件一行都不用改；颜色仍是 RGB 三元组，方便继续用 rgb(var(--x)) */
-:root[data-theme='dark'] {
-	color-scheme: dark;
-
-	--accent: 208, 132, 92;
-	--accent-soft: 224, 158, 118;
-	--accent-deep: 238, 180, 140;
-	--ochre: 214, 168, 96;
-	--sage: 146, 166, 138;
-	--rose: 212, 152, 136;
-
-	--bg: 24, 21, 18;
-	--bg-deep: 17, 15, 13;
-	--paper: 36, 32, 28;
-	--surface: 44, 39, 34;
-	--line: 66, 58, 49;
-	--line-soft: 52, 46, 39;
-
-	--ink: 236, 229, 217;
-	--ink-soft: 214, 203, 187;
-	--muted: 168, 155, 140;
-	--muted-light: 132, 120, 106;
-
-	--glass-bg: rgba(38, 33, 28, 0.58);
-	--glass-bg-strong: rgba(31, 27, 23, 0.84);
-	--glass-brd: rgba(255, 255, 255, 0.14);
-	--glass-brd-dim: rgba(255, 255, 255, 0.08);
-	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-
-	--chip-bg: rgba(255, 255, 255, 0.08);
-	--chip-bg-dim: rgba(255, 255, 255, 0.05);
-	--chip-bg-strong: rgba(255, 255, 255, 0.16);
-
-	--shadow-color: 0, 0, 0;
-	--glow-accent: 0.15;
-	--glow-ochre: 0.11;
-	--glow-sage: 0.09;
-	--btn-tint: 52, 45, 38;
-}
-
 /* ============ 透明玻璃 ============ */
-/* 和主题正交：只把玻璃的底色变淡、模糊加重，让背景的光晕和照片真正透上来 */
+/* 站点固定深色，这一档保留「玻璃更透」的备选 token（BaseHead 默认写 data-glass=frosted） */
 :root[data-glass='clear'] {
-	--glass-bg: rgba(255, 252, 245, 0.16);
-	--glass-bg-strong: rgba(255, 253, 248, 0.4);
-	--glass-brd: rgba(255, 255, 255, 0.5);
-	--glass-brd-dim: rgba(255, 255, 255, 0.24);
-	--glass-blur: 30px;
-	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-	--chip-bg: rgba(255, 255, 255, 0.2);
-	--chip-bg-dim: rgba(255, 255, 255, 0.12);
-	--chip-bg-strong: rgba(255, 255, 255, 0.45);
-}
-
-:root[data-theme='dark'][data-glass='clear'] {
 	--glass-bg: rgba(38, 33, 28, 0.24);
 	--glass-bg-strong: rgba(31, 27, 23, 0.52);
 	--glass-brd: rgba(255, 255, 255, 0.16);
 	--glass-brd-dim: rgba(255, 255, 255, 0.09);
+	--glass-blur: 30px;
 	--chip-bg: rgba(255, 255, 255, 0.09);
 	--chip-bg-dim: rgba(255, 255, 255, 0.05);
 	--chip-bg-strong: rgba(255, 255, 255, 0.2);
 }
 
-/* 深浅切换时整页平滑过渡（只过渡颜色类，不动 transform） */
-html.is-theme-anim,
-html.is-theme-anim * {
-	transition:
-		background-color 0.35s var(--ease-out),
-		border-color 0.35s var(--ease-out),
-		color 0.35s var(--ease-out),
-		fill 0.35s var(--ease-out) !important;
-}
-
-/* SpecularButton 的底色默认取 --btn-tint、文字默认取 --ink，深浅色自动跟随；
+/* SpecularButton 的底色默认取 --btn-tint、文字默认取 --ink；
    ghost 按钮只把文字降到次级色，其余交给 token */
 .specular-button.sb-ghost {
 	font-weight: 450;

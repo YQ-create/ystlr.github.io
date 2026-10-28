@@ -464,7 +464,8 @@ const invert = (a: number[]) => {
 	/** 从 data-* 读出一份 settings，字段与上游保持一致 */
 	function readAcidSettings(container: HTMLElement): Settings {
 		const d = container.dataset;
-		const lightMode = document.documentElement.dataset.theme === 'light';
+		// 站点固定深色，不再读 data-theme
+		const lightMode = false;
 		// 窄屏视口小，同样的格子会显得巨大，按比例收紧一点
 		const compact = window.innerWidth < 640;
 		return {
@@ -948,18 +949,6 @@ const invert = (a: number[]) => {
 	document.addEventListener('astro:before-swap', () => {
 		document.querySelectorAll<HTMLElement>('[data-acid-squares]').forEach(dropAcid);
 	});
-
-	// 主题切换：配色变了，重建一次（旧上下文一并释放）
-	let acidThemeTimer = 0;
-	new MutationObserver(() => {
-		window.clearTimeout(acidThemeTimer);
-		acidThemeTimer = window.setTimeout(() => {
-			document.querySelectorAll<HTMLElement>('[data-acid-squares]').forEach((el) => {
-				dropAcid(el);
-				bootAcid(el);
-			});
-		}, 140);
-	}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAllAcid, { once: true });
 	else bootAllAcid();

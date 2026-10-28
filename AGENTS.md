@@ -11,6 +11,8 @@
 - 组件里不要写「只该跑一次」的脚本：Astro 会按体积把小 `<script>` 内联在组件**原位**，同一页复用几次就有几份。逻辑放 Motion.astro，组件只输出 data 标记。
 - 自己给元素写了 `display` 的话，`[hidden]` 会失效（UA 的 `display:none` 被盖掉），需要显式补 `X[hidden]{display:none}`。
 - 本站是纯静态站点，没有服务端和数据库。`/admin` 是纯前端管理页（`src/admin/github.ts` + `app.ts`），用访问者自己粘贴的 GitHub PAT 调 API 提交文件，Token 只存 sessionStorage，任何情况下都不要把密钥写进仓库。手工发文同样可行：本地写 Markdown 后提交，GitHub Actions 自动构建上线。
+- 站点**固定深色**：主题 token 只在 `src/styles/global.css` 的 `:root` 里一份（深色值），`BaseHead.astro` 内联脚本写死 `data-theme="dark"`。不要再引入浅色/跟随系统的切换，也不要依赖 `document.documentElement.dataset.theme` 做浅色判断。
+- 文章投稿：访客在 `/blog` 顶部点「投稿」→ 用 `src/consts.ts` 的 `SUBMIT_TOKEN`（专用机器人 PAT，仅 Issues 写权限）调 GitHub API 创建带 `投稿` label 的 issue；管理员在 Issues 里审核。`SUBMIT_TOKEN` 留空则投稿入口不渲染。
 - 文章评论使用 Giscus；`src/components/Giscus.astro` 集中放置仓库与分类配置，未配置 `repoId` / `categoryId` 时评论区不渲染。
 - 部署：推送到 `main` 分支后，`.github/workflows/deploy.yml` 自动发布到 GitHub Pages。
 - 官方文档：https://docs.astro.build

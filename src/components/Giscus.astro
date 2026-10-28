@@ -50,42 +50,18 @@ const enabled = Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId);
 }
 
 <script>
-	// giscus 的 iframe 读不到站点的 <html data-theme>，只能通过 postMessage 换肤。
-	// iframe 刚插入时还是 about:blank（继承本站 origin），此时发消息会被浏览器拦下并报错，
-	// 所以只在它的 load 事件之后发。
-	const GISCUS_ORIGIN = 'https://giscus.app';
-	const ready = new WeakSet<HTMLIFrameElement>();
-
-	function pushTheme(frame: HTMLIFrameElement) {
-		if (!ready.has(frame) || !frame.contentWindow) return;
-		const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-		frame.contentWindow.postMessage({ giscus: { setConfig: { theme } } }, GISCUS_ORIGIN);
-	}
-
+	// 站点固定深色，giscus 的 data-theme 也写死 dark，无需再做 postMessage 换肤。
+	// 这里只保留切页后重新绑定 iframe 的逻辑（View Transitions 下 iframe 会被重建）。
 	function hookFrame() {
 		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
 		if (!frame || frame.dataset.themeHooked === '1') return;
 		frame.dataset.themeHooked = '1';
-		frame.addEventListener('load', () => {
-			ready.add(frame);
-			pushTheme(frame);
-		});
 	}
 
 	document.addEventListener('astro:page-load', hookFrame);
-	// 监听 <html>（切页时只有 body 被替换，html 一直在，观察器不会失效）
 	new MutationObserver(hookFrame).observe(document.documentElement, {
 		childList: true,
 		subtree: true,
-	});
-
-	// 主题切换后再推一次（这时 iframe 早已加载完）
-	new MutationObserver(() => {
-		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
-		if (frame) pushTheme(frame);
-	}).observe(document.documentElement, {
-		attributes: true,
-		attributeFilter: ['data-theme'],
 	});
 
 	if (document.readyState !== 'loading') hookFrame();

@@ -637,14 +637,6 @@ void main() {
 			{ once: true, signal: ac.signal }
 		);
 
-		// 切深浅色后画布要重画一次，否则描边还留着上一套颜色
-		const themeWatch = new MutationObserver(() => wake());
-		themeWatch.observe(document.documentElement, {
-			attributes: true,
-			attributeFilter: ['data-theme'],
-		});
-		ac.signal.addEventListener('abort', () => themeWatch.disconnect(), { once: true });
-
 		button.dataset.sbReady = '1';
 		measure();
 		wake();

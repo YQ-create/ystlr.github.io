@@ -19,7 +19,6 @@ const GISCUS_CONFIG = {
 	theme: 'dark',
 	lang: 'zh-CN',
 };
-
 const enabled = Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId);
 ---
 
@@ -50,13 +49,36 @@ const enabled = Boolean(GISCUS_CONFIG.repoId && GISCUS_CONFIG.categoryId);
 }
 
 <script>
-	// 站点固定深色，giscus 的 data-theme 也写死 dark，无需再做 postMessage 换肤。
-	// 这里只保留切页后重新绑定 iframe 的逻辑（View Transitions 下 iframe 会被重建）。
-	function hookFrame() {
-		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
-		if (!frame || frame.dataset.themeHooked === '1') return;
-		frame.dataset.themeHooked = '1';
+	// 评论跟随站点主题：站点可在深色/浅色间切换，这里把当前主题通过 postMessage
+	// 同步给 giscus iframe（giscus 支持 setConfig 换肤）。切页时 iframe 会被重建，需重新同步。
+
+	function currentTheme(): string {
+		return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 	}
+
+	function sendTheme(frame: HTMLIFrameElement | null | undefined): void {
+		if (!frame?.contentWindow) return;
+		frame.contentWindow.postMessage(
+			{ giscus: { setConfig: { theme: currentTheme() } } },
+			'https://giscus.app',
+		);
+	}
+
+	function hookFrame(): void {
+		const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+		if (!frame) return;
+		// iframe 可能还没 ready，load 后再发一次最稳妥；也直接发一次
+		sendTheme(frame);
+		if (frame.dataset.themeHooked !== '1') {
+			frame.dataset.themeHooked = '1';
+			frame.addEventListener('load', () => sendTheme(frame));
+		}
+	}
+
+	// 用户切换主题时同步
+	window.addEventListener('theme-change', () => {
+		sendTheme(document.querySelector<HTMLIFrameElement>('iframe.giscus-frame'));
+	});
 
 	document.addEventListener('astro:page-load', hookFrame);
 	new MutationObserver(hookFrame).observe(document.documentElement, {

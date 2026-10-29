@@ -78,8 +78,8 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 </BaseLayout>
 
 <script>
-	// favicon 自动识别：用 Google 的 favicon 服务抓取站点图标，
-	// 加载失败（无图标/网络问题）时回退到名称首字母。
+	// favicon 自动识别：优先 Google 的 favicon 服务，失败（无图标/被墙）回退到
+	// DuckDuckGo 的图标服务，再失败用名称首字母兜底。
 	function loadFavicons() {
 		const logos = document.querySelectorAll<HTMLElement>('[data-logo]');
 		for (const logo of logos) {
@@ -88,19 +88,28 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 			const domain = logo.dataset.domain;
 			const name = logo.dataset.name || '';
 			if (!domain) continue;
-			const img = document.createElement('img');
-			img.alt = '';
-			img.loading = 'lazy';
-			img.decoding = 'async';
-			img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
-			img.onload = () => {
-				logo.classList.add('has-logo');
-				logo.prepend(img);
+
+			const apply = (src: string) => {
+				const img = document.createElement('img');
+				img.alt = '';
+				img.loading = 'lazy';
+				img.decoding = 'async';
+				img.src = src;
+				img.onload = () => {
+					logo.classList.add('has-logo');
+					logo.prepend(img);
+				};
+				img.onerror = () => {
+					if (src.includes('google.com')) {
+						// 一级源失败 → 换 DuckDuckGo
+						apply(`https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico`);
+					} else {
+						// 二级源也失败 → 首字母兜底（fallback 已在 HTML 里）
+						logo.classList.add('no-logo');
+					}
+				};
 			};
-			img.onerror = () => {
-				// 抓不到就用首字母兜底（fallback 已经在 HTML 里）
-				logo.classList.add('no-logo');
-			};
+			apply(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`);
 		}
 	}
 

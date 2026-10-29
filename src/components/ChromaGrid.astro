@@ -123,7 +123,7 @@ const safeItems = items.map((it, i) => ({
 	data-chroma
 	data-cfg={cfg}
 	data-theme={theme}
-	style={`--cg-cols:${columns};--cg-min:${minCardWidth}px;--cg-gap:${gap}px;--cg-aspect:${aspectRatio};--cg-radius:${cardRadius}px;--cg-title:${infoColor};--cg-sub:${subColor};--cg-meta:${metaColor};--cg-frame-bg:${frameBg};--cg-frame-brd:${frameBrd};`}
+	style={`--cg-cols:${columns};--cg-min:${minCardWidth}px;--cg-gap:${gap}px;--cg-aspect:${aspectRatio};--cg-radius:${cardRadius}px;--cg-mask-r:${radius}px;--cg-title:${infoColor};--cg-sub:${subColor};--cg-meta:${metaColor};--cg-frame-bg:${frameBg};--cg-frame-brd:${frameBrd};`}
 >
 	{safeItems.map((item) => {
 		const accent = item.accent;
@@ -222,7 +222,7 @@ const safeItems = items.map((it, i) => ({
 		transition: transform 0.45s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
 		--cg-mask-x: 50%;
 		--cg-mask-y: 50%;
-		--cg-mask-r: var(--cg-radius, 260px);
+		--cg-mask-r: 260px;
 		--cg-mask-o: 0; /* 彩色层不透明度（悬停/进入时为 1） */
 		--cg-fade-o: 1; /* 淡出回灰控制 */
 	}

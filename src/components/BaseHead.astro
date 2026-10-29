@@ -72,6 +72,8 @@ const ogImage = new URL(image.src, Astro.url);
 				try {
 					localStorage.setItem(KEY, t);
 				} catch {}
+				// 广播给评论等需要跟随主题的第三方组件
+				window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: t } }));
 			};
 			window.__getTheme = () => d.dataset.theme || 'dark';
 		};

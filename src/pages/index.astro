@@ -8,7 +8,7 @@ import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
-import { AUTHOR_NAME, HERO, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
+import { AUTHOR_NAME, HERO, PROFILE, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
 	.filter((post) => !post.data.draft)
@@ -104,7 +104,7 @@ const discoverPreview = discoverData.collections
 				<div class="hero-head">
 					<h1 class="hero-title">
 						<SplitText
-							text="在这里记录日常"
+							text={HERO.title}
 							tag="span"
 							effect="blur"
 							duration={0.9}
@@ -117,7 +117,7 @@ const discoverPreview = discoverData.collections
 					</h1>
 					<p class="hero-sub">
 						<SplitText
-							text="想法与读过的东西"
+							text={HERO.subtitle}
 							tag="span"
 							effect="fade"
 							duration={0.9}
@@ -224,11 +224,15 @@ const discoverPreview = discoverData.collections
 					<aside data-reveal>
 						<SpotlightCard class="profile" color="255, 184, 108" size={260} intensity={0.18} tilt={4}>
 							<div class="profile__ava" aria-hidden="true">
-								<span>{AUTHOR_NAME.slice(0, 1).toUpperCase()}</span>
+								{PROFILE.avatar ? (
+									<img src={PROFILE.avatar} alt={AUTHOR_NAME} loading="lazy" decoding="async" />
+								) : (
+									<span>{AUTHOR_NAME.slice(0, 1).toUpperCase()}</span>
+								)}
 							</div>
 							<div class="profile__id">
 								<h3 class="profile__name">{AUTHOR_NAME}</h3>
-								<span class="profile__role">{HERO.role}</span>
+								<span class="profile__role">{PROFILE.role}</span>
 							</div>
 							<p class="profile__bio">{HERO.tagline}</p>
 							<ul class="profile__social">
@@ -419,10 +423,7 @@ const discoverPreview = discoverData.collections
 					<div class="about-main">
 						<span class="sec-head__index">04 — ABOUT</span>
 						<h2>写点关于自己的话</h2>
-						<p>
-							这里是一段占位简介：介绍你在记录什么、关注哪些方向，以及为什么开始写。
-							我会把日常随笔、阅读笔记和生活照片慢慢放在这里，不追求产量，只求留下一些真实的痕迹。
-						</p>
+						<p>{PROFILE.bio}</p>
 						<a class="about-link" href="/about">
 							了解一下
 							<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
@@ -839,6 +840,7 @@ const discoverPreview = discoverData.collections
 		border-radius: var(--r-md);
 		display: grid;
 		place-items: center;
+		overflow: hidden;
 		margin-bottom: 0.9rem;
 		background:
 			radial-gradient(120% 90% at 30% 20%, rgba(var(--accent), 0.35), transparent 60%),
@@ -846,6 +848,12 @@ const discoverPreview = discoverData.collections
 		color: rgba(255, 255, 255, 0.92);
 		font-size: 2.4rem;
 		font-weight: 800;
+	}
+	.profile__ava img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 	.profile__id {
 		display: flex;

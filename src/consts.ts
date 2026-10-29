@@ -5,11 +5,23 @@ export const SITE_DESCRIPTION = '一个记录写作、生活与日常思考的�
 export const SITE_URL = 'https://ystlr.com';
 export const AUTHOR_NAME = 'ystlr';
 
-// 首页 Hero 展示文案（占位：替换成你自己的一句话介绍）
+// 首页 Hero 展示文案
 export const HERO = {
 	role: 'Notes on life & writing',
+	title: '在这里记录日常',
+	subtitle: '想法与读过的东西',
 	tagline: '在这里记录日常、想法与读过的东西',
 	tagline2: '把散落的生活片段整理成文字与照片',
+};
+
+// 个人资料：改这里即可同步到首页资料卡、关于页名片、页脚。
+export const PROFILE = {
+	// 头像图片：把图片放进 public/ 目录（如 public/avatar.png），这里填 '/avatar.png'；
+	// 留空字符串则显示名字首字母。
+	avatar: '',
+	role: 'Notes on life & writing',
+	bio: '这里是一段占位简介：介绍你是谁、在记录什么、关注哪些方向。本站用来沉淀日常随笔、阅读笔记与生活照片，慢慢整理成属于自己的记录空间。',
+	topics: ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '照片记录', '慢慢整理'],
 };
 
 // 社交链接（留空字符串则在页头隐藏对应入口）

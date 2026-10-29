@@ -34,4 +34,24 @@ const gallery = defineCollection({
 		}),
 });
 
-export const collections = { blog, gallery };
+// 知识库：独立于文章的笔记/知识条目，可带分类与标签，用于「知识库」页。
+const knowledge = defineCollection({
+	loader: glob({ base: './src/content/knowledge', pattern: '**/*.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			description: z.string().optional(),
+			pubDate: z.coerce.date(),
+			updatedDate: z.coerce.date().optional(),
+			// 分类（如「前端」「工具」「阅读」），用于知识库页分组
+			category: z.string().default('未分类'),
+			tags: z.array(z.string()).default([]),
+			// 置顶
+			pinned: z.boolean().default(false),
+			draft: z.boolean().default(false),
+			// 封面图（可选）
+			cover: z.optional(image()),
+		}),
+});
+
+export const collections = { blog, gallery, knowledge };

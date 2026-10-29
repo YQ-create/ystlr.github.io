@@ -8,9 +8,9 @@ import GlassSurface from './GlassSurface.astro';
 const navItems = [
 	{ href: '/', label: '首页' },
 	{ href: '/blog', label: '文章' },
-	{ href: '/tags', label: '标签' },
-	{ href: '/gallery', label: '照片' },
+	{ href: '/knowledge', label: '知识库' },
 	{ href: '/discover', label: '发现' },
+	{ href: '/gallery', label: '照片' },
 	{ href: '/about', label: '关于' },
 ];
 ---
@@ -56,6 +56,20 @@ const navItems = [
 					</a>
 				)}
 			</div>
+			<button class="theme-toggle" data-theme-toggle type="button" aria-label="切换浅色/深色主题">
+				<svg class="theme-toggle__sun" viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
+					<circle cx="8" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+					<g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+						<path d="M8 1.2v1.6M8 13.2v1.6M1.2 8h1.6M13.2 8h1.6M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"></path>
+					</g>
+				</svg>
+				<svg class="theme-toggle__moon" viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
+					<path
+						fill="currentColor"
+						d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7Z"
+					></path>
+				</svg>
+			</button>
 			<MusicPlayer />
 		</div>
 	</div>
@@ -139,6 +153,53 @@ const navItems = [
 		const onResize = () => slideTo(active!, true);
 		window.addEventListener('resize', onResize);
 		document.fonts?.ready.then(onResize);
+
+		// 主题切换
+		const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+		if (toggle && !toggle.dataset.wired) {
+			toggle.dataset.wired = '1';
+			toggle.addEventListener('click', () => {
+				const cur = window.__getTheme?.() ?? document.documentElement.dataset.theme ?? 'dark';
+				const next = cur === 'dark' ? 'light' : 'dark';
+				window.__setTheme?.(next);
+				// 同步 theme-color meta
+				const meta = document.querySelector('meta[name="theme-color"]');
+				if (meta) meta.setAttribute('content', next === 'light' ? '#f6f3ee' : '#181512');
+			});
+		}
+
+		// 首页 scroll-spy：收到板块切换事件时，把高亮块滑到对应导航项
+		window.addEventListener('scroll-spy', ((e: CustomEvent) => {
+			const href = e.detail?.href;
+			if (!href) return;
+			const link = links.find((a) => a.dataset.href === href);
+			if (link) slideTo(link);
+		}) as EventListener);
+
+		// 首页上点导航：平滑滚到对应板块，而不是跳转页面
+		// 板块 id 与导航 href 的映射（articles→/blog、photos→/gallery 等）
+		const sectionByHref: Record<string, string> = {
+			'/': 'home',
+			'/blog': 'articles',
+			'/knowledge': 'knowledge',
+			'/discover': 'discover',
+			'/gallery': 'photos',
+			'/about': 'about',
+		};
+		for (const link of links) {
+			link.addEventListener('click', (e) => {
+				const onHome = currentPath() === '/';
+				if (!onHome) return; // 非首页正常跳转
+				const href = link.dataset.href || '/';
+				const targetId = sectionByHref[href];
+				if (!targetId) return;
+				const sec = document.getElementById(targetId);
+				if (!sec) return; // 首页没有对应板块就正常跳转
+				e.preventDefault();
+				sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				history.replaceState(null, '', href === '/' ? '/' : `/#${targetId}`);
+			});
+		}
 	}
 
 	document.addEventListener('astro:page-load', init);
@@ -319,6 +380,52 @@ const navItems = [
 	.social a:hover {
 		color: rgb(var(--accent));
 		background: var(--chip-bg);
+	}
+
+	/* ---- 主题切换 ---- */
+	.theme-toggle {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
+	}
+	.theme-toggle:hover {
+		color: rgb(var(--accent));
+		background: var(--chip-bg);
+	}
+	.theme-toggle__sun,
+	.theme-toggle__moon {
+		grid-area: 1 / 1;
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			transform var(--dur) var(--ease-spring);
+	}
+	/* 深色主题：显示月亮（点一下切到浅色），太阳隐藏 */
+	.theme-toggle .theme-toggle__moon {
+		opacity: 1;
+		transform: none;
+	}
+	.theme-toggle .theme-toggle__sun {
+		opacity: 0;
+		transform: scale(0.4) rotate(-90deg);
+	}
+	/* 浅色主题：显示太阳（点一下切回深色） */
+	:global(html[data-theme='light']) .theme-toggle .theme-toggle__sun {
+		opacity: 1;
+		transform: none;
+	}
+	:global(html[data-theme='light']) .theme-toggle .theme-toggle__moon {
+		opacity: 0;
+		transform: scale(0.4) rotate(90deg);
 	}
 
 	@media (max-width: 860px) {

@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ScrollStack from '../../components/ScrollStack.astro';
+import CircularGallery from '../../components/CircularGallery.astro';
 import FadeContent from '../../components/FadeContent.astro';
 import { getCollection } from 'astro:content';
 import { Image, getImage } from 'astro:assets';
@@ -43,11 +43,35 @@ for (const photo of photos) {
 	bigUrls.set(photo.id, big.src);
 }
 
-const carouselItems = photos.slice(0, 10).map((photo) => ({
-	image: photo.data.image,
-	alt: photo.data.title ?? photo.data.caption ?? '',
-	title: photo.data.title ?? '',
-}));
+// 弧形画廊数据：照片不足时用文章封面补齐，保证环形有足够内容
+const posts = (await getCollection('blog')).filter((p) => !p.data.draft);
+const coverItems = posts
+	.filter((p) => p.data.heroImage)
+	.slice(0, 6)
+	.map((p) => ({
+		image: p.data.heroImage!,
+		title: p.data.title,
+		href: `/blog/${p.id}/`,
+	}));
+const rawGallery = [
+	...photos.slice(0, 10).map((photo) => ({
+		image: photo.data.image,
+		title: photo.data.title ?? photo.data.caption ?? '',
+		href: '/gallery/',
+	})),
+	...coverItems,
+].slice(0, 8);
+const galleryItemsForCg = await Promise.all(
+	rawGallery.slice(0, 6).map(async (it) => {
+		const img = await getImage({ src: it.image, width: 800, format: 'webp' });
+		return {
+			image: img.src,
+			text: it.title || undefined,
+			alt: it.title || undefined,
+			href: it.href,
+		};
+	})
+);
 
 const monthLabel = (m: number) => `${m} 月`;
 ---
@@ -85,21 +109,24 @@ tags: ["生活", "风景"]
 			</div>
 		) : (
 			<>
-				{carouselItems.length >= 2 && (
+				{photos.length >= 1 && (
 					<div class="gallery-carousel" data-reveal="scale">
-						<ScrollStack
-							items={carouselItems}
-							height="clamp(340px, 48vh, 520px)"
-							itemDistance={120}
-							itemStackDistance={26}
-							stackPosition="10%"
-							itemScale={0.06}
-							baseScale={0.82}
-							dimAmount={0.28}
-							blurAmount={2}
-							tiltAmount={2}
-							rotationAmount={2}
-							holdDistance={180}
+						<CircularGallery
+							items={galleryItemsForCg}
+							bend={2}
+							textColor="#ffffff"
+							borderRadius={0.15}
+							scrollEase={0.12}
+							scrollSpeed={5}
+							wave={2}
+							fadeEdges={0.2}
+							autoScroll={1}
+							showTitles={false}
+							itemSize={1}
+							itemAspect={0.78}
+							gap={0.26}
+							shadow={0.25}
+							height="560px"
 						/>
 					</div>
 				)}

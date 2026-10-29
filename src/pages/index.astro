@@ -3,13 +3,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import AcidSquares from '../components/AcidSquares.astro';
 import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
-import CircularGallery from '../components/CircularGallery.astro';
 import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
-import { getImage } from 'astro:assets';
+import { Image } from 'astro:assets';
 import { AUTHOR_NAME, HERO, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
@@ -23,42 +22,21 @@ const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
-const galleryItems = photos.map((photo) => ({
+// 知识库：取置顶 + 最新的若干条，首页只做摘要预览
+const knowledge = (await getCollection('knowledge'))
+	.filter((n) => !n.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const knowledgePreview = [
+	...knowledge.filter((n) => n.data.pinned),
+	...knowledge.filter((n) => !n.data.pinned),
+].slice(0, 4);
+
+// 首页照片板块：只取照片（不混封面），用图片网格展示
+const photoItems = photos.slice(0, 6).map((photo) => ({
 	image: photo.data.image,
 	title: photo.data.title ?? photo.data.caption ?? '',
 	href: '/gallery/',
 }));
-
-// 照片墙还是空的时候，用文章封面把流动照片带撑起来，首页不至于空一块
-const coverItems = posts
-	.filter((post) => post.data.heroImage)
-	.slice(0, 6)
-	.map((post) => ({
-		image: post.data.heroImage!,
-		title: post.data.title,
-		href: `/blog/${post.id}/`,
-	}));
-const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => ({
-	image: it.image,
-	alt: it.title,
-	title: it.title,
-	href: it.href,
-}));
-
-// CircularGallery（WebGL 纹理）需要「同源 URL 字符串」而非 ImageMetadata。
-// 构建期用 getImage 把图片转成固定尺寸 webp；用相对路径（/_astro/...）让浏览器按当前 origin 加载，
-// 本地与线上（ystlr.com）都能正确加载同源纹理。
-const galleryItemsForCg = await Promise.all(
-	carouselItems.slice(0, 6).map(async (it) => {
-		const img = await getImage({ src: it.image, width: 800, format: 'webp' });
-		return {
-			image: img.src,
-			text: it.title || undefined,
-			alt: it.title || undefined,
-			href: it.href,
-		};
-	})
-);
 
 // 标签云 + 最新动态 + 站点统计（门户式版块用）
 const tagCount = new Map<string, number>();
@@ -81,18 +59,24 @@ const days = firstDate ? Math.max(1, Math.ceil((Date.now() - firstDate.valueOf()
 const stats = [
 	{ label: '文章', value: posts.length, unit: '篇' },
 	{ label: '照片', value: photos.length, unit: '张' },
-	{ label: '标签', value: tagCount.size, unit: '个' },
+	{ label: '知识', value: knowledge.length, unit: '条' },
 	{ label: '总字数', value: totalWords, unit: '字' },
 	{ label: '运行', value: days, unit: '天' },
 ];
 
 const latest = posts[0]?.data.pubDate;
+
+// 发现页链接摘要：首页「发现」板块展示前几条
+import discoverData from '../data/discover.json';
+const discoverPreview = discoverData.collections
+	.flatMap((g) => g.links)
+	.slice(0, 6);
 ---
 
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION} hero>
 	<main class="home">
-		<!-- ============ Hero ============ -->
-		<section class="hero">
+		<!-- ============ 首页 Hero ============ -->
+		<section class="hero" id="home" data-section="home">
 			<div class="hero-waves" aria-hidden="true">
 				<AcidSquares
 					color="#120f17"
@@ -219,7 +203,7 @@ const latest = posts[0]?.data.pubDate;
 				</dl>
 			</div>
 
-			<a class="scroll-cue" href="#featured" aria-label="向下浏览">
+			<a class="scroll-cue" href="#articles" aria-label="向下浏览">
 				<span>SCROLL</span>
 				<svg viewBox="0 0 16 26" width="14" height="22" aria-hidden="true">
 					<path
@@ -233,8 +217,8 @@ const latest = posts[0]?.data.pubDate;
 
 		</section>
 
-		<!-- ============ 精选文章（参考 Firefly：标签条 + 三栏门户式） ============ -->
-		<section class="sec sec--blog" id="featured">
+		<!-- ============ 文章（精选） ============ -->
+		<section class="sec sec--blog" id="articles" data-section="articles">
 			<div class="wrap">
 				<div class="tagbar" data-reveal>
 					<a class="tagbar__home" href="/" aria-label="首页">
@@ -352,19 +336,94 @@ const latest = posts[0]?.data.pubDate;
 			<div class="ticker-track">
 				{[0, 1, 2, 3].map(() => (
 					<span class="ticker-item">
-						记录日常 <i>·</i> 写下想法 <i>·</i> 留住光影 <i>·</i> 慢慢整理 <i>·</i>
+						记录日常 <i>·</i> 写下想法 <i>·</i> 沉淀知识 <i>·</i> 留住光影 <i>·</i> 慢慢整理 <i>·</i>
 					</span>
 				))}
 			</div>
 		</div>
 
-		<!-- ============ 照片墙 ============ -->
-		<section class="sec sec--gallery sec--wall">
+		<!-- ============ 知识库 ============ -->
+		<section class="sec sec--knowledge" id="knowledge" data-section="knowledge">
 			<div class="wrap">
 				<header class="sec-head">
 					<div>
-						<span class="sec-head__index">02 — PHOTOS</span>
-						<h2>照片墙</h2>
+						<span class="sec-head__index">02 — KNOWLEDGE</span>
+						<h2>知识库</h2>
+					</div>
+					<a class="sec-head__more" href="/knowledge">
+						进入知识库
+						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+						</svg>
+					</a>
+				</header>
+
+				{knowledgePreview.length === 0 ? (
+					<p class="empty-hint">知识库还空着，成体系的笔记会沉淀在这里。</p>
+				) : (
+					<div class="kb-grid">
+						{knowledgePreview.map((note, i) => (
+							<a class="kb-card glass" href={`/knowledge/${note.id}/`} data-reveal data-reveal-delay={i * 70}>
+								<div class="kb-card__top">
+									<span class="kb-card__cat">{note.data.category}</span>
+									{note.data.pinned && <span class="kb-card__pin" title="置顶">◆</span>}
+								</div>
+								<h3 class="kb-card__title">{note.data.title}</h3>
+								{note.data.description && <p class="kb-card__desc">{note.data.description}</p>}
+								<time class="kb-card__date"><FormattedDate date={note.data.pubDate} /></time>
+							</a>
+						))}
+					</div>
+				)}
+			</div>
+		</section>
+
+		<!-- ============ 发现 ============ -->
+		<section class="sec sec--discover" id="discover" data-section="discover">
+			<div class="wrap">
+				<header class="sec-head">
+					<div>
+						<span class="sec-head__index">03 — DISCOVER</span>
+						<h2>发现</h2>
+					</div>
+					<a class="sec-head__more" href="/discover">
+						全部链接
+						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+						</svg>
+					</a>
+				</header>
+
+				<div class="discover-grid">
+					{discoverPreview.map((link, i) => (
+						<a
+							class="discover-card glass"
+							href={link.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							data-reveal
+							data-reveal-delay={i * 60}
+						>
+							<span class="discover-card__logo" data-logo data-domain={new URL(link.url).hostname.replace(/^www\./, '')}>
+								<span class="discover-card__fallback" aria-hidden="true">{link.title.slice(0, 1).toUpperCase()}</span>
+							</span>
+							<div class="discover-card__body">
+								<h3>{link.title}</h3>
+								<p>{link.description}</p>
+							</div>
+						</a>
+					))}
+				</div>
+			</div>
+		</section>
+
+		<!-- ============ 照片 ============ -->
+		<section class="sec sec--gallery sec--wall" id="photos" data-section="photos">
+			<div class="wrap">
+				<header class="sec-head">
+					<div>
+						<span class="sec-head__index">04 — PHOTOS</span>
+						<h2>照片</h2>
 					</div>
 					<a class="sec-head__more" href="/gallery">
 						进入照片墙
@@ -381,41 +440,30 @@ const latest = posts[0]?.data.pubDate;
 				</header>
 			</div>
 
-			{photos.length === 0 ? (
+			{photoItems.length === 0 ? (
 				<div class="wrap">
 					<p class="empty-hint">暂无照片，添加后这里会转起来。</p>
 				</div>
 			) : (
 				<div class="wrap">
-					<div data-reveal="scale" data-reveal-delay="120">
-						<CircularGallery
-							items={galleryItemsForCg}
-							bend={2}
-							textColor="#ffffff"
-							borderRadius={0.15}
-							scrollEase={0.12}
-							scrollSpeed={5}
-							wave={2}
-							fadeEdges={0.2}
-							autoScroll={1}
-							showTitles={false}
-							itemSize={1}
-							itemAspect={0.78}
-							gap={0.26}
-							shadow={0.25}
-							height="600px"
-						/>
+					<div class="photo-strip" data-reveal="scale" data-reveal-delay="120">
+						{photoItems.map((p, i) => (
+							<a class="photo-strip__item" href={p.href} data-reveal data-reveal-delay={i * 70}>
+								<Image src={p.image} alt={p.title || ''} widths={[400, 800]} sizes="(max-width: 720px) 45vw, 240px" loading="lazy" decoding="async" />
+								{p.title && <span class="photo-strip__cap">{p.title}</span>}
+							</a>
+						))}
 					</div>
 				</div>
 			)}
 		</section>
 
 		<!-- ============ 关于 ============ -->
-		<section class="sec">
+		<section class="sec" id="about" data-section="about">
 			<div class="wrap">
 				<div class="about-card glass" data-reveal data-glow>
 					<div class="about-main">
-						<span class="sec-head__index">03 — ABOUT</span>
+						<span class="sec-head__index">05 — ABOUT</span>
 						<h2>写点关于自己的话</h2>
 						<p>
 							这里是一段占位简介：介绍你在记录什么、关注哪些方向，以及为什么开始写。
@@ -445,6 +493,77 @@ const latest = posts[0]?.data.pubDate;
 		</section>
 	</main>
 </BaseLayout>
+
+<script>
+	// 首页 scroll-spy：滚动时根据各板块位置，更新顶部导航高亮 + 发现页 favicon 自动加载。
+	// 板块顺序即导航顺序；板块 id 需映射到导航的 href。
+	const SECTION_MAP = [
+		{ id: 'home', href: '/' },
+		{ id: 'articles', href: '/blog' },
+		{ id: 'knowledge', href: '/knowledge' },
+		{ id: 'discover', href: '/discover' },
+		{ id: 'photos', href: '/gallery' },
+		{ id: 'about', href: '/about' },
+	];
+
+	function loadFavicons() {
+		const logos = document.querySelectorAll<HTMLElement>('[data-logo]');
+		for (const logo of logos) {
+			if (logo.dataset.done === '1') continue;
+			logo.dataset.done = '1';
+			const domain = logo.dataset.domain;
+			if (!domain) continue;
+			const img = document.createElement('img');
+			img.alt = '';
+			img.loading = 'lazy';
+			img.decoding = 'async';
+			img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+			img.onload = () => logo.prepend(img);
+		}
+	}
+
+	function initScrollSpy() {
+		const sections = SECTION_MAP.map((s) => ({ ...s, el: document.getElementById(s.id) })).filter((s) => s.el);
+		if (!sections.length) return;
+
+		let ticking = false;
+		const update = () => {
+			ticking = false;
+			const probe = window.innerHeight * 0.4;
+			let current = sections[0];
+			for (const sec of sections) {
+				const r = sec.el!.getBoundingClientRect();
+				if (r.top <= probe) current = sec;
+			}
+			// 同步导航高亮：给对应 nav-link 加/去 is-active，并触发 Header 高亮块滑动
+			const navLinks = Array.from(document.querySelectorAll<HTMLElement>('[data-nav-item]'));
+			navLinks.forEach((link) => {
+				const on = link.dataset.href === current.href;
+				link.classList.toggle('is-active', on);
+				if (on) link.setAttribute('aria-current', 'page');
+				else link.removeAttribute('aria-current');
+			});
+			window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: current.href } }));
+		};
+		const onScroll = () => {
+			if (!ticking) {
+				ticking = true;
+				requestAnimationFrame(update);
+			}
+		};
+		window.addEventListener('scroll', onScroll, { passive: true });
+		update();
+	}
+
+	function init() {
+		loadFavicons();
+		initScrollSpy();
+	}
+
+	document.addEventListener('astro:page-load', init);
+	if (document.readyState !== 'loading') init();
+	else document.addEventListener('DOMContentLoaded', init);
+</script>
 
 <style>
 	.home {
@@ -1015,6 +1134,183 @@ const latest = posts[0]?.data.pubDate;
 	/* ---------- 照片墙 ---------- */
 	.sec--wall {
 		padding-top: clamp(2.2rem, 5vw, 3.6rem);
+	}
+
+	/* ---------- 知识库 ---------- */
+	.kb-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: clamp(0.8rem, 1.6vw, 1.1rem);
+	}
+	.kb-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		padding: 1.05rem 1.15rem;
+		border-radius: var(--r-md);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out),
+			border-color var(--dur) var(--ease-out);
+	}
+	.kb-card:hover {
+		transform: translateY(-3px);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
+		border-color: rgba(var(--accent), 0.4);
+	}
+	.kb-card__top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.kb-card__cat {
+		font-size: 0.68rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--accent-deep));
+		background: rgba(var(--accent), 0.12);
+		border-radius: var(--r-pill);
+		padding: 0.08rem 0.55rem;
+	}
+	.kb-card__pin {
+		font-size: 0.68rem;
+		color: rgb(var(--ochre));
+	}
+	.kb-card__title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 650;
+		line-height: 1.4;
+	}
+	.kb-card__desc {
+		margin: 0;
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		line-height: 1.6;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.kb-card__date {
+		margin-top: auto;
+		font-size: 0.72rem;
+		color: rgb(var(--muted-light));
+	}
+
+	/* ---------- 发现 ---------- */
+	.discover-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: clamp(0.8rem, 1.6vw, 1.1rem);
+	}
+	.discover-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.8rem;
+		padding: 1.05rem 1.15rem;
+		border-radius: var(--r-md);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out),
+			border-color var(--dur) var(--ease-out);
+	}
+	.discover-card:hover {
+		transform: translateY(-3px);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
+		border-color: rgba(var(--accent), 0.4);
+	}
+	.discover-card__logo {
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		display: grid;
+		place-items: center;
+		overflow: hidden;
+		background: var(--chip-bg);
+		border: 1px solid var(--glass-brd-dim);
+	}
+	.discover-card__logo img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		display: block;
+	}
+	.discover-card__fallback {
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: rgb(var(--accent-deep));
+	}
+	.discover-card__body {
+		flex: 1;
+		min-width: 0;
+	}
+	.discover-card__body h3 {
+		margin: 0 0 0.2rem;
+		font-size: 1rem;
+		font-weight: 650;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.discover-card:hover h3 {
+		color: rgb(var(--accent-deep));
+	}
+	.discover-card__body p {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.55;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	/* ---------- 照片条 ---------- */
+	.photo-strip {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: clamp(0.5rem, 1.2vw, 0.9rem);
+	}
+	.photo-strip__item {
+		position: relative;
+		display: block;
+		aspect-ratio: 4 / 5;
+		border-radius: var(--r-md);
+		overflow: hidden;
+		text-decoration: none;
+		transition: transform var(--dur) var(--ease-out);
+	}
+	.photo-strip__item:hover {
+		transform: translateY(-4px);
+	}
+	.photo-strip__item img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	.photo-strip__cap {
+		position: absolute;
+		inset: auto 0 0;
+		padding: 1.4rem 0.6rem 0.5rem;
+		font-size: 0.72rem;
+		color: #fff;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+	}
+	@media (max-width: 900px) {
+		.photo-strip {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+	@media (max-width: 560px) {
+		.photo-strip {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 
 	/* ---------- 关于 ---------- */

@@ -47,9 +47,14 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 								data-reveal-delay={i * 60}
 								data-glow
 							>
-								<span class="link-card__domain">{new URL(link.url).hostname.replace(/^www\./, '')}</span>
-								<h3>{link.title}</h3>
-								<p>{link.description}</p>
+								<span class="link-card__logo" data-logo data-domain={new URL(link.url).hostname.replace(/^www\./, '')} data-name={link.title}>
+									<span class="link-card__logo-fallback" aria-hidden="true">{link.title.slice(0, 1).toUpperCase()}</span>
+								</span>
+								<div class="link-card__body">
+									<span class="link-card__domain">{new URL(link.url).hostname.replace(/^www\./, '')}</span>
+									<h3>{link.title}</h3>
+									<p>{link.description}</p>
+								</div>
 								<span class="link-card__arrow" aria-hidden="true">
 									<svg viewBox="0 0 16 16" width="14" height="14">
 										<path
@@ -73,7 +78,34 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 </BaseLayout>
 
 <script>
+	// favicon 自动识别：用 Google 的 favicon 服务抓取站点图标，
+	// 加载失败（无图标/网络问题）时回退到名称首字母。
+	function loadFavicons() {
+		const logos = document.querySelectorAll<HTMLElement>('[data-logo]');
+		for (const logo of logos) {
+			if (logo.dataset.done === '1') continue;
+			logo.dataset.done = '1';
+			const domain = logo.dataset.domain;
+			const name = logo.dataset.name || '';
+			if (!domain) continue;
+			const img = document.createElement('img');
+			img.alt = '';
+			img.loading = 'lazy';
+			img.decoding = 'async';
+			img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+			img.onload = () => {
+				logo.classList.add('has-logo');
+				logo.prepend(img);
+			};
+			img.onerror = () => {
+				// 抓不到就用首字母兜底（fallback 已经在 HTML 里）
+				logo.classList.add('no-logo');
+			};
+		}
+	}
+
 	function init() {
+		loadFavicons();
 		const input = document.getElementById('link-search') as HTMLInputElement | null;
 		if (!input || input.dataset.wired === '1') return;
 		input.dataset.wired = '1';
@@ -198,8 +230,9 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 	.link-card {
 		position: relative;
 		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 0.85rem;
 		padding: 1.1rem 1.2rem 1.15rem;
 		border-radius: var(--r-lg);
 		text-decoration: none;
@@ -211,6 +244,35 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 	.link-card:hover {
 		transform: translateY(-4px);
 		box-shadow: var(--glass-shine), var(--shadow-lg);
+	}
+	.link-card__logo {
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		display: grid;
+		place-items: center;
+		overflow: hidden;
+		background: var(--chip-bg);
+		border: 1px solid var(--glass-brd-dim);
+	}
+	.link-card__logo img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		display: block;
+	}
+	.link-card__logo-fallback {
+		font-size: 1.1rem;
+		font-weight: 700;
+		color: rgb(var(--accent-deep));
+	}
+	.link-card__body {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
 	}
 	.link-card__domain {
 		font-size: 0.68rem;

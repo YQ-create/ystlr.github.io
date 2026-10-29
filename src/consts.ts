@@ -35,3 +35,44 @@ export const SUBMIT_REPO = {
 // TODO(你)：去 GitHub 生成一个「仅 Issues 写权限」的 Fine-grained PAT，替换下面这行。
 // 不填 = 关闭投稿入口。
 export const SUBMIT_TOKEN = '';
+
+// 发现页链接：名称 + 链接 + 一句话简介。logo 由前端自动抓取该站点的 favicon，
+// 抓不到时回退到名称首字母。想加链接就往这个数组里加一条即可。
+export interface DiscoveryLink {
+	name: string;
+	url: string;
+	description?: string;
+}
+
+export const DISCOVERY_LINKS: DiscoveryLink[] = [
+	{
+		name: 'GitHub',
+		url: 'https://github.com',
+		description: '代码托管与开源协作平台',
+	},
+	{
+		name: 'Hacker News',
+		url: 'https://news.ycombinator.com',
+		description: '科技与创业话题的社区讨论',
+	},
+	{
+		name: '少数派',
+		url: 'https://sspai.com',
+		description: '数字生活与效率工具媒体',
+	},
+	{
+		name: '知乎',
+		url: 'https://www.zhihu.com',
+		description: '中文问答社区',
+	},
+	{
+		name: 'MDN',
+		url: 'https://developer.mozilla.org',
+		description: 'Web 开发权威文档',
+	},
+	{
+		name: 'Vercel',
+		url: 'https://vercel.com',
+		description: '前端部署与云平台',
+	},
+];

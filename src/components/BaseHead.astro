@@ -40,24 +40,40 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
-<!-- 首屏防白闪：CSS 加载前先把深色背景铺上，避免深色主题闪一下白 -->
+<!-- 首屏防白闪：CSS 加载前先把当前主题背景铺上，避免主题闪一下 -->
 <style is:inline>
 	html {
 		background-color: #181512;
 		color-scheme: dark;
 	}
+	html[data-theme='light'] {
+		background-color: #f6f3ee;
+		color-scheme: light;
+	}
 </style>
 <script is:inline>
-	/* 站点固定深色，只把 data-theme=dark 写进 <html> 并补 js 类。
+	/* 默认深色，用户手动切换后记住偏好（localStorage）。
 	   View Transitions 切页时 Astro 会用新文档的 <html> 属性覆盖当前节点，
-	   所以 after-swap 立刻再写一次，保证深色 token 不丢。 */
+	   所以 after-swap 立刻再写一次，保证主题 token 不丢。 */
 	(() => {
 		const d = document.documentElement;
-		d.classList.add('js');
+		const KEY = 'ystlr-theme';
 		const sync = () => {
 			d.classList.add('js');
-			d.dataset.theme = 'dark';
+			let theme = 'dark';
+			try {
+				const stored = localStorage.getItem(KEY);
+				if (stored === 'dark' || stored === 'light') theme = stored;
+			} catch {}
+			d.dataset.theme = theme;
 			d.dataset.glass = 'frosted';
+			window.__setTheme = (t) => {
+				d.dataset.theme = t;
+				try {
+					localStorage.setItem(KEY, t);
+				} catch {}
+			};
+			window.__getTheme = () => d.dataset.theme || 'dark';
 		};
 		sync();
 		document.addEventListener('astro:after-swap', sync);

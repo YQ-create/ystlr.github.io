@@ -79,6 +79,50 @@
 	--dur-slow: 0.9s;
 }
 
+/* 浅色主题：雾白半透明（默认深色，页头手动切换） */
+:root[data-theme='light'] {
+	/* 强调色：浅色下压暗一档，保持陶土棕的暖调 */
+	--accent: 196, 120, 82;
+	--accent-soft: 214, 150, 110;
+	--accent-deep: 168, 98, 66;
+	--ochre: 190, 146, 80;
+	--sage: 128, 148, 122;
+	--rose: 196, 132, 118;
+
+	/* 纸面层次：雾白 */
+	--bg: 246, 243, 238;
+	--bg-deep: 238, 234, 227;
+	--paper: 255, 253, 250;
+	--surface: 246, 242, 236;
+	--line: 222, 214, 203;
+	--line-soft: 232, 226, 216;
+
+	/* 文字 */
+	--ink: 58, 51, 43;
+	--ink-soft: 88, 78, 68;
+	--muted: 138, 128, 116;
+	--muted-light: 176, 166, 152;
+
+	/* 玻璃：雾白半透明 */
+	--glass-bg: rgba(255, 253, 250, 0.5);
+	--glass-bg-strong: rgba(255, 253, 250, 0.72);
+	--glass-brd: rgba(255, 255, 255, 0.65);
+	--glass-brd-dim: rgba(255, 255, 255, 0.5);
+	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+	/* 小控件 */
+	--chip-bg: rgba(255, 255, 255, 0.55);
+	--chip-bg-dim: rgba(255, 255, 255, 0.38);
+	--chip-bg-strong: rgba(255, 255, 255, 0.78);
+	/* 阴影（浅色下柔和一些） */
+	--shadow-color: 90, 76, 60;
+	/* 背景光晕：浅色下更淡 */
+	--glow-accent: 0.12;
+	--glow-ochre: 0.1;
+	--glow-sage: 0.08;
+	/* 按钮底色 */
+	--btn-tint: 232, 224, 212;
+}
+
 /* ============ 基础 ============ */
 *,
 *::before,
@@ -90,6 +134,12 @@ html {
 	color-scheme: dark;
 	scroll-behavior: smooth;
 	-webkit-text-size-adjust: 100%;
+	background-color: rgb(var(--bg-deep));
+	transition: background-color var(--dur) var(--ease-out);
+}
+
+html[data-theme='light'] {
+	color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {

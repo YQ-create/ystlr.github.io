@@ -1,0 +1,65 @@
+---
+/**
+ * AeroShards — 玻璃碎片丝带背景（React Bits「Aero Shards」原生移植，无 React，依赖 vgpu/WebGPU）。
+ *
+ * 渲染逻辑在 src/scripts/aero-shards.ts；浏览器不支持 WebGPU 时画布留空，由上层 CSS 兜底。
+ * 深浅主题自动跟随：挂载时读取 html[data-theme]，并在主题切换时重建。
+ */
+interface Props {
+	shardColor?: string;
+	accentColor?: string;
+	backgroundColor?: string;
+	placement?: 'full' | 'left' | 'right' | 'center';
+	material?: 'glass' | 'chrome';
+	count?: number;
+	shardSize?: number;
+	spread?: number;
+	twist?: number;
+	billow?: number;
+	speed?: number;
+	scale?: number;
+	depthOfField?: number;
+	glow?: number;
+	grain?: number;
+	vignette?: number;
+	intro?: boolean;
+	mouseInteraction?: boolean;
+	mouseStrength?: number;
+	markers?: 'plus' | 'dots' | 'none';
+	pulseOnClick?: boolean;
+	holdToGather?: boolean;
+	parallax?: number;
+	paused?: boolean;
+	dpr?: number;
+	class?: string;
+}
+
+const { class: className = '', ...rest } = Astro.props;
+const cfg = JSON.stringify(rest);
+---
+
+<div class:list={['aero-shards', className]} data-aero-shards data-cfg={cfg} aria-hidden="true"></div>
+
+<style>
+	.aero-shards {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+	.aero-shards :global(canvas) {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>
+
+<script>
+	import { bootAeroShards } from '../scripts/aero-shards';
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootAeroShards, { once: true });
+	else bootAeroShards();
+	document.addEventListener('astro:page-load', bootAeroShards);
+</script>

@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import AcidSquares from '../components/AcidSquares.astro';
+import AeroShards from '../components/AeroShards.astro';
 import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import CountUp from '../components/CountUp.astro';
@@ -66,32 +66,24 @@ const discoverPreview = discoverData.collections
 		<!-- ============ 首页 Hero ============ -->
 		<section class="hero" id="home" data-section="home">
 			<div class="hero-waves" aria-hidden="true">
-				<AcidSquares
-					color="#120f17"
-					accentColor="#ff4fb8"
-					secondaryColor="#3b6bff"
-					tileSize={1.05}
-					gap={0.14}
-					roundness={0.2}
-					softness={0.55}
-					bulge={0.34}
-					rotation={30}
-					gloss={0.55}
-					waves={0.9}
-					waveScale={0.9}
-					speed={0.4}
-					pulse={1}
-					pulseSpeed={0.3}
-					pulseSpacing={1.1}
-					pulseWidth={1.1}
-					lighting="split"
-					tilt={0.62}
-					zoom={1}
-					depth={9}
-					grain={0.1}
-					fade={0.6}
-					opacity={0.86}
-					detail="medium"
+				<AeroShards
+					shardColor="#6b5b95"
+					accentColor="#ffb86c"
+					material="glass"
+					placement="full"
+					count={1200}
+					depthOfField={0.75}
+					glow={0.42}
+					grain={0.06}
+					vignette={0.3}
+					intro={true}
+					mouseInteraction={true}
+					mouseStrength={0.6}
+					parallax={0.5}
+					markers="plus"
+					pulseOnClick={true}
+					holdToGather={true}
+					dpr={1.5}
 				/>
 			</div>
 

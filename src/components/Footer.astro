@@ -86,20 +86,21 @@ const nav = [
 	.foot-contact a:hover {
 		color: rgb(var(--accent));
 	}
-	/* 不显眼的后台入口 */
+	/* 后台入口：低调但不至于看不清（对比度达标） */
 	.foot-manage {
 		margin-left: 0.7rem;
-		color: inherit;
-		opacity: 0.55;
-		text-decoration: none;
+		color: rgb(var(--muted));
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		text-decoration-color: rgba(var(--muted), 0.5);
 		transition:
-			opacity var(--dur-fast) var(--ease-out),
-			color var(--dur-fast) var(--ease-out);
+			color var(--dur-fast) var(--ease-out),
+			text-decoration-color var(--dur-fast) var(--ease-out);
 	}
 	.foot-manage:hover,
 	.foot-manage:focus-visible {
-		opacity: 1;
 		color: rgb(var(--accent));
+		text-decoration-color: rgb(var(--accent));
 	}
 	.foot-copy {
 		margin: 1.2rem 0 0;

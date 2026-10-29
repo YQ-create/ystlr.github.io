@@ -3,34 +3,46 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ChromaGrid from '../../components/ChromaGrid.astro';
 import { getCollection } from 'astro:content';
 import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
 const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
-// 大图地址在构建期算好，灯箱直接取，避免放大时糊
+// 大图地址在构建期算好，灯箱直接取，避免放大时糊（灯箱图片点击时才真正加载）
 const bigUrls = new Map<string, string>();
 for (const photo of photos) {
-	const big = await getImage({ src: photo.data.image, width: 1600, format: 'webp' });
+	const big = await getImage({ src: photo.data.image as ImageMetadata, width: 1600, format: 'webp' });
 	bigUrls.set(photo.id, big.src);
 }
 
-// 追光网格数据：每张照片生成一张彩色卡片，附日期/标题/强调色，可点开灯箱看大图
+// 追光网格数据：每张照片生成彩色卡片（多档 srcset 响应式）+ 日期/标题/强调色，可点开灯箱
 const ACCENTS = ['#ffb86c', '#7c5cff', '#ff6b9d', '#4cc2ff', '#5ad1a0', '#ffd166'];
+// 卡片实际槽位约 300px（4 列），2x 屏约 600px；给三档，浏览器按需取
+const CARD_WIDTHS = [400, 600, 900];
 const chromaItems = await Promise.all(
 	photos.map(async (photo, i) => {
-		const img = await getImage({ src: photo.data.image, width: 900, format: 'webp' });
+		const [base, ...rest] = await Promise.all(
+			CARD_WIDTHS.map((w) => getImage({ src: photo.data.image as ImageMetadata, width: w, format: 'webp' })),
+		);
+		const srcset = [base, ...rest]
+			.map((img, idx) => `${img.src} ${CARD_WIDTHS[idx]}w`)
+			.join(', ');
 		const d = photo.data.date;
 		const month = String(d.getMonth() + 1).padStart(2, '0');
 		const day = String(d.getDate()).padStart(2, '0');
 		const title = photo.data.title ?? photo.data.caption ?? '';
 		return {
-			image: img.src,
+			image: base.src,
 			title,
 			subtitle: `${d.getFullYear()} · ${month} 月 ${day} 日`,
 			accent: ACCENTS[i % ACCENTS.length],
 			lightbox: bigUrls.get(photo.id),
+			srcset,
+			sizes: '(max-width: 720px) 50vw, (max-width: 1080px) 33vw, 300px',
+			// alt 兜底：没写标题/说明时用「照片」，避免空 alt
+			alt: title || '照片',
 		};
 	})
 );
@@ -93,7 +105,7 @@ tags: ["生活", "风景"]
 	</main>
 
 	<!-- 灯箱 -->
-	<div class="lightbox" data-lightbox-root hidden>
+	<div class="lightbox" data-lightbox-root role="dialog" aria-modal="true" aria-label="照片查看" hidden>
 		<div class="lightbox-veil" data-lightbox-close></div>
 		<figure class="lightbox-figure">
 			<img data-lightbox-img alt="" />
@@ -112,6 +124,40 @@ tags: ["生活", "风景"]
 	let lastFocus: HTMLElement | null = null;
 	let wired = false;
 
+	/** 锁滚动并补滚动条宽度，避免桌面端横向抖动 */
+	function lockScroll() {
+		const bar = window.innerWidth - document.documentElement.clientWidth;
+		document.documentElement.style.overflow = 'hidden';
+		document.body.style.overflow = 'hidden';
+		if (bar > 0) document.body.style.paddingRight = `${bar}px`;
+	}
+	function unlockScroll() {
+		document.documentElement.style.removeProperty('overflow');
+		document.body.style.removeProperty('overflow');
+		document.body.style.removeProperty('padding-right');
+	}
+
+	/** 焦点陷阱：Tab 在灯箱内的可聚焦元素间循环 */
+	function trapFocus(e: KeyboardEvent) {
+		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
+		if (!root || root.hidden || e.key !== 'Tab') return;
+		const focusables = Array.from(
+			root.querySelectorAll<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+			),
+		);
+		if (!focusables.length) return;
+		const first = focusables[0];
+		const last = focusables[focusables.length - 1];
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+
 	/** 立刻收起并解锁滚动：切页、Esc、点遮罩都走这里 */
 	function resetLightbox(restoreFocus = false) {
 		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
@@ -119,8 +165,7 @@ tags: ["生活", "风景"]
 		if (!root) return;
 		root.classList.remove('is-open');
 		root.hidden = true;
-		document.documentElement.style.removeProperty('overflow');
-		document.body.style.removeProperty('overflow');
+		unlockScroll();
 		if (img) img.removeAttribute('src');
 		if (restoreFocus) lastFocus?.focus();
 	}
@@ -129,8 +174,7 @@ tags: ["生活", "风景"]
 		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
 		if (!root) return;
 		root.classList.remove('is-open');
-		document.documentElement.style.removeProperty('overflow');
-		document.body.style.removeProperty('overflow');
+		unlockScroll();
 		window.setTimeout(() => resetLightbox(true), 200);
 	}
 
@@ -143,8 +187,7 @@ tags: ["生活", "风景"]
 		img.src = trigger.dataset.full ?? '';
 		if (caption) caption.textContent = trigger.dataset.caption ?? '';
 		root.hidden = false;
-		document.documentElement.style.overflow = 'hidden';
-		document.body.style.overflow = 'hidden';
+		lockScroll();
 		requestAnimationFrame(() => root.classList.add('is-open'));
 		root.querySelector<HTMLElement>('[data-lightbox-close]')?.focus();
 	}
@@ -168,10 +211,7 @@ tags: ["生活", "风景"]
 	document.addEventListener('astro:before-swap', () => resetLightbox());
 	document.addEventListener('astro:page-load', () => {
 		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		if (root && root.hidden) {
-			document.documentElement.style.removeProperty('overflow');
-			document.body.style.removeProperty('overflow');
-		}
+		if (root && root.hidden) unlockScroll();
 	});
 
 	if (!wired) {
@@ -179,6 +219,7 @@ tags: ["生活", "风景"]
 		document.addEventListener('keydown', (e) => {
 			const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
 			if (e.key === 'Escape' && root && !root.hidden) closeLightbox();
+			trapFocus(e);
 		});
 	}
 

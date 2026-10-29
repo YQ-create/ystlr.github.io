@@ -1,3 +1,4 @@
+// @ts-nocheck -- WebGL 着色器与运行时逻辑的手写移植，类型检查收益低
 // AcidSquares 的渲染逻辑（React Bits AcidSquares 的原生移植）。
 // 单独放在 .ts 里：Astro 对 <script> 内的大段模板字符串/shader 解析容易出问题，
 // 交给 vite 按模块编译更稳。

@@ -236,6 +236,7 @@ const safeItems: Item[] = items.map((it, i) => ({
 </style>
 
 <script>
+	// @ts-nocheck -- WebGL 着色器与运行时逻辑的手写移植，类型检查收益低
 	// ===== 原生 JS 移植 CircularGallery（WebGL2）=====
 	// React 只负责挂载与 JSX；着色器、圆环数学、pointer/wheel/autoScroll 都是纯 JS，这里原样移植为原生实现。
 

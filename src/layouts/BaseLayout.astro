@@ -17,17 +17,22 @@ interface Props {
 	bodyClass?: string;
 	/** 首屏整屏 Hero：页头改成固定定位，融入画面 */
 	hero?: boolean;
+	/** 页面类型：website（默认）| article（文章页） */
+	type?: 'website' | 'article';
+	/** 文章发布时间（article 类型时用于结构化数据） */
+	publishedTime?: Date;
 }
 
-const { title, description, image, noindex, bodyClass, hero = false } = Astro.props;
+const { title, description, image, noindex, bodyClass, hero = false, type, publishedTime } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="zh-CN" class="js">
 	<head>
-		<BaseHead title={title} description={description} image={image} noindex={noindex} />
+		<BaseHead title={title} description={description} image={image} noindex={noindex} type={type} publishedTime={publishedTime} />
 	</head>
 	<body class={bodyClass} data-hero={hero ? '1' : undefined}>
+		<a class="skip-link" href="#main-content" data-skip-link>跳到正文</a>
 		<div class="scroll-progress" data-progress aria-hidden="true"></div>
 		<Header />
 		<slot />
@@ -36,3 +41,15 @@ const { title, description, image, noindex, bodyClass, hero = false } = Astro.pr
 		<ClickSpark size={11} radius={24} count={7} />
 	</body>
 </html>
+
+<script>
+	// skip-link：点击后把焦点交给第一个 <main>，键盘用户可跳过页头直接读正文。
+	document.querySelector<HTMLElement>('[data-skip-link]')?.addEventListener('click', (e) => {
+		const main = document.querySelector<HTMLElement>('main');
+		if (!main) return;
+		e.preventDefault();
+		main.setAttribute('tabindex', '-1');
+		main.focus();
+		main.scrollIntoView();
+	});
+</script>

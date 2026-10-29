@@ -42,6 +42,10 @@ interface Item {
 	borderColor?: string;
 	/** 大图 URL：设置后卡片变为可点击按钮，点击走 data-lightbox 灯箱 */
 	lightbox?: string;
+	/** 响应式 srcset（可选），如 "a.webp 400w, b.webp 800w" */
+	srcset?: string;
+	/** srcset 对应的 sizes */
+	sizes?: string;
 }
 
 interface Props {
@@ -165,6 +169,8 @@ const safeItems = items.map((it, i) => ({
 	url: it.url ?? null,
 	alt: it.alt ?? it.title ?? '',
 	lightbox: it.lightbox ?? null,
+	srcset: it.srcset ?? '',
+	sizes: it.sizes ?? '',
 	key: i,
 }));
 
@@ -188,8 +194,23 @@ const styleString = Object.entries(rootVars)
 				<>
 					<span class="chroma-wash" aria-hidden="true"></span>
 					<div class="chroma-media" data-chroma-area>
-						<img class="chroma-mono" src={item.image} alt={item.alt} loading="lazy" />
-						<img class="chroma-color" src={item.image} alt="" aria-hidden="true" loading="lazy" />
+						<img
+							class="chroma-mono"
+							src={item.image}
+							srcset={item.srcset || undefined}
+							sizes={item.sizes || undefined}
+							alt={item.alt}
+							loading="lazy"
+						/>
+						<img
+							class="chroma-color"
+							src={item.image}
+							srcset={item.srcset || undefined}
+							sizes={item.sizes || undefined}
+							alt=""
+							aria-hidden="true"
+							loading="lazy"
+						/>
 						<span class="chroma-media-rim" aria-hidden="true"></span>
 					</div>
 					{showInfo && (item.title || item.subtitle) ? (

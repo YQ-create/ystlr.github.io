@@ -1,11 +1,12 @@
 ---
 import { type CollectionEntry, getCollection, render } from 'astro:content';
+import type { ImageMetadata } from 'astro';
 import BlogPost from '../../layouts/BlogPost.astro';
 
 export async function getStaticPaths() {
-	const posts = (await getCollection('blog')).sort(
-		(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-	);
+	const posts = (await getCollection('blog'))
+		.filter((post) => !post.data.draft)
+		.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 	return posts.map((post, i) => {
 		// posts 是倒序：i+1 更早（上一篇），i-1 更新（下一篇）
@@ -56,6 +57,17 @@ const plain = (post.body ?? '')
 const readingMinutes = Math.max(1, Math.round(plain.length / 350));
 ---
 
-<BlogPost {...post.data} readingMinutes={readingMinutes} prev={prev} next={next} related={related}>
+<BlogPost
+	title={post.data.title}
+	description={post.data.description}
+	pubDate={post.data.pubDate}
+	updatedDate={post.data.updatedDate}
+	heroImage={post.data.heroImage as ImageMetadata}
+	tags={post.data.tags}
+	readingMinutes={readingMinutes}
+	prev={prev}
+	next={next}
+	related={related}
+>
 	<Content />
 </BlogPost>

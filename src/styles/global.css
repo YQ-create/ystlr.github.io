@@ -788,7 +788,7 @@ select:focus {
 }
 
 /* ============ 透明玻璃 ============ */
-/* 站点固定深色，这一档保留「玻璃更透」的备选 token（BaseHead 默认写 data-glass=frosted） */
+/* 备用：玻璃更透的一档（BaseHead 默认写 data-glass=frosted；站点支持深/浅两套主题与多套强调色） */
 :root[data-glass='clear'] {
 	--glass-bg: rgba(38, 33, 28, 0.24);
 	--glass-bg-strong: rgba(31, 27, 23, 0.52);
@@ -804,4 +804,22 @@ select:focus {
    ghost 按钮只把文字降到次级色，其余交给 token */
 .specular-button.sb-ghost {
 	font-weight: 450;
+}
+
+/* ============ 跳过链接 ============ */
+.skip-link {
+	position: absolute;
+	left: -9999px;
+	top: 0;
+	z-index: 300;
+	padding: 0.6rem 1.2rem;
+	background: rgb(var(--accent));
+	color: rgb(var(--paper));
+	font-size: 0.9rem;
+	font-weight: 600;
+	border-radius: 0 0 var(--r-md) 0;
+	text-decoration: none;
+}
+.skip-link:focus {
+	left: 0;
 }

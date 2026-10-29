@@ -8,7 +8,6 @@ import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
-import { Image } from 'astro:assets';
 import { AUTHOR_NAME, HERO, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
@@ -22,21 +21,10 @@ const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
-// 知识库：取置顶 + 最新的若干条，首页只做摘要预览
+// 知识库：仅用于首页统计（板块改为入口卡片，点击进入独立页）
 const knowledge = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const knowledgePreview = [
-	...knowledge.filter((n) => n.data.pinned),
-	...knowledge.filter((n) => !n.data.pinned),
-].slice(0, 4);
-
-// 首页照片板块：只取照片（不混封面），用图片网格展示
-const photoItems = photos.slice(0, 6).map((photo) => ({
-	image: photo.data.image,
-	title: photo.data.title ?? photo.data.caption ?? '',
-	href: '/gallery/',
-}));
 
 // 标签云 + 最新动态 + 站点统计（门户式版块用）
 const tagCount = new Map<string, number>();
@@ -350,31 +338,22 @@ const discoverPreview = discoverData.collections
 						<span class="sec-head__index">02 — KNOWLEDGE</span>
 						<h2>知识库</h2>
 					</div>
-					<a class="sec-head__more" href="/knowledge">
-						进入知识库
-						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-						</svg>
-					</a>
 				</header>
 
-				{knowledgePreview.length === 0 ? (
-					<p class="empty-hint">知识库还空着，成体系的笔记会沉淀在这里。</p>
-				) : (
-					<div class="kb-grid">
-						{knowledgePreview.map((note, i) => (
-							<a class="kb-card glass" href={`/knowledge/${note.id}/`} data-reveal data-reveal-delay={i * 70}>
-								<div class="kb-card__top">
-									<span class="kb-card__cat">{note.data.category}</span>
-									{note.data.pinned && <span class="kb-card__pin" title="置顶">◆</span>}
-								</div>
-								<h3 class="kb-card__title">{note.data.title}</h3>
-								{note.data.description && <p class="kb-card__desc">{note.data.description}</p>}
-								<time class="kb-card__date"><FormattedDate date={note.data.pubDate} /></time>
-							</a>
-						))}
+				<a class="portal-entry glass" href="/knowledge" data-reveal data-glow>
+					<div class="portal-entry__body">
+						<span class="portal-entry__kicker">成体系的笔记 · 分类沉淀</span>
+						<h3 class="portal-entry__title">进入知识库</h3>
+						<p class="portal-entry__desc">
+							前端、工具、阅读……把零散的想法整理成结构化的笔记，慢慢累积成自己的知识体系。
+						</p>
 					</div>
-				)}
+					<span class="portal-entry__arrow" aria-hidden="true">
+						<svg viewBox="0 0 16 16" width="20" height="20">
+							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+						</svg>
+					</span>
+				</a>
 			</div>
 		</section>
 
@@ -414,48 +393,23 @@ const discoverPreview = discoverData.collections
 						</a>
 					))}
 				</div>
-			</div>
-		</section>
 
-		<!-- ============ 照片 ============ -->
-		<section class="sec sec--gallery sec--wall" id="photos" data-section="photos">
-			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">04 — PHOTOS</span>
-						<h2>照片</h2>
+				<!-- 照片墙入口：放在发现模块 -->
+				<a class="portal-entry portal-entry--photos glass" href="/gallery" data-reveal data-glow>
+					<div class="portal-entry__body">
+						<span class="portal-entry__kicker">生活里的光影 · 按年月整理</span>
+						<h3 class="portal-entry__title">进入照片墙</h3>
+						<p class="portal-entry__desc">
+							记录下的瞬间都收在这里，追光网格里点开看每一张照片。
+						</p>
 					</div>
-					<a class="sec-head__more" href="/gallery">
-						进入照片墙
-						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-							<path
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.8"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+					<span class="portal-entry__arrow" aria-hidden="true">
+						<svg viewBox="0 0 16 16" width="20" height="20">
+							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
 						</svg>
-					</a>
-				</header>
+					</span>
+				</a>
 			</div>
-
-			{photoItems.length === 0 ? (
-				<div class="wrap">
-					<p class="empty-hint">暂无照片，添加后这里会转起来。</p>
-				</div>
-			) : (
-				<div class="wrap">
-					<div class="photo-strip" data-reveal="scale" data-reveal-delay="120">
-						{photoItems.map((p, i) => (
-							<a class="photo-strip__item" href={p.href} data-reveal data-reveal-delay={i * 70}>
-								<Image src={p.image} alt={p.title || ''} widths={[400, 800]} sizes="(max-width: 720px) 45vw, 240px" loading="lazy" decoding="async" />
-								{p.title && <span class="photo-strip__cap">{p.title}</span>}
-							</a>
-						))}
-					</div>
-				</div>
-			)}
 		</section>
 
 		<!-- ============ 关于 ============ -->
@@ -463,7 +417,7 @@ const discoverPreview = discoverData.collections
 			<div class="wrap">
 				<div class="about-card glass" data-reveal data-glow>
 					<div class="about-main">
-						<span class="sec-head__index">05 — ABOUT</span>
+						<span class="sec-head__index">04 — ABOUT</span>
 						<h2>写点关于自己的话</h2>
 						<p>
 							这里是一段占位简介：介绍你在记录什么、关注哪些方向，以及为什么开始写。
@@ -502,7 +456,6 @@ const discoverPreview = discoverData.collections
 		{ id: 'articles', href: '/blog' },
 		{ id: 'knowledge', href: '/knowledge' },
 		{ id: 'discover', href: '/discover' },
-		{ id: 'photos', href: '/gallery' },
 		{ id: 'about', href: '/about' },
 	];
 
@@ -775,15 +728,6 @@ const discoverPreview = discoverData.collections
 	}
 
 	/* ---------- 区块 ---------- */
-	/* 照片墙：往上压住 Hero 的底边，卡片像是从画面里浮出来 */
-	.sec--wall {
-		position: relative;
-		z-index: 2;
-	}
-	.sec--wall .wrap {
-		max-width: none;
-		padding-inline: clamp(0.25rem, 1.5vw, 1.5rem);
-	}
 
 	/* ---------- 门户式精选区 ---------- */
 	.tagbar {
@@ -1131,23 +1075,14 @@ const discoverPreview = discoverData.collections
 		}
 	}
 
-	/* ---------- 照片墙 ---------- */
-	.sec--wall {
-		padding-top: clamp(2.2rem, 5vw, 3.6rem);
-	}
-
-	/* ---------- 知识库 ---------- */
-	.kb-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: clamp(0.8rem, 1.6vw, 1.1rem);
-	}
-	.kb-card {
+	/* ---------- 入口卡片（知识库 / 照片墙） ---------- */
+	.portal-entry {
 		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 1.05rem 1.15rem;
-		border-radius: var(--r-md);
+		align-items: center;
+		justify-content: space-between;
+		gap: clamp(1.2rem, 3vw, 2.4rem);
+		padding: clamp(1.4rem, 3.4vw, 2.2rem);
+		border-radius: var(--r-xl);
 		text-decoration: none;
 		color: inherit;
 		transition:
@@ -1155,49 +1090,60 @@ const discoverPreview = discoverData.collections
 			box-shadow var(--dur) var(--ease-out),
 			border-color var(--dur) var(--ease-out);
 	}
-	.kb-card:hover {
+	.portal-entry:hover {
 		transform: translateY(-3px);
 		box-shadow: var(--glass-shine), var(--shadow-lg);
 		border-color: rgba(var(--accent), 0.4);
 	}
-	.kb-card__top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
+	.portal-entry__body {
+		min-width: 0;
 	}
-	.kb-card__cat {
+	.portal-entry__kicker {
+		display: block;
 		font-size: 0.68rem;
-		letter-spacing: 0.1em;
-		color: rgb(var(--accent-deep));
-		background: rgba(var(--accent), 0.12);
-		border-radius: var(--r-pill);
-		padding: 0.08rem 0.55rem;
-	}
-	.kb-card__pin {
-		font-size: 0.68rem;
-		color: rgb(var(--ochre));
-	}
-	.kb-card__title {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 650;
-		line-height: 1.4;
-	}
-	.kb-card__desc {
-		margin: 0;
-		font-size: 0.82rem;
-		color: rgb(var(--muted));
-		line-height: 1.6;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-	.kb-card__date {
-		margin-top: auto;
-		font-size: 0.72rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 		color: rgb(var(--muted-light));
+		margin-bottom: 0.5rem;
+	}
+	.portal-entry__title {
+		margin: 0 0 0.4rem;
+		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+		font-weight: 750;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.portal-entry:hover .portal-entry__title {
+		color: rgb(var(--accent-deep));
+	}
+	.portal-entry__desc {
+		margin: 0;
+		max-width: 52ch;
+		font-size: 0.9rem;
+		line-height: 1.7;
+		color: rgb(var(--muted));
+	}
+	.portal-entry__arrow {
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 52px;
+		height: 52px;
+		border-radius: 50%;
+		border: 1px solid var(--glass-brd-dim);
+		background: var(--chip-bg);
+		color: rgb(var(--accent));
+		transition:
+			transform var(--dur) var(--ease-spring),
+			background-color var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.portal-entry:hover .portal-entry__arrow {
+		transform: translateX(4px);
+		background: rgba(var(--accent), 0.16);
+		color: rgb(var(--accent-deep));
+	}
+	.portal-entry--photos {
+		margin-top: clamp(1rem, 2.2vw, 1.6rem);
 	}
 
 	/* ---------- 发现 ---------- */
@@ -1268,49 +1214,6 @@ const discoverPreview = discoverData.collections
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-	}
-
-	/* ---------- 照片条 ---------- */
-	.photo-strip {
-		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
-		gap: clamp(0.5rem, 1.2vw, 0.9rem);
-	}
-	.photo-strip__item {
-		position: relative;
-		display: block;
-		aspect-ratio: 4 / 5;
-		border-radius: var(--r-md);
-		overflow: hidden;
-		text-decoration: none;
-		transition: transform var(--dur) var(--ease-out);
-	}
-	.photo-strip__item:hover {
-		transform: translateY(-4px);
-	}
-	.photo-strip__item img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-	}
-	.photo-strip__cap {
-		position: absolute;
-		inset: auto 0 0;
-		padding: 1.4rem 0.6rem 0.5rem;
-		font-size: 0.72rem;
-		color: #fff;
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
-	}
-	@media (max-width: 900px) {
-		.photo-strip {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-	}
-	@media (max-width: 560px) {
-		.photo-strip {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
 	}
 
 	/* ---------- 关于 ---------- */

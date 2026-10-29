@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CircularGallery from '../../components/CircularGallery.astro';
+import ChromaGrid from '../../components/ChromaGrid.astro';
 import FadeContent from '../../components/FadeContent.astro';
 import { getCollection } from 'astro:content';
 import { Image, getImage } from 'astro:assets';
@@ -43,32 +43,20 @@ for (const photo of photos) {
 	bigUrls.set(photo.id, big.src);
 }
 
-// 弧形画廊数据：照片不足时用文章封面补齐，保证环形有足够内容
-const posts = (await getCollection('blog')).filter((p) => !p.data.draft);
-const coverItems = posts
-	.filter((p) => p.data.heroImage)
-	.slice(0, 6)
-	.map((p) => ({
-		image: p.data.heroImage!,
-		title: p.data.title,
-		href: `/blog/${p.id}/`,
-	}));
-const rawGallery = [
-	...photos.slice(0, 10).map((photo) => ({
-		image: photo.data.image,
-		title: photo.data.title ?? photo.data.caption ?? '',
-		href: '/gallery/',
-	})),
-	...coverItems,
-].slice(0, 8);
-const galleryItemsForCg = await Promise.all(
-	rawGallery.slice(0, 6).map(async (it) => {
-		const img = await getImage({ src: it.image, width: 800, format: 'webp' });
+// 追光网格数据：每张照片生成一张彩色卡片，附日期/标题/强调色
+const ACCENTS = ['#ffb86c', '#7c5cff', '#ff6b9d', '#4cc2ff', '#5ad1a0', '#ffd166'];
+const chromaItems = await Promise.all(
+	photos.map(async (photo, i) => {
+		const img = await getImage({ src: photo.data.image, width: 900, format: 'webp' });
+		const d = photo.data.date;
+		const month = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
 		return {
 			image: img.src,
-			text: it.title || undefined,
-			alt: it.title || undefined,
-			href: it.href,
+			title: photo.data.title ?? photo.data.caption ?? '',
+			subtitle: `${d.getFullYear()} · ${month} 月 ${day} 日`,
+			accent: ACCENTS[i % ACCENTS.length],
+			url: null,
 		};
 	})
 );
@@ -110,23 +98,26 @@ tags: ["生活", "风景"]
 		) : (
 			<>
 				{photos.length >= 1 && (
-					<div class="gallery-carousel" data-reveal="scale">
-						<CircularGallery
-							items={galleryItemsForCg}
-							bend={2}
-							textColor="#ffffff"
-							borderRadius={0.15}
-							scrollEase={0.12}
-							scrollSpeed={5}
-							wave={2}
-							fadeEdges={0.2}
-							autoScroll={1}
-							showTitles={false}
-							itemSize={1}
-							itemAspect={0.78}
-							gap={0.26}
-							shadow={0.25}
-							height="560px"
+					<div class="gallery-chroma" data-reveal="scale">
+						<ChromaGrid
+							items={chromaItems}
+							reveal="spotlight"
+							columns={4}
+							minCardWidth={180}
+							gap={14}
+							radius={260}
+							softness={0.6}
+							damping={0.45}
+							fadeOut={0.6}
+							grayscale={1}
+							dim={0.12}
+							glow={0.5}
+							borderGlow={1}
+							aspectRatio="4 / 3"
+							cardRadius={22}
+							showInfo={true}
+							frame={false}
+							theme="dark"
 						/>
 					</div>
 				)}
@@ -293,7 +284,7 @@ tags: ["生活", "风景"]
 		width: var(--w-page);
 		margin-inline: auto;
 	}
-	.gallery-carousel {
+	.gallery-chroma {
 		margin: 0 0 clamp(2rem, 4vw, 3.2rem);
 	}
 

@@ -1,0 +1,463 @@
+---
+/**
+ * ChromaGrid — 彩色追光照片网格（移植自 React Bits 的 ChromaGrid，纯 CSS + 原生 JS，无 React）。
+ *
+ * 效果：整片照片以灰度呈现；一个柔和的圆形聚光灯跟随光标，聚光灯扫过处照片恢复彩色，
+ * 并让当前卡片的强调色从底部泛起光晕、边框亮起。移开后色彩淡出回灰度。
+ *
+ * 实现：不做 WebGL，直接复用同一张 <img> 叠一层灰度/压暗（filter），再用一层彩色版
+ * 盖在上面，以 radial-gradient 作为 CSS mask 只露出光标附近的一小块彩色 —— 平滑、省资源。
+ * reveal='card' 时改为「悬停整张卡片恢复彩色」。
+ *
+ * 数据约定：image 需为可访问的 URL（本地图请用 astro:assets 的 getImage 转 URL 后传入）。
+ *
+ * Props（语义与 React Bits 一致）：
+ *   items        { image, title?, subtitle?, accent?, url? }[]
+ *   reveal       'spotlight'（追光）| 'card'（整卡）
+ *   columns      最大列数
+ *   minCardWidth 卡片最小宽度（px）
+ *   gap          间距（px）
+ *   radius       聚光灯半径（px）
+ *   softness     光斑边缘柔和度 0~1
+ *   damping      光标跟随阻尼 0~1
+ *   fadeOut      移开后色彩淡出回灰的时长（秒）
+ *   grayscale    外部灰度强度 0~1
+ *   dim          外部压暗强度 0~1
+ *   glow         卡片强调色底部光晕强度
+ *   borderGlow   边框强调色发光强度
+ *   aspectRatio  图片宽高比（CSS aspect-ratio）
+ *   cardRadius   卡片圆角（px）
+ *   showInfo     是否显示标题/副标题
+ *   frame        是否套一层磨砂玻璃外框
+ *   theme        'dark' | 'light'
+ *   class        额外类名
+ */
+interface Item {
+	image: string;
+	title?: string;
+	subtitle?: string;
+	accent?: string;
+	url?: string;
+}
+
+interface Props {
+	items: Item[];
+	reveal?: 'spotlight' | 'card';
+	columns?: number;
+	minCardWidth?: number;
+	gap?: number;
+	radius?: number;
+	softness?: number;
+	damping?: number;
+	fadeOut?: number;
+	grayscale?: number;
+	dim?: number;
+	glow?: number;
+	borderGlow?: number;
+	aspectRatio?: string;
+	cardRadius?: number;
+	showInfo?: boolean;
+	frame?: boolean;
+	theme?: 'dark' | 'light';
+	class?: string;
+}
+
+const {
+	items = [],
+	reveal = 'spotlight',
+	columns = 3,
+	minCardWidth = 180,
+	gap = 12,
+	radius = 260,
+	softness = 0.6,
+	damping = 0.45,
+	fadeOut = 0.6,
+	grayscale = 1,
+	dim = 0.12,
+	glow = 0.5,
+	borderGlow = 1,
+	aspectRatio = '3 / 2',
+	cardRadius = 22,
+	showInfo = true,
+	frame = false,
+	theme = 'dark',
+	class: className = '',
+} = Astro.props;
+
+const accentDefault = theme === 'light' ? '#7c5cff' : '#ffb86c';
+const infoColor = theme === 'light' ? '#1a1526' : '#ffffff';
+const subColor = theme === 'light' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.6)';
+const metaColor = theme === 'light' ? 'rgba(0,0,0,0.42)' : 'rgba(255,255,255,0.42)';
+const frameBg =
+	theme === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(20,16,28,0.5)';
+const frameBrd =
+	theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+
+// 序列化传给 JS / 用于 inline style
+const cfg = JSON.stringify({
+	reveal,
+	radius,
+	softness,
+	damping,
+	fadeOut,
+	grayscale,
+	dim,
+	glow,
+	borderGlow,
+});
+const safeItems = items.map((it, i) => ({
+	image: it.image,
+	title: it.title ?? '',
+	subtitle: it.subtitle ?? '',
+	accent: it.accent ?? accentDefault,
+	url: it.url ?? null,
+	key: i,
+}));
+---
+
+<div
+	class={`chroma-grid${frame ? ' chroma-grid--frame' : ''} ${className}`}
+	data-chroma
+	data-cfg={cfg}
+	data-theme={theme}
+	style={`--cg-cols:${columns};--cg-min:${minCardWidth}px;--cg-gap:${gap}px;--cg-aspect:${aspectRatio};--cg-radius:${cardRadius}px;--cg-title:${infoColor};--cg-sub:${subColor};--cg-meta:${metaColor};--cg-frame-bg:${frameBg};--cg-frame-brd:${frameBrd};`}
+>
+	{safeItems.map((item) => {
+		const accent = item.accent;
+		const inner = (
+			<>
+				<figure class="cg-card__media">
+					<img
+						class="cg-card__gray"
+						src={item.image}
+						alt={item.title || ''}
+						loading="lazy"
+						decoding="async"
+					/>
+					<img
+						class="cg-card__color"
+						src={item.image}
+						alt=""
+						aria-hidden="true"
+						loading="lazy"
+						decoding="async"
+					/>
+					<div class="cg-card__glow" aria-hidden="true"></div>
+				</figure>
+				{showInfo && (item.title || item.subtitle) ? (
+					<figcaption class="cg-card__info">
+						{item.title && <span class="cg-card__title">{item.title}</span>}
+						{item.subtitle && <span class="cg-card__sub">{item.subtitle}</span>}
+					</figcaption>
+				) : null}
+			</>
+		);
+		return item.url ? (
+			<a
+				class="cg-card"
+				data-accent={accent}
+				href={item.url}
+				style={`--cg-accent:${accent};`}
+			>
+				{inner}
+			</a>
+		) : (
+			<div class="cg-card" data-accent={accent} style={`--cg-accent:${accent};`}>
+				{inner}
+			</div>
+		);
+	})}
+</div>
+
+<style>
+	.chroma-grid {
+		display: grid;
+		grid-template-columns: repeat(var(--cg-cols), minmax(0, 1fr));
+		gap: var(--cg-gap);
+		/* 当一列宽不足 minCardWidth 时自动减列 */
+	}
+	@container (max-width: 0px) {
+		/* 占位：真正的自适应减列在 JS 里用 grid-template-columns 计算 */
+	}
+	.chroma-grid--frame {
+		padding: clamp(0.8rem, 2vw, 1.4rem);
+		border-radius: calc(var(--cg-radius) + 14px);
+		background: var(--cg-frame-bg);
+		border: 1px solid var(--cg-frame-brd);
+		-webkit-backdrop-filter: blur(22px) saturate(1.3);
+		backdrop-filter: blur(22px) saturate(1.3);
+	}
+
+	.cg-card {
+		position: relative;
+		display: block;
+		border-radius: var(--cg-radius);
+		overflow: hidden;
+		text-decoration: none;
+		color: inherit;
+		background: #111;
+		isolation: isolate;
+		--cg-mask-x: 50%;
+		--cg-mask-y: 50%;
+		--cg-mask-r: var(--cg-radius, 260px);
+		--cg-mask-o: 0; /* 彩色层不透明度（悬停/进入时为 1） */
+		--cg-fade-o: 1; /* 淡出回灰控制 */
+	}
+	.cg-card::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		border-radius: inherit;
+		border: 1px solid transparent;
+		pointer-events: none;
+		transition: border-color 0.35s ease;
+	}
+	.cg-card[data-lit]::after {
+		border-color: rgba(255, 255, 255, 0.25);
+	}
+
+	.cg-card__media {
+		position: relative;
+		margin: 0;
+		aspect-ratio: var(--cg-aspect);
+		width: 100%;
+		overflow: hidden;
+	}
+	.cg-card__gray,
+	.cg-card__color {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	/* 底层：灰度 + 压暗 */
+	.cg-card__gray {
+		filter: grayscale(var(--cg-gray, 1)) brightness(calc(1 - var(--cg-dim, 0.12)));
+		transition: filter 0.3s ease;
+	}
+	/* 顶层：彩色，用 mask 只在聚光灯处露出 */
+	.cg-card__color {
+		-webkit-mask-image: radial-gradient(
+			circle var(--cg-mask-r) at var(--cg-mask-x) var(--cg-mask-y),
+			#000 0%,
+			#000 calc((1 - var(--cg-soft, 0.6)) * 100%),
+			transparent 100%
+		);
+		mask-image: radial-gradient(
+			circle var(--cg-mask-r) at var(--cg-mask-x) var(--cg-mask-y),
+			#000 0%,
+			#000 calc((1 - var(--cg-soft, 0.6)) * 100%),
+			transparent 100%
+		);
+		opacity: calc(var(--cg-mask-o) * var(--cg-fade-o));
+		transition: opacity 0.2s ease;
+		will-change: mask-image, -webkit-mask-image;
+	}
+	/* reveal='card' 时整卡恢复彩色：mask 拉满 */
+	.cg-card[data-reveal='card'] .cg-card__color {
+		-webkit-mask-image: none;
+		mask-image: none;
+	}
+
+	.cg-card__glow {
+		position: absolute;
+		inset: auto 0 0;
+		height: 46%;
+		background: radial-gradient(
+			120% 130% at 50% 130%,
+			var(--cg-accent) 0%,
+			transparent 62%
+		);
+		opacity: calc(var(--cg-mask-o) * var(--cg-fade-o) * var(--cg-glow, 0.5));
+		mix-blend-mode: screen;
+		pointer-events: none;
+		transition: opacity 0.3s ease;
+	}
+
+	.cg-card__info {
+		position: relative;
+		z-index: 2;
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		padding: 0.7rem 0.75rem 0.85rem;
+		background: var(--cg-info-bg, transparent);
+	}
+	.cg-card__title {
+		font-size: 0.95rem;
+		font-weight: 650;
+		line-height: 1.35;
+		color: var(--cg-title);
+	}
+	.cg-card__sub {
+		font-size: 0.78rem;
+		line-height: 1.5;
+		color: var(--cg-sub);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cg-card__gray,
+		.cg-card__glow {
+			transition: none;
+		}
+		.cg-card__color {
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	// ===== 原生 JS 移植 ChromaGrid =====
+	// 用一个「组级坐标系」记录聚光灯在整片网格中的位置；每张卡片根据自身 boundingRect
+	// 换算成卡片局部百分比，写入 --cg-mask-x/--cg-mask-y。彩色层用 radial-gradient 做 mask。
+	// 进入某张卡片时 --cg-mask-o 渐显，离开后经 fadeOut 淡出回灰。
+
+	const init = () => {
+		document.querySelectorAll<HTMLElement>('[data-chroma]').forEach((root) => {
+			if (root.dataset.chromaReady === '1') return;
+			root.dataset.chromaReady = '1';
+
+			let cfg;
+			try {
+				cfg = JSON.parse(root.dataset.cfg || '{}');
+			} catch {
+				cfg = {};
+			}
+			const reveal = cfg.reveal || 'spotlight';
+			const radius = Number(cfg.radius ?? 260);
+			const damping = clamp(Number(cfg.damping ?? 0.45), 0, 1);
+			const fadeOut = Number(cfg.fadeOut ?? 0.6);
+			const softness = clamp(Number(cfg.softness ?? 0.6), 0, 1);
+			const gray = Number(cfg.grayscale ?? 1);
+			const dim = Number(cfg.dim ?? 0.12);
+			const glow = Number(cfg.glow ?? 0.5);
+			const borderGlow = Number(cfg.borderGlow ?? 1);
+			const minWidth = Number(cfg.minCardWidth ?? 180);
+			const columns = Number(cfg.columns ?? 3);
+			const gap = Number(cfg.gap ?? 12);
+
+			const cards = Array.from(root.querySelectorAll<HTMLElement>('.cg-card'));
+
+			// 每张卡注入基础变量
+			cards.forEach((card) => {
+				card.style.setProperty('--cg-gray', String(gray));
+				card.style.setProperty('--cg-dim', String(dim));
+				card.style.setProperty('--cg-soft', String(softness));
+				card.style.setProperty('--cg-glow', String(glow));
+				card.style.setProperty('--cg-border', String(borderGlow));
+				card.setAttribute('data-reveal', reveal);
+			});
+
+			// 自适应列数：保证每列 ≥ minWidth
+			const applyColumns = () => {
+				const width = root.clientWidth;
+				if (!width) return;
+				let cols = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+				if (columns > 0) cols = Math.min(cols, columns);
+				root.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+			};
+			applyColumns();
+			const ro = new ResizeObserver(applyColumns);
+			ro.observe(root);
+
+			if (reveal === 'card') {
+				// 整卡恢复彩色：只做 hover/focus 的 mask-o 切换，无需追光
+				cards.forEach((card) => {
+					card.addEventListener('mouseenter', () => setLit(card, 1));
+					card.addEventListener('mouseleave', () => setLit(card, 0));
+					card.addEventListener('focusin', () => setLit(card, 1));
+					card.addEventListener('focusout', () => setLit(card, 0));
+				});
+				return;
+			}
+
+			// —— spotlight 模式 ——
+			// 组级坐标（相对 root 的像素）
+			let targetX = -9999;
+			let targetY = -9999;
+			let curX = -9999;
+			let curY = -9999;
+			let raf = 0;
+			let litCard = null;
+			let inside = false;
+
+			const update = () => {
+				raf = 0;
+				// 阻尼跟随
+				const k = 1 - damping;
+				curX += (targetX - curX) * k;
+				curY += (targetY - curY) * k;
+				if (Math.abs(targetX - curX) < 0.5 && Math.abs(targetY - curY) < 0.5) {
+					curX = targetX;
+					curY = targetY;
+				}
+				const rr = root.getBoundingClientRect();
+				for (const card of cards) {
+					const r = card.getBoundingClientRect();
+					// curX/curY 是相对 root 的坐标；r.left/r.top 是相对视口，需减去 rr.left/rr.top 换算
+					const lx = curX - (r.left - rr.left);
+					const ly = curY - (r.top - rr.top);
+					const px = (lx / r.width) * 100;
+					const py = (ly / r.height) * 100;
+					card.style.setProperty('--cg-mask-x', `${px}%`);
+					card.style.setProperty('--cg-mask-y', `${py}%`);
+				}
+				const moved = Math.abs(targetX - curX) > 0.5 || Math.abs(targetY - curY) > 0.5;
+				if (moved) raf = requestAnimationFrame(update);
+			};
+
+			const wake = () => {
+				if (!raf) raf = requestAnimationFrame(update);
+			};
+
+			const onMove = (e) => {
+				const rr = root.getBoundingClientRect();
+				targetX = e.clientX - rr.left;
+				targetY = e.clientY - rr.top;
+				if (curX < -1000) {
+					curX = targetX;
+					curY = targetY;
+				}
+				wake();
+			};
+
+			root.addEventListener('pointermove', onMove, { passive: true });
+
+			cards.forEach((card) => {
+				card.addEventListener('mouseenter', () => {
+					inside = true;
+					setLit(card, 1);
+				});
+				card.addEventListener('mouseleave', () => {
+					inside = false;
+					setLit(card, 0);
+				});
+			});
+
+			root.addEventListener('mouseleave', () => {
+				// 移出整片网格：彩色淡出回灰
+				targetX = -9999;
+				targetY = -9999;
+				inside = false;
+				cards.forEach((c) => setLit(c, 0));
+			});
+		});
+	};
+
+	function setLit(card, on) {
+		card.style.setProperty('--cg-mask-o', on ? '1' : '0');
+		if (on) card.setAttribute('data-lit', '');
+		else card.removeAttribute('data-lit');
+	}
+
+	function clamp(v, min, max) {
+		return Math.min(max, Math.max(min, v));
+	}
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+	else init();
+	document.addEventListener('astro:page-load', init);
+</script>

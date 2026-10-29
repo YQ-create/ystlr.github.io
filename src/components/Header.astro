@@ -177,13 +177,12 @@ const navItems = [
 		}) as EventListener);
 
 		// 首页上点导航：平滑滚到对应板块，而不是跳转页面
-		// 板块 id 与导航 href 的映射（articles→/blog、photos→/gallery 等）
+		// 板块 id 与导航 href 的映射（articles→/blog 等）
 		const sectionByHref: Record<string, string> = {
 			'/': 'home',
 			'/blog': 'articles',
 			'/knowledge': 'knowledge',
 			'/discover': 'discover',
-			'/gallery': 'photos',
 			'/about': 'about',
 		};
 		for (const link of links) {

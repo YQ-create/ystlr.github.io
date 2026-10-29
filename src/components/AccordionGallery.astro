@@ -1,0 +1,388 @@
+---
+/**
+ * AccordionGallery — 手风琴画廊（移植自 React Bits 的 AccordionGallery，纯 CSS + 原生 JS，无 React / 无 GSAP）。
+ *
+ * 效果：一排（或一列）图片面板，悬停/点击时某一块平滑展开占更大空间，其余面板收窄并灰度化、
+ * 轻微 3D 倾斜；展开的面板恢复彩色、图片做视差漂移，标题与副标题字幕渐显。
+ *
+ * 实现：flex 布局，展开项 flex-grow 变大；宽度/倾斜/灰度/字幕都走 CSS transition（自定义三次缓动
+ * 逼近 GSAP 的 power3.out）。JS 只负责维护 activeIndex 与图片视差位移。
+ *
+ * 数据约定：image 需为可访问 URL（本地图请用 astro:assets 的 getImage 转 URL 后传入）。
+ *
+ * Props（语义与 React Bits 一致）：
+ *   items          { image, label?, link?, alt? }[]
+ *   defaultIndex   初始展开的面板索引
+ *   accentColor    字幕强调条 / 焦点环颜色
+ *   overlayColor   底部压暗渐变与收窄面板变暗的颜色
+ *   textColor      字幕文字颜色
+ *   grayscale      收窄面板是否灰度化
+ *   showLabels     展开时是否显示字幕
+ *   duration       展开/收起过渡时长（秒）
+ *   parallax       面板尺寸变化时图片内部漂移强度（0 关闭）
+ *   tilt           收窄面板的 3D 倾斜角度（度）
+ *   stagger        字幕条与文字渐显间隔（秒）
+ *   trigger        'hover' | 'click'
+ *   height         行高（竖直时为列宽），px
+ *   gap            面板间距（px）
+ *   radius         面板圆角（px）
+ *   expandRatio    展开面板占整行的比例（0.2~0.9）
+ *   orientation    'horizontal' | 'vertical'
+ *   class          额外类名
+ */
+interface Item {
+	image: string;
+	label?: string;
+	link?: string;
+	alt?: string;
+}
+
+interface Props {
+	items: Item[];
+	defaultIndex?: number;
+	accentColor?: string;
+	overlayColor?: string;
+	textColor?: string;
+	grayscale?: boolean;
+	showLabels?: boolean;
+	duration?: number;
+	parallax?: number;
+	tilt?: number;
+	stagger?: number;
+	trigger?: 'hover' | 'click';
+	height?: number;
+	gap?: number;
+	radius?: number;
+	expandRatio?: number;
+	orientation?: 'horizontal' | 'vertical';
+	class?: string;
+}
+
+const {
+	items = [],
+	defaultIndex = 0,
+	accentColor = '#ffffff',
+	overlayColor = '#060010',
+	textColor = '#ffffff',
+	grayscale = true,
+	showLabels = true,
+	duration = 0.6,
+	parallax = 0.5,
+	tilt = 8,
+	stagger = 0.06,
+	trigger = 'hover',
+	height = 460,
+	gap = 10,
+	radius = 16,
+	expandRatio = 0.52,
+	orientation = 'horizontal',
+	class: className = '',
+} = Astro.props;
+
+const safeItems = items.map((it, i) => ({
+	image: it.image,
+	label: it.label ?? '',
+	link: it.link ?? null,
+	alt: it.alt ?? it.label ?? '',
+	key: i,
+}));
+
+const isV = orientation === 'vertical';
+const cfg = JSON.stringify({
+	defaultIndex,
+	duration,
+	parallax,
+	tilt,
+	stagger,
+	trigger,
+	expandRatio,
+	grayscale,
+	showLabels,
+	orientation,
+});
+// 用三次贝塞尔近似 power3.out（cubic-bezier(0.22, 1, 0.36, 1)）
+const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+---
+
+<div
+	class={`accordion-gallery ag-${orientation} ${className}`}
+	data-ag
+	data-cfg={cfg}
+	style={`--ag-h:${height}px;--ag-gap:${gap}px;--ag-radius:${radius}px;--ag-dur:${duration}s;--ag-stagger:${stagger}s;--ag-tilt:${tilt}deg;--ag-ease:${ease};--ag-accent:${accentColor};--ag-overlay:${overlayColor};--ag-text:${textColor};--ag-expand:${expandRatio};`}
+>
+	{safeItems.map((item, i) => {
+		const inner = (
+			<>
+				<span class="ag-panel__img" data-ag-img aria-hidden="true"></span>
+				{showLabels && (
+					<span class="ag-panel__label">
+						<span class="ag-panel__bar" aria-hidden="true"></span>
+						<span class="ag-panel__title" data-ag-title>{item.label}</span>
+					</span>
+				)}
+				<span class="ag-panel__scrim" aria-hidden="true"></span>
+			</>
+		);
+		return (
+			<span
+				class="ag-panel"
+				data-index={i}
+				role={item.link ? 'link' : 'button'}
+				tabindex="0"
+				data-accent={accentColor}
+				style={`background-image:url('${item.image}')`}
+				data-href={item.link ?? ''}
+				data-label={item.label}
+			>
+				{inner}
+			</span>
+		);
+	})}
+</div>
+
+<style>
+	.accordion-gallery {
+		display: flex;
+		gap: var(--ag-gap);
+		width: 100%;
+		height: var(--ag-h);
+		overflow: hidden;
+	}
+	.ag-vertical {
+		flex-direction: column;
+		height: auto;
+		width: var(--ag-h);
+	}
+
+	.ag-panel {
+		position: relative;
+		flex: 1 1 0;
+		min-width: 0;
+		min-height: 0;
+		border-radius: var(--ag-radius);
+		background-size: cover;
+		background-position: center;
+		background-color: #111;
+		overflow: hidden;
+		cursor: pointer;
+		isolation: isolate;
+		transition:
+			flex-grow var(--ag-dur) var(--ag-ease),
+			filter var(--ag-dur) var(--ag-ease),
+			transform var(--ag-dur) var(--ag-ease);
+		transform: perspective(1200px) rotateY(var(--ag-tilt));
+		/* 默认收窄态：灰度 + 轻微压暗 */
+		filter: grayscale(1) brightness(0.82);
+	}
+	/* 展开态：放大占比、恢复彩色、回正、无倾斜 */
+	.ag-panel[data-active='1'] {
+		flex-grow: calc(var(--ag-expand) * 100);
+		transform: perspective(1200px) rotateY(0deg);
+		filter: grayscale(0) brightness(1);
+	}
+	.ag-panel:first-child {
+		transform-origin: left center;
+	}
+	.ag-panel:last-child {
+		transform-origin: right center;
+	}
+	.ag-vertical .ag-panel:first-child {
+		transform-origin: top center;
+	}
+	.ag-vertical .ag-panel:last-child {
+		transform-origin: bottom center;
+	}
+
+	/* 不启用灰度时，保持彩色，只做轻微压暗 */
+	.accordion-gallery[data-gray='0'] .ag-panel {
+		filter: brightness(0.85);
+	}
+	.accordion-gallery[data-gray='0'] .ag-panel[data-active='1'] {
+		filter: brightness(1);
+	}
+
+	/* 底部压暗渐变（保证字幕可读），展开时更强 */
+	.ag-panel__scrim {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		background: linear-gradient(
+			to top,
+			var(--ag-overlay) 0%,
+			color-mix(in srgb, var(--ag-overlay) 40%, transparent) 30%,
+			transparent 66%
+		);
+		opacity: 0.22;
+		transition: opacity var(--ag-dur) var(--ag-ease);
+	}
+	.ag-panel[data-active='1'] .ag-panel__scrim {
+		opacity: 0.85;
+	}
+
+	/* 字幕：默认透明，展开后渐显；条先出、文字延迟一点 */
+	.ag-panel__label {
+		position: absolute;
+		left: 1rem;
+		right: 1rem;
+		bottom: 1rem;
+		z-index: 2;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		opacity: 0;
+		transform: translateY(8px);
+		transition:
+			opacity var(--ag-dur) var(--ag-ease) var(--ag-stagger),
+			transform var(--ag-dur) var(--ag-ease) var(--ag-stagger);
+		pointer-events: none;
+	}
+	.ag-panel[data-active='1'] .ag-panel__label {
+		opacity: 1;
+		transform: none;
+	}
+	.ag-panel__bar {
+		display: block;
+		width: 2rem;
+		height: 3px;
+		border-radius: 2px;
+		background: var(--ag-accent);
+		transform: scaleX(0);
+		transform-origin: left center;
+		transition: transform var(--ag-dur) var(--ag-ease);
+	}
+	.ag-panel[data-active='1'] .ag-panel__bar {
+		transform: scaleX(1);
+	}
+	.ag-panel__title {
+		font-size: 0.95rem;
+		font-weight: 650;
+		letter-spacing: 0.02em;
+		color: var(--ag-text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* 焦点环 */
+	.ag-panel:focus-visible {
+		outline: 2px solid var(--ag-accent);
+		outline-offset: -2px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ag-panel,
+		.ag-panel__label,
+		.ag-panel__bar,
+		.ag-panel__scrim {
+			transition-duration: 0.01s !important;
+		}
+	}
+</style>
+
+<script>
+	// ===== 原生 JS 移植 AccordionGallery =====
+	// 只维护 activeIndex；展开/收起/灰度/字幕全由 CSS transition 完成。
+	// 视差：面板尺寸变化时，用内部背景图的 translateX 做轻微漂移（用额外 <img> 会更好，
+	// 这里用 background 的 position 已有；为得到「内部漂移」用一根 --ag-px 变量平移背景层）。
+	const init = () => {
+		document.querySelectorAll<HTMLElement>('[data-ag]').forEach((root) => {
+			if (root.dataset.agReady === '1') return;
+			root.dataset.agReady = '1';
+
+			let cfg;
+			try {
+				cfg = JSON.parse(root.dataset.cfg || '{}');
+			} catch {
+				cfg = {};
+			}
+			const trigger = cfg.trigger || 'hover';
+			const defaultIndex = Number(cfg.defaultIndex ?? 0);
+			const expandRatio = clamp(Number(cfg.expandRatio ?? 0.52), 0.2, 0.9);
+			const parallax = Number(cfg.parallax ?? 0.5);
+			const grayscale = cfg.grayscale !== false;
+			const orientation = cfg.orientation || 'horizontal';
+
+			if (!grayscale) root.setAttribute('data-gray', '0');
+
+			const panels = Array.from(root.querySelectorAll<HTMLElement>('.ag-panel'));
+			if (!panels.length) return;
+			const n = panels.length;
+			let active = clamp(defaultIndex, 0, n - 1);
+
+			// 展开比例换算成 flex-grow 系数：其余每块占 (1-ratio)/(n-1)
+			const collapseGrow = 1; // 每块基准 grow 1
+			// 展开块 grow = expandRatio/(1-expandRatio)*(n-1) —— 使展开块占总宽 ratio
+			const activeGrow = (expandRatio / Math.max(1 - expandRatio, 0.001)) * (n - 1);
+			root.style.setProperty('--ag-active-grow', String(activeGrow));
+			root.style.setProperty('--ag-expand', String(activeGrow));
+
+			const setActive = (idx) => {
+				if (idx < 0 || idx >= n) return;
+				if (idx === active) {
+					// 仍要确保状态一致（首次调用）
+				}
+				active = idx;
+				panels.forEach((p, i) => {
+					if (i === idx) {
+						p.setAttribute('data-active', '1');
+						p.style.flexGrow = String(activeGrow);
+					} else {
+						p.removeAttribute('data-active');
+						p.style.flexGrow = String(collapseGrow);
+					}
+				});
+				// 视差：给每块设置一个随「相对激活位的距离」变化的背景偏移
+				applyParallax();
+			};
+
+			const applyParallax = () => {
+				panels.forEach((p, i) => {
+					const dist = i - active;
+					// 激活块归零，两侧按距离漂移（横向 orientation 用 X，纵向用 Y）
+					if (orientation === 'horizontal') {
+						p.style.backgroundPositionX = `${-dist * parallax * 30}%`;
+						p.style.backgroundPositionY = 'center';
+					} else {
+						p.style.backgroundPositionY = `${-dist * parallax * 30}%`;
+						p.style.backgroundPositionX = 'center';
+					}
+				});
+			};
+
+			panels.forEach((p, i) => {
+				if (trigger === 'hover') {
+					p.addEventListener('mouseenter', () => setActive(i));
+				} else {
+					p.addEventListener('click', () => setActive(i));
+				}
+				// 焦点（键盘）始终展开
+				p.addEventListener('focus', () => setActive(i));
+				p.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						if (p.dataset.href) window.location.href = p.dataset.href;
+						else setActive(i);
+					}
+				});
+				// 有 link 的点击跳转
+				if (p.dataset.href) {
+					p.addEventListener('click', (e) => {
+						// trigger=hover 时点击也应能跳转；避免和展开冲突
+						window.location.href = p.dataset.href!;
+					});
+				}
+			});
+
+			// 初始展开
+			setActive(active);
+		});
+	};
+
+	function clamp(v, min, max) {
+		return Math.min(max, Math.max(min, v));
+	}
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+	else init();
+	document.addEventListener('astro:page-load', init);
+</script>

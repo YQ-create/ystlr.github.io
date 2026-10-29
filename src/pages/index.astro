@@ -3,12 +3,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import AcidSquares from '../components/AcidSquares.astro';
 import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
-import DepthCarousel from '../components/DepthCarousel.astro';
+import CircularGallery from '../components/CircularGallery.astro';
 import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
 import { AUTHOR_NAME, HERO, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
@@ -43,6 +44,21 @@ const carouselItems = [...galleryItems, ...coverItems].slice(0, 8).map((it) => (
 	title: it.title,
 	href: it.href,
 }));
+
+// CircularGallery（WebGL 纹理）需要「同源 URL 字符串」而非 ImageMetadata。
+// 构建期用 getImage 把图片转成固定尺寸 webp；用相对路径（/_astro/...）让浏览器按当前 origin 加载，
+// 本地与线上（ystlr.com）都能正确加载同源纹理。
+const galleryItemsForCg = await Promise.all(
+	carouselItems.slice(0, 6).map(async (it) => {
+		const img = await getImage({ src: it.image, width: 800, format: 'webp' });
+		return {
+			image: img.src,
+			text: it.title || undefined,
+			alt: it.title || undefined,
+			href: it.href,
+		};
+	})
+);
 
 // 标签云 + 最新动态 + 站点统计（门户式版块用）
 const tagCount = new Map<string, number>();
@@ -372,19 +388,22 @@ const latest = posts[0]?.data.pubDate;
 			) : (
 				<div class="wrap">
 					<div data-reveal="scale" data-reveal-delay="120">
-						<DepthCarousel
-							items={carouselItems}
-							depth={260}
-							spread={215}
-							tilt={26}
-							tiltDirection="right"
-							perspective={1400}
-							visibleCards={4}
-							falloff={0.18}
-							blur={4}
-							autoplay
-							loop
-							interval={3600}
+						<CircularGallery
+							items={galleryItemsForCg}
+							bend={2}
+							textColor="#ffffff"
+							borderRadius={0.15}
+							scrollEase={0.12}
+							scrollSpeed={5}
+							wave={2}
+							fadeEdges={0.2}
+							autoScroll={1}
+							showTitles={false}
+							itemSize={1}
+							itemAspect={0.78}
+							gap={0.26}
+							shadow={0.25}
+							height="600px"
 						/>
 					</div>
 				</div>

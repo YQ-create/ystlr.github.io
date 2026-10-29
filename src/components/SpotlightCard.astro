@@ -1,0 +1,152 @@
+---
+// SpotlightCard：聚光灯卡片（源自 React Bits 的 SpotlightCard 效果，纯 CSS + 原生 JS，无 React）。
+// 一道柔光跟随指针移动，光照到卡片表面、边缘被点亮，邻近卡片也能共享同一束光。
+// 原理：pointermove 把归一化坐标写进 CSS 变量 --sc-x/--sc-y，radial-gradient 用它们定位光斑。
+// 用法：<SpotlightCard class="..."> ...内容... </SpotlightCard>
+//   可调属性：color（光色）、size（光斑半径 px）、intensity（0~1 亮度）、tilt（倾斜角度 deg）
+interface Props {
+	/** 光斑颜色（任意 CSS 颜色，含 alpha 优先） */
+	color?: string;
+	/** 光斑半径（px） */
+	size?: number;
+	/** 光斑亮度 0~1 */
+	intensity?: number;
+	/** 悬停时的 3D 倾斜角度（deg），0 关闭 */
+	tilt?: number;
+	class?: string;
+}
+
+const {
+	color = '255, 255, 255',
+	size = 280,
+	intensity = 0.16,
+	tilt = 5,
+	class: className = '',
+} = Astro.props;
+---
+
+<div
+	class:list={['spotlight-card', className]}
+	data-spotlight
+	style={{
+		'--sc-color': color,
+		'--sc-size': `${size}px`,
+		'--sc-intensity': intensity,
+		'--sc-tilt': `${tilt}deg`,
+	}}
+>
+	<slot />
+</div>
+
+<script>
+	// 只挂一次全局监听（View Transitions 下页面脚本只执行一次，用 dataset 标记避免重复）
+	function boot() {
+		const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-spotlight]'));
+		for (const card of cards) {
+			if (card.dataset.spotlightReady === '1') continue;
+			card.dataset.spotlightReady = '1';
+
+			const coarse = window.matchMedia('(pointer: coarse)').matches;
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			const tilt = Number(card.style.getPropertyValue('--sc-tilt').replace('deg', '')) || 0;
+			// 读原始色（可能是 "255,255,255" 或 "#fff"），构造两种用途的颜色
+			const raw = card.style.getPropertyValue('--sc-color').trim();
+
+			const move = (e: PointerEvent) => {
+				const r = card.getBoundingClientRect();
+				card.style.setProperty('--sc-x', `${e.clientX - r.left}px`);
+				card.style.setProperty('--sc-y', `${e.clientY - r.top}px`);
+				card.classList.add('is-lit');
+				if (tilt && !reduce) {
+					const px = (e.clientX - r.left) / r.width - 0.5;
+					const py = (e.clientY - r.top) / r.height - 0.5;
+					card.style.setProperty('--sc-rx', `${(-py * tilt).toFixed(2)}deg`);
+					card.style.setProperty('--sc-ry', `${(px * tilt).toFixed(2)}deg`);
+				}
+			};
+			const leave = () => {
+				card.classList.remove('is-lit');
+				card.style.setProperty('--sc-rx', '0deg');
+				card.style.setProperty('--sc-ry', '0deg');
+			};
+
+			if (!coarse) {
+				card.addEventListener('pointermove', move, { passive: true });
+				card.addEventListener('pointerleave', leave, { passive: true });
+			}
+		}
+	}
+
+	document.addEventListener('astro:page-load', boot);
+	if (document.readyState !== 'loading') boot();
+	else document.addEventListener('DOMContentLoaded', boot);
+</script>
+
+<style>
+	.spotlight-card {
+		position: relative;
+		--sc-x: 50%;
+		--sc-y: 50%;
+		--sc-color: 255, 255, 255;
+		--sc-size: 280px;
+		--sc-intensity: 0.16;
+		--sc-tilt: 0deg;
+		--sc-rx: 0deg;
+		--sc-ry: 0deg;
+		overflow: hidden;
+		isolation: isolate;
+		transition: transform 0.45s var(--ease-out, ease);
+	}
+	/* 光斑层：radial-gradient 定位到指针处，用 alpha 控制亮度 */
+	.spotlight-card::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		opacity: 0;
+		background: radial-gradient(
+			var(--sc-size) circle at var(--sc-x) var(--sc-y),
+			rgba(var(--sc-color), var(--sc-intensity)),
+			transparent 68%
+		);
+		transition: opacity 0.4s var(--ease-out, ease);
+	}
+	.spotlight-card.is-lit::before {
+		opacity: 1;
+	}
+	/* 边缘光：一道贴着边框的渐变，跟随光斑点亮卡边 */
+	.spotlight-card::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		border-radius: inherit;
+		opacity: 0;
+		background:
+			radial-gradient(
+				calc(var(--sc-size) * 0.55) circle at var(--sc-x) var(--sc-y),
+				rgba(var(--sc-color), 0.28),
+				transparent 72%
+			);
+		-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+		-webkit-mask-composite: xor;
+		mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+		mask-composite: exclude;
+		padding: 1px;
+		transition: opacity 0.4s var(--ease-out, ease);
+	}
+	.spotlight-card.is-lit::after {
+		opacity: 1;
+	}
+	/* 内容压到光斑层之上 */
+	.spotlight-card > :not(script) {
+		position: relative;
+		z-index: 1;
+	}
+	/* 悬停时的轻微 3D 倾斜 */
+	.spotlight-card.is-lit {
+		transform: perspective(900px) rotateX(var(--sc-rx)) rotateY(var(--sc-ry));
+	}
+</style>

@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import DepthCarousel from '../../components/DepthCarousel.astro';
+import ScrollStack from '../../components/ScrollStack.astro';
 import FadeContent from '../../components/FadeContent.astro';
 import { getCollection } from 'astro:content';
 import { Image, getImage } from 'astro:assets';
@@ -85,21 +85,21 @@ tags: ["生活", "风景"]
 			</div>
 		) : (
 			<>
-				{carouselItems.length >= 3 && (
+				{carouselItems.length >= 2 && (
 					<div class="gallery-carousel" data-reveal="scale">
-						<DepthCarousel
+						<ScrollStack
 							items={carouselItems}
-							depth={200}
-							spread={100}
-							tilt={20}
-							perspective={1400}
-							visibleCards={4}
-							falloff={0.2}
-							blur={4}
-							autoplay
-							loop
-							interval={3800}
-							height="clamp(320px, 44vh, 460px)"
+							height="clamp(340px, 48vh, 520px)"
+							itemDistance={120}
+							itemStackDistance={26}
+							stackPosition="10%"
+							itemScale={0.06}
+							baseScale={0.82}
+							dimAmount={0.28}
+							blurAmount={2}
+							tiltAmount={2}
+							rotationAmount={2}
+							holdDistance={180}
 						/>
 					</div>
 				)}

@@ -1,0 +1,373 @@
+---
+/**
+ * ScrollStack — 滚动堆叠（移植自 React Bits 的 ScrollStack，纯 CSS + 原生 JS，无 React）。
+ *
+ * 交互：卡片随滚动依次「落」成一摞，堆叠中的卡片会缩放、变暗、可选地 3D 倾斜/旋转。
+ * 与 DepthCarousel（左右切换）是两种不同的动效，本组件用于照片墙页顶部的照片切换区。
+ *
+ * Props（语义与 React Bits 一致）：
+ *   itemDistance     卡片堆叠前之间的间距（px），越大滚越多
+ *   itemStackDistance 堆叠时每张卡比上一张露出多少（px）
+ *   stackPosition    堆叠锚点：number=px，或 '%N%' 相对容器高度
+ *   itemScale        每压一张，下方卡片缩小的比例
+ *   baseScale        被埋卡片能缩到的下限
+ *   dimAmount        每压一张，下方卡片变暗的量（0~1）
+ *   blurAmount       每压一张，下方卡片模糊（px）
+ *   tiltAmount       被埋卡片向后倾的角度（deg）
+ *   rotationAmount   被埋卡片左右交替旋转的角度（deg）
+ *   holdDistance     堆完后再滚动多少 px 才离开
+ *   snap             滚动停下时是否吸附到最近一张
+ */
+import { Image } from 'astro:assets';
+
+interface Item {
+	image: ImageMetadata;
+	alt?: string;
+	title?: string;
+	href?: string;
+}
+
+interface Props {
+	items: Item[];
+	height?: string;
+	itemDistance?: number;
+	itemStackDistance?: number;
+	stackPosition?: number | string;
+	itemScale?: number;
+	baseScale?: number;
+	dimAmount?: number;
+	blurAmount?: number;
+	tiltAmount?: number;
+	rotationAmount?: number;
+	holdDistance?: number;
+	snap?: boolean;
+	class?: string;
+}
+
+const {
+	items,
+	height = 'clamp(320px, 48vh, 520px)',
+	itemDistance = 100,
+	itemStackDistance = 24,
+	stackPosition = '12%',
+	itemScale = 0.06,
+	baseScale = 0.82,
+	dimAmount = 0.28,
+	blurAmount = 2,
+	tiltAmount = 2,
+	rotationAmount = 2,
+	holdDistance = 180,
+	snap = false,
+	class: className = '',
+} = Astro.props;
+
+const n = items.length;
+---
+
+<div
+	class={`ss ${className}`}
+	data-ss
+	data-item-distance={itemDistance}
+	data-item-stack-distance={itemStackDistance}
+	data-stack-position={stackPosition}
+	data-item-scale={itemScale}
+	data-base-scale={baseScale}
+	data-dim={dimAmount}
+	data-blur={blurAmount}
+	data-tilt={tiltAmount}
+	data-rotation={rotationAmount}
+	data-hold={holdDistance}
+	data-snap={snap ? '1' : '0'}
+	style={`--ss-h:${height}`}
+	aria-roledescription="stack"
+	aria-label="照片堆叠"
+>
+	<div class="ss-inner" data-ss-inner>
+		{
+			items.map((it, i) => (
+				<div class="ss-slot" data-ss-slot>
+					<article class="ss-card" data-ss-card>
+						{
+							it.href ? (
+								<a class="ss-media" href={it.href} tabindex={i === 0 ? 0 : -1}>
+									<Image src={it.image} alt={it.alt ?? ''} widths={[480, 800, 1080]} sizes="(max-width: 720px) 86vw, 60vw" loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : 'auto'} decoding="async" />
+								</a>
+							) : (
+								<div class="ss-media">
+									<Image src={it.image} alt={it.alt ?? ''} widths={[480, 800, 1080]} sizes="(max-width: 720px) 86vw, 60vw" loading={i < 2 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : 'auto'} decoding="async" />
+								</div>
+							)
+						}
+						{it.title && <span class="ss-cap">{it.title}</span>}
+						<span class="ss-shade" aria-hidden="true" />
+					</article>
+				</div>
+			))
+		}
+		<div class="ss-end" data-ss-end aria-hidden="true" />
+	</div>
+</div>
+
+<style>
+	.ss {
+		position: relative;
+		width: 100%;
+		height: var(--ss-h);
+		overflow-x: hidden;
+		overflow-y: auto;
+		scrollbar-width: thin;
+		scrollbar-color: rgba(var(--accent), 0.4) transparent;
+		border-radius: var(--r-lg);
+		/* 四周渐隐，卡片进出更柔和，也遮住边缘被切的问题 */
+		-webkit-mask-image: linear-gradient(180deg, transparent 0, #000 6%, #000 94%, transparent);
+		mask-image: linear-gradient(180deg, transparent 0, #000 6%, #000 94%, transparent);
+		touch-action: pan-y;
+	}
+	.ss::-webkit-scrollbar {
+		width: 6px;
+	}
+	.ss::-webkit-scrollbar-thumb {
+		background: rgba(var(--accent), 0.35);
+		border-radius: 999px;
+	}
+
+	.ss-inner {
+		position: relative;
+		padding-inline: clamp(1rem, 6%, 5rem);
+	}
+
+	.ss-slot {
+		position: sticky;
+	}
+
+	.ss-card {
+		position: relative;
+		box-sizing: border-box;
+		width: 100%;
+		height: clamp(240px, 40vh, 380px);
+		border-radius: var(--r-xl);
+		overflow: hidden;
+		background: rgb(var(--paper));
+		color: rgb(var(--ink));
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.1),
+			0 -12px 40px -16px rgba(var(--shadow-color), 0.5),
+			0 24px 48px -24px rgba(var(--shadow-color), 0.55);
+		border: 1px solid var(--glass-brd-dim);
+		transform-origin: 50% 0;
+		will-change: transform;
+	}
+
+	.ss-media {
+		display: block;
+		width: 100%;
+		height: 100%;
+		text-decoration: none;
+	}
+	.ss-media img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.ss-cap {
+		position: absolute;
+		inset: auto 0 0;
+		padding: 2.2rem 1.1rem 0.9rem;
+		font-size: 0.82rem;
+		letter-spacing: 0.05em;
+		color: #fff;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
+		pointer-events: none;
+	}
+
+	.ss-shade {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: rgb(var(--bg-deep));
+		opacity: var(--ss-dim, 0);
+		pointer-events: none;
+	}
+
+	.ss-end {
+		height: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ss-card {
+			transition: none !important;
+		}
+	}
+</style>
+
+<script>
+	// 原生 JS 版 ScrollStack：把 React 的 useLayoutEffect/useRef 换成 DOM 直读直写。
+	// 核心算法与 React Bits 一致：sticky slot + 计算每张卡被「埋」的深度，驱动 scale/dim/blur/tilt/rotate。
+	interface Cfg {
+		itemDistance: number;
+		itemStackDistance: number;
+		stackPosition: number | string;
+		itemScale: number;
+		baseScale: number;
+		dimAmount: number;
+		blurAmount: number;
+		tiltAmount: number;
+		rotationAmount: number;
+		holdDistance: number;
+		snap: boolean;
+	}
+
+	const resolveOffset = (value: number | string, size: number): number => {
+		if (typeof value === 'number') return value;
+		const text = String(value).trim();
+		if (text.endsWith('%')) return (parseFloat(text) / 100) * size;
+		return parseFloat(text) || 0;
+	};
+
+	function boot(el: HTMLElement) {
+		if (el.dataset.ssReady === '1') return;
+		el.dataset.ssReady = '1';
+
+		const inner = el.querySelector<HTMLElement>('[data-ss-inner]');
+		const end = el.querySelector<HTMLElement>('[data-ss-end]');
+		const slots = Array.from(el.querySelectorAll<HTMLElement>('[data-ss-slot]'));
+		if (!inner || !end || !slots.length) return;
+
+		const cfg: Cfg = {
+			itemDistance: Number(el.dataset.itemDistance) || 100,
+			itemStackDistance: Number(el.dataset.itemStackDistance) || 24,
+			stackPosition: el.dataset.stackPosition || '12%',
+			itemScale: Number(el.dataset.itemScale) || 0.06,
+			baseScale: Number(el.dataset.baseScale) || 0.82,
+			dimAmount: Number(el.dataset.dim) || 0.28,
+			blurAmount: Number(el.dataset.blur) || 2,
+			tiltAmount: Number(el.dataset.tilt) || 2,
+			rotationAmount: Number(el.dataset.rotation) || 2,
+			holdDistance: Number(el.dataset.hold) || 180,
+			snap: el.dataset.snap === '1',
+		};
+
+		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const cache = new Map<string, string | number>();
+
+		const write = <T extends string | number>(key: string, value: T, apply: (v: T) => void) => {
+			if (cache.get(key) === value) return;
+			cache.set(key, value);
+			apply(value);
+		};
+
+		const update = () => {
+			const viewHeight = el.clientHeight;
+			const stackTop = resolveOffset(cfg.stackPosition, viewHeight);
+			const offset = cfg.itemStackDistance;
+			const heights = slots.map((s) => s.offsetHeight);
+			const lastPin = stackTop + (slots.length - 1) * offset;
+			const endHeight =
+				cfg.holdDistance + Math.max(0, viewHeight - lastPin - heights[heights.length - 1]);
+
+			inner.style.paddingTop = `${stackTop}px`;
+			end.style.height = `${endHeight}px`;
+
+			// 每个 slot 的「落点」：滚动到该值时，这张卡正好钉在堆叠位置
+			let flow = inner.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop + stackTop;
+			const points: number[] = heights.map((height, i) => {
+				const point = flow - stackTop - i * offset;
+				flow += height + cfg.itemDistance;
+				return point;
+			});
+
+			// 计算每张卡被「埋」的深度（0~1）
+			const depths = slots.map(() => 0);
+			let lastCover = 0;
+			for (let j = 1; j < slots.length; j++) {
+				const pinBefore = stackTop + (j - 1) * offset;
+				const start = pinBefore + heights[j - 1];
+				const span = Math.max(1, start - pinBefore - offset);
+				const cover = Math.min(1, Math.max(0, (start - (slots[j].offsetTop - el.scrollTop)) / span));
+				for (let i = 0; i < j; i++) depths[i] += cover;
+				lastCover = cover;
+			}
+
+			const dimStep = Math.min(Math.max(cfg.dimAmount, 0), 1);
+			slots.forEach((slot, i) => {
+				const card = slot.firstElementChild as HTMLElement | null;
+				if (!card) return;
+				const depth = depths[i];
+				const lean = Math.min(depth, 1);
+				const scale = Math.max(Math.min(cfg.baseScale, 1), 1 - depth * cfg.itemScale);
+				const tilt = -lean * cfg.tiltAmount;
+				const turn = lean * cfg.rotationAmount * (i % 2 ? -1 : 1);
+				const blur = depth * cfg.blurAmount;
+				const dim = 1 - Math.pow(1 - dimStep, depth);
+
+				const transform =
+					depth < 0.0005
+						? ''
+						: `perspective(1200px) rotateX(${tilt.toFixed(2)}deg) rotate(${turn.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
+				write(`t${i}`, transform, (v) => {
+					card.style.transform = v;
+				});
+				write(`b${i}`, blur > 0.01 ? `blur(${blur.toFixed(2)}px)` : '', (v) => {
+					card.style.filter = v;
+				});
+				write(`d${i}`, dim.toFixed(3), (v) => {
+					card.style.setProperty('--ss-dim', v);
+				});
+			});
+		};
+
+		// 简单 snap：滚动停下后吸附到最近落点（可选）
+		let rest = 0;
+		const settle = () => {
+			if (!cfg.snap) return;
+			const now = el.scrollTop;
+			// 用当前可视区域里最接近的 slot 落点
+			let nearest = 0;
+			let best = Infinity;
+			slots.forEach((s) => {
+				const top = s.offsetTop - el.clientHeight * 0.2;
+				const gap = Math.abs(top - now);
+				if (gap < best) {
+					best = gap;
+					nearest = top;
+				}
+			});
+			if (best < el.clientHeight * 0.5) {
+				el.scrollTo({ top: nearest, behavior: motion.matches ? 'auto' : 'smooth' });
+			}
+		};
+		el.addEventListener(
+			'scroll',
+			() => {
+				update();
+				if (cfg.snap) {
+					window.clearTimeout(rest);
+					rest = window.setTimeout(settle, 140);
+				}
+			},
+			{ passive: true }
+		);
+
+		const ro = new ResizeObserver(() => update());
+		ro.observe(el);
+		ro.observe(inner);
+		slots.forEach((s) => ro.observe(s));
+		window.addEventListener('resize', update);
+
+		// 初始渲染 + 等图片加载（图片未加载时 offsetHeight 不准，加载后再校准一次）
+		update();
+		requestAnimationFrame(update);
+		slots.forEach((s) => {
+			const img = s.querySelector('img');
+			if (img && !img.complete) img.addEventListener('load', update, { once: true });
+		});
+	}
+
+	const init = () => document.querySelectorAll<HTMLElement>('[data-ss]').forEach(boot);
+
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+	else init();
+	document.addEventListener('astro:page-load', init);
+</script>

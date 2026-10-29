@@ -25,6 +25,7 @@ const REPO: Repo = { owner: 'YQ-create', repo: 'ystlr.github.io', branch: 'main'
 
 const TOKEN_KEY = 'ystlr:admin:token';
 const BLOG_DIR = 'src/content/blog';
+const KB_DIR = 'src/content/knowledge';
 const GALLERY_ASSET_DIR = 'src/assets/gallery';
 const GALLERY_CONTENT_DIR = 'src/content/gallery';
 const AUDIO_DIR = 'public/audio';
@@ -61,6 +62,18 @@ interface PostMeta {
 	title: string;
 	date: string;
 	featured: boolean;
+	draft: boolean;
+	sha: string;
+	problem?: string;
+}
+
+interface KbMeta {
+	path: string;
+	name: string;
+	title: string;
+	date: string;
+	category: string;
+	pinned: boolean;
 	draft: boolean;
 	sha: string;
 	problem?: string;
@@ -444,6 +457,32 @@ function buildGalleryFile(input: {
 	return lines.join('\n');
 }
 
+function buildKbFile(input: {
+	title: string;
+	description: string;
+	pubDate: string;
+	category: string;
+	tags: string[];
+	pinned: boolean;
+	draft: boolean;
+	body: string;
+}): string {
+	const lines = [
+		'---',
+		`title: ${yamlString(input.title)}`,
+	];
+	if (input.description) lines.push(`description: ${yamlString(input.description)}`);
+	lines.push(`pubDate: ${input.pubDate}`);
+	lines.push(`category: ${yamlString(input.category || '未分类')}`);
+	lines.push(`tags: [${input.tags.map(yamlString).join(', ')}]`);
+	lines.push(`pinned: ${input.pinned}`);
+	lines.push(`draft: ${input.draft}`);
+	lines.push('---', '');
+
+	const body = input.body.replace(/^\n+/, '').replace(/\s+$/, '');
+	return `${lines.join('\n')}${body ? `${body}\n` : ''}`;
+}
+
 // ---------------------------------------------------------------- boot
 
 export function boot(): void {
@@ -500,6 +539,21 @@ export function boot(): void {
 	const musicArtist = q<HTMLInputElement>(root, '[data-music-artist]');
 	const musicSubmit = q<HTMLButtonElement>(root, '[data-music-submit]');
 
+	// ---- 知识库 ----
+	const kbList = q<HTMLElement>(root, '[data-kb-list]');
+	const kbHint = q<HTMLElement>(root, '[data-kb-hint]');
+	const kbRefresh = q<HTMLButtonElement>(root, '[data-kb-refresh]');
+	const kbCreateToggle = q<HTMLButtonElement>(root, '[data-kb-new-toggle]');
+	const kbCreateForm = q<HTMLFormElement>(root, '[data-kb-create]');
+	const kbCreateCancel = q<HTMLButtonElement>(root, '[data-kb-create-cancel]');
+	const kbNewSlug = q<HTMLInputElement>(root, '[data-kb-new-slug]');
+	const kbEditor = q<HTMLFormElement>(root, '[data-kb-editor]');
+	const kbEditorPath = q<HTMLElement>(root, '[data-kb-editor-path]');
+	const kbSaveBtn = q<HTMLButtonElement>(root, '[data-kb-save]');
+	const kbDeleteBtn = q<HTMLButtonElement>(root, '[data-kb-delete]');
+	const kbCloseBtn = q<HTMLButtonElement>(root, '[data-kb-close]');
+	const kbPreview = q<HTMLElement>(root, '[data-kb-preview]');
+
 	// ---- 状态 ----
 	let token: string | null = null;
 	let posts: PostMeta[] = [];
@@ -507,6 +561,11 @@ export function boot(): void {
 	let editing: { path: string; sha: string } | null = null;
 	let deleteArmed = false;
 	let deleteTimer = 0;
+	let kbItems: KbMeta[] = [];
+	let kbLoaded = false;
+	let kbEditing: { path: string; sha: string } | null = null;
+	let kbDeleteArmed = false;
+	let kbDeleteTimer = 0;
 
 	// ------------------------------------------------------------ 状态条
 
@@ -631,9 +690,13 @@ export function boot(): void {
 		token = null;
 		posts = [];
 		postsLoaded = false;
+		kbItems = [];
+		kbLoaded = false;
 		closeEditor();
+		closeKbEditor();
 		writeSavedToken(null);
 		if (postList) postList.replaceChildren();
+		if (kbList) kbList.replaceChildren();
 		if (loginName) loginName.textContent = '—';
 		showLogin();
 		setLoginStatus('idle', '已退出，本标签页里保存的 Token 已清除。');
@@ -648,6 +711,7 @@ export function boot(): void {
 		}
 		for (const panel of panels) panel.hidden = panel.dataset.panel !== name;
 		if (name === 'posts' && token && !postsLoaded) void loadPosts();
+		if (name === 'knowledge' && token && !kbLoaded) void loadKb();
 	}
 
 	// ------------------------------------------------------------ 文章列表
@@ -1009,6 +1073,330 @@ export function boot(): void {
 		}
 	}
 
+	// ------------------------------------------------------------ 知识库列表
+
+	function sortKb(): void {
+		kbItems.sort((a, b) => {
+			if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+			return (b.date || '').localeCompare(a.date || '');
+		});
+	}
+
+	function renderKb(): void {
+		if (!kbList) return;
+		kbList.replaceChildren();
+
+		if (!kbItems.length) {
+			if (kbHint) {
+				kbHint.hidden = false;
+				kbHint.textContent = 'src/content/knowledge/ 里还没有条目，点「新建条目」写第一条。';
+			}
+			return;
+		}
+		if (kbHint) kbHint.hidden = true;
+
+		for (const item of kbItems) {
+			const li = document.createElement('li');
+			li.className = 'adm-post';
+
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'adm-post-btn';
+			button.dataset.kbOpen = item.path;
+			button.title = item.path;
+			button.setAttribute('aria-label', `编辑 ${item.title || item.name}`);
+
+			const title = document.createElement('span');
+			title.className = 'adm-post-title';
+			title.textContent = item.title || item.name;
+
+			const meta = document.createElement('span');
+			meta.className = 'adm-post-meta';
+			meta.textContent = `${item.date || '无日期'} · ${item.category || '未分类'}`;
+
+			const badges = document.createElement('span');
+			badges.className = 'adm-post-badges';
+			if (item.pinned) badges.append(makeBadge('置顶', 'ok'));
+			if (item.draft) badges.append(makeBadge('草稿', 'dim'));
+			if (item.problem) badges.append(makeBadge('读取失败', 'err'));
+
+			button.append(title, meta, badges);
+			li.append(button);
+			kbList.append(li);
+		}
+	}
+
+	async function loadKb(): Promise<void> {
+		if (!token) return;
+		const current = token;
+		kbLoaded = false;
+		if (kbHint) {
+			kbHint.hidden = false;
+			kbHint.textContent = '正在读取 src/content/knowledge/ …';
+		}
+		try {
+			const entries = await listDir(REPO, current, KB_DIR);
+			const files = entries.filter((entry) => entry.type === 'file' && /\.mdx?$/i.test(entry.name));
+			const loaded = await Promise.all(
+				files.map(async (file): Promise<KbMeta> => {
+					const fallback: KbMeta = {
+						path: file.path,
+						name: file.name,
+						title: file.name.replace(/\.mdx?$/i, ''),
+						date: '',
+						category: '未分类',
+						pinned: false,
+						draft: false,
+						sha: file.sha,
+					};
+					try {
+						const content = await readTextFile(REPO, current, file.path);
+						if (!content) return { ...fallback, problem: '读取失败' };
+						const { data } = splitFrontmatter(content.text);
+						return {
+							...fallback,
+							sha: content.sha,
+							title: asString(data.title) || fallback.title,
+							date: dateOnly(asString(data.pubDate) || asString(data.date)),
+							category: asString(data.category) || '未分类',
+							pinned: asBool(data.pinned),
+							draft: asBool(data.draft),
+						};
+					} catch (error) {
+						return { ...fallback, problem: describeError(error) };
+					}
+				}),
+			);
+			if (token !== current) return;
+			kbItems = loaded;
+			sortKb();
+			kbLoaded = true;
+			renderKb();
+		} catch (error) {
+			if (token !== current) return;
+			if (kbHint) {
+				kbHint.hidden = false;
+				kbHint.textContent = '读取知识库失败，稍后点「刷新列表」重试。';
+			}
+			setStatus('err', describeError(error));
+		}
+	}
+
+	// ------------------------------------------------------------ 知识库编辑器
+
+	function kbField(name: string): HTMLElement | null {
+		return kbEditor ? kbEditor.querySelector<HTMLElement>(`[data-kb-field="${name}"]`) : null;
+	}
+
+	function kbFieldText(name: string): string {
+		const element = kbField(name) as HTMLInputElement | HTMLTextAreaElement | null;
+		return element ? element.value : '';
+	}
+
+	function kbFieldChecked(name: string): boolean {
+		const element = kbField(name) as HTMLInputElement | null;
+		return Boolean(element?.checked);
+	}
+
+	function setKbFieldText(name: string, value: string): void {
+		const element = kbField(name) as HTMLInputElement | HTMLTextAreaElement | null;
+		if (element) element.value = value;
+	}
+
+	function setKbFieldChecked(name: string, value: boolean): void {
+		const element = kbField(name) as HTMLInputElement | null;
+		if (element) element.checked = value;
+	}
+
+	function renderKbPreview(): void {
+		if (!kbPreview) return;
+		const bodyEl = kbField('body') as HTMLTextAreaElement | null;
+		kbPreview.innerHTML = renderMarkdown(bodyEl?.value ?? '');
+	}
+
+	function resetKbDeleteArm(): void {
+		kbDeleteArmed = false;
+		window.clearTimeout(kbDeleteTimer);
+		if (kbDeleteBtn) {
+			kbDeleteBtn.textContent = '删除这条';
+			kbDeleteBtn.disabled = false;
+		}
+	}
+
+	function showKbEditor(visible: boolean): void {
+		if (kbEditor) kbEditor.hidden = !visible;
+		if (visible && kbCreateForm) kbCreateForm.hidden = true;
+	}
+
+	function closeKbEditor(): void {
+		kbEditing = null;
+		if (kbEditor) kbEditor.hidden = true;
+		if (kbEditorPath) kbEditorPath.textContent = '';
+		resetKbDeleteArm();
+	}
+
+	function fillKbEditor(
+		target: { path: string; sha: string },
+		data: Frontmatter,
+		body: string,
+		fallbackTitle: string,
+	): void {
+		kbEditing = target;
+		setKbFieldText('title', asString(data.title) || fallbackTitle);
+		setKbFieldText('description', asString(data.description));
+		setKbFieldText('pubDate', dateOnly(asString(data.pubDate)) || todayStr());
+		setKbFieldText('category', asString(data.category) || '未分类');
+		setKbFieldText('tags', asTags(data.tags).join(', '));
+		setKbFieldChecked('pinned', asBool(data.pinned));
+		setKbFieldChecked('draft', asBool(data.draft));
+		setKbFieldText('body', body.replace(/^\n+/, ''));
+		renderKbPreview();
+		if (kbEditorPath) kbEditorPath.textContent = target.sha ? target.path : `${target.path}（新建，保存后创建）`;
+		resetKbDeleteArm();
+		showKbEditor(true);
+	}
+
+	async function openKbEditor(path: string): Promise<void> {
+		if (!token) return;
+		setStatus('busy', `正在读取 ${path} …`);
+		try {
+			const content = await readTextFile(REPO, token, path);
+			if (!content) throw new GitHubError(404, `找不到 ${path}，它可能已经被删掉了。`);
+			const { data, body } = splitFrontmatter(content.text);
+			const name = path.split('/').pop() ?? path;
+			fillKbEditor({ path, sha: content.sha }, data, body, name.replace(/\.mdx?$/i, ''));
+			setStatus('idle', `已打开 ${path}。`);
+			(kbField('title') as HTMLInputElement | null)?.focus();
+		} catch (error) {
+			setStatus('err', describeError(error));
+		}
+	}
+
+	function openNewKbEditor(slug: string): void {
+		const path = `${KB_DIR}/${slug}.md`;
+		fillKbEditor({ path, sha: '' }, {}, '', slug);
+		setKbFieldChecked('draft', false); // 新条目默认直接发布，勾选「草稿」才不发布
+		setStatus('busy', `已打开新建条目 ${path}：默认直接发布，勾选「草稿」可先不发布；填好内容后点「保存到 main」提交。`);
+		(kbField('title') as HTMLInputElement | null)?.focus();
+	}
+
+	async function saveKb(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		if (!token) {
+			setStatus('err', '登录已失效，请退出后重新粘贴 Token。');
+			return;
+		}
+		if (!kbEditing) {
+			setStatus('err', '请先在列表里点开一条（或「新建条目」）。');
+			return;
+		}
+
+		const target = kbEditing;
+		const title = kbFieldText('title').trim();
+		const description = kbFieldText('description').trim();
+		const pubDate = kbFieldText('pubDate').trim();
+		const category = kbFieldText('category').trim();
+		const tags = parseTags(kbFieldText('tags'));
+		const pinned = kbFieldChecked('pinned');
+		const draft = kbFieldChecked('draft');
+		const body = kbFieldText('body');
+
+		if (!title) {
+			setStatus('err', '标题 title 不能为空。');
+			(kbField('title') as HTMLInputElement | null)?.focus();
+			return;
+		}
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(pubDate)) {
+			setStatus('err', '发布日期 pubDate 必须是 YYYY-MM-DD 格式。');
+			(kbField('pubDate') as HTMLInputElement | null)?.focus();
+			return;
+		}
+
+		const content = buildKbFile({ title, description, pubDate, category, tags, pinned, draft, body });
+		setBusy(kbSaveBtn, true, '提交中…');
+		setStatus('busy', `正在提交 ${target.path} 到 ${REPO.branch} …`);
+		try {
+			const result = await putFile(REPO, token, {
+				path: target.path,
+				message: `${target.sha ? 'content: 更新' : 'content: 新建'}《${title}》`,
+				content,
+				...(target.sha ? { sha: target.sha } : {}),
+			});
+
+			kbEditing = { path: target.path, sha: result.sha };
+			const name = target.path.split('/').pop() ?? target.path;
+			const meta: KbMeta = {
+				path: target.path,
+				name,
+				title,
+				date: pubDate,
+				category,
+				pinned,
+				draft,
+				sha: result.sha,
+			};
+			const index = kbItems.findIndex((item) => item.path === target.path);
+			if (index >= 0) kbItems[index] = meta;
+			else kbItems.unshift(meta);
+			sortKb();
+			renderKb();
+			if (kbEditorPath) kbEditorPath.textContent = target.path;
+			const stateNote = draft ? '，仍是草稿（未发布，请取消勾选「草稿」后再次保存）' : '，已发布';
+			setStatus('ok', `${SUBMIT_OK}（${target.path}${pinned ? '，已置顶' : ''}${stateNote}）`);
+		} catch (error) {
+			setStatus('err', describeError(error));
+		} finally {
+			setBusy(kbSaveBtn, false);
+		}
+	}
+
+	async function removeKb(): Promise<void> {
+		if (!token) {
+			setStatus('err', '登录已失效，请重新粘贴 Token。');
+			return;
+		}
+		if (!kbEditing) {
+			setStatus('err', '没有打开中的条目。');
+			return;
+		}
+		const target = kbEditing;
+
+		if (!target.sha) {
+			closeKbEditor();
+			setStatus('idle', '这条还没有提交到 main，已取消编辑。');
+			return;
+		}
+
+		if (!kbDeleteArmed) {
+			kbDeleteArmed = true;
+			if (kbDeleteBtn) kbDeleteBtn.textContent = '再点一次，确认删除';
+			window.clearTimeout(kbDeleteTimer);
+			kbDeleteTimer = window.setTimeout(resetKbDeleteArm, 6000);
+			setStatus('busy', `即将删除 ${target.path}：6 秒内再点一次按钮确认。`);
+			return;
+		}
+
+		resetKbDeleteArm();
+		if (kbDeleteBtn) kbDeleteBtn.disabled = true;
+		setStatus('busy', `正在删除 ${target.path} …`);
+		try {
+			const title = kbFieldText('title').trim() || target.path;
+			await deleteFile(REPO, token, {
+				path: target.path,
+				sha: target.sha,
+				message: `content: 删除《${title}》`,
+			});
+			kbItems = kbItems.filter((item) => item.path !== target.path);
+			renderKb();
+			closeKbEditor();
+			setStatus('ok', `${SUBMIT_OK}（已删除 ${target.path}）`);
+		} catch (error) {
+			setStatus('err', describeError(error));
+		} finally {
+			resetKbDeleteArm();
+		}
+	}
+
 	// ------------------------------------------------------------ 照片
 
 	function refreshPhotoInfo(): void {
@@ -1247,6 +1635,47 @@ export function boot(): void {
 	on(musicForm, 'submit', (event) => {
 		void submitMusic(event);
 	});
+
+	on(kbRefresh, 'click', () => {
+		if (token) void loadKb();
+	});
+	on(kbCreateToggle, 'click', () => {
+		if (!kbCreateForm) return;
+		kbCreateForm.hidden = !kbCreateForm.hidden;
+		if (!kbCreateForm.hidden) kbNewSlug?.focus();
+	});
+	on(kbCreateCancel, 'click', () => {
+		if (kbCreateForm) kbCreateForm.hidden = true;
+	});
+	on(kbCreateForm, 'submit', (event) => {
+		event.preventDefault();
+		const slug = (kbNewSlug?.value ?? '').trim().toLowerCase();
+		if (!SLUG_RE.test(slug)) {
+			setStatus('err', 'slug 只能用英文小写字母、数字和连字符（例如 my-note）。');
+			kbNewSlug?.focus();
+			return;
+		}
+		const path = `${KB_DIR}/${slug}.md`;
+		if (kbItems.some((item) => item.path === path)) {
+			setStatus('err', `${path} 已经存在：直接在下面的列表里点开它编辑。`);
+			return;
+		}
+		if (kbNewSlug) kbNewSlug.value = '';
+		openNewKbEditor(slug);
+	});
+	on(kbList, 'click', (event) => {
+		const button = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-kb-open]');
+		const path = button?.getAttribute('data-kb-open');
+		if (path) void openKbEditor(path);
+	});
+	on(kbEditor, 'submit', (event) => {
+		void saveKb(event);
+	});
+	on(kbField('body'), 'input', renderKbPreview);
+	on(kbDeleteBtn, 'click', () => {
+		void removeKb();
+	});
+	on(kbCloseBtn, 'click', closeKbEditor);
 
 	// ---- 初始状态 ----
 	if (photoDate && !photoDate.value) photoDate.value = todayStr();

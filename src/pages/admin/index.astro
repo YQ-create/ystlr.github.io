@@ -84,6 +84,7 @@ import { SITE_TITLE } from '../../consts';
 
 			<div class="adm-tabs" role="tablist" aria-label="管理内容">
 				<button type="button" role="tab" data-tab="posts" aria-selected="true">文章</button>
+				<button type="button" role="tab" data-tab="knowledge" aria-selected="false">知识库</button>
 				<button type="button" role="tab" data-tab="photos" aria-selected="false">照片</button>
 				<button type="button" role="tab" data-tab="music" aria-selected="false">音乐</button>
 			</div>
@@ -171,6 +172,93 @@ import { SITE_TITLE } from '../../consts';
 						<button class="btn" type="submit" data-post-save>保存到 main</button>
 						<button class="btn btn--ghost" type="button" data-post-delete>删除这篇文章</button>
 						<button class="btn btn--ghost" type="button" data-post-close>收起编辑器</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- ---------- 知识库 ---------- -->
+			<section class="adm-panel glass" data-panel="knowledge" hidden>
+				<div class="adm-panel-head">
+					<div>
+						<h2>知识库</h2>
+						<p class="adm-note">对应 <code>src/content/knowledge/*.md</code>，支持分类、标签、置顶与草稿。</p>
+					</div>
+					<div class="adm-row">
+						<button class="btn btn--ghost" type="button" data-kb-refresh>刷新列表</button>
+						<button class="btn" type="button" data-kb-new-toggle>新建条目</button>
+					</div>
+				</div>
+
+				<p class="adm-hint" data-kb-hint>登录后会自动读取知识库列表。</p>
+				<ul class="adm-posts" data-kb-list></ul>
+
+				<form class="adm-create" data-kb-create hidden>
+					<label class="field">
+						<span>新条目 slug（英文小写、数字、连字符）</span>
+						<input data-kb-new-slug placeholder="my-note" autocomplete="off" spellcheck="false" />
+					</label>
+					<div class="adm-row">
+						<button class="btn" type="submit">打开编辑器</button>
+						<button class="btn btn--ghost" type="button" data-kb-create-cancel>取消</button>
+					</div>
+				</form>
+
+				<form class="adm-editor" data-kb-editor hidden>
+					<p class="adm-path" data-kb-editor-path></p>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>标题 title</span>
+							<input data-kb-field="title" required />
+						</label>
+						<label class="field">
+							<span>发布日期 pubDate</span>
+							<input type="date" data-kb-field="pubDate" required />
+						</label>
+					</div>
+
+					<div class="adm-grid2">
+						<label class="field">
+							<span>分类 category</span>
+							<input data-kb-field="category" placeholder="未分类" />
+						</label>
+						<label class="field">
+							<span>标签 tags（逗号分隔）</span>
+							<input data-kb-field="tags" placeholder="前端, 工具" />
+						</label>
+					</div>
+
+					<label class="field">
+						<span>摘要 description（可选）</span>
+						<input data-kb-field="description" />
+					</label>
+
+					<div class="adm-row">
+						<label class="adm-check">
+							<input type="checkbox" data-kb-field="pinned" />
+							<span>置顶</span>
+						</label>
+						<label class="adm-check">
+							<input type="checkbox" data-kb-field="draft" />
+							<span>草稿（不发布）</span>
+						</label>
+					</div>
+
+					<div class="adm-editor-body">
+						<label class="field">
+							<span>正文（Markdown 源码）</span>
+							<textarea data-kb-field="body" rows="16" spellcheck="false"></textarea>
+						</label>
+						<div class="adm-preview">
+							<span class="adm-preview__label">实时预览</span>
+							<div class="adm-preview__box prose" data-kb-preview></div>
+						</div>
+					</div>
+
+					<div class="adm-row">
+						<button class="btn" type="submit" data-kb-save>保存到 main</button>
+						<button class="btn btn--ghost" type="button" data-kb-delete>删除这条</button>
+						<button class="btn btn--ghost" type="button" data-kb-close>收起编辑器</button>
 					</div>
 				</form>
 			</section>

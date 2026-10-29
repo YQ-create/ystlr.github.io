@@ -1,40 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ChromaGrid from '../../components/ChromaGrid.astro';
-import FadeContent from '../../components/FadeContent.astro';
 import { getCollection } from 'astro:content';
-import { Image, getImage } from 'astro:assets';
+import { getImage } from 'astro:assets';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
 const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
-
-// 按年分组，年内再按月分组
-interface MonthGroup {
-	month: number;
-	items: typeof photos;
-}
-interface YearGroup {
-	year: number;
-	months: MonthGroup[];
-}
-
-const yearGroups: YearGroup[] = [];
-for (const photo of photos) {
-	const d = photo.data.date;
-	let year = yearGroups.find((y) => y.year === d.getFullYear());
-	if (!year) {
-		year = { year: d.getFullYear(), months: [] };
-		yearGroups.push(year);
-	}
-	let month = year.months.find((m) => m.month === d.getMonth() + 1);
-	if (!month) {
-		month = { month: d.getMonth() + 1, items: [] };
-		year.months.push(month);
-	}
-	month.items.push(photo);
-}
 
 // 大图地址在构建期算好，灯箱直接取，避免放大时糊
 const bigUrls = new Map<string, string>();
@@ -61,8 +34,6 @@ const chromaItems = await Promise.all(
 		};
 	})
 );
-
-const monthLabel = (m: number) => `${m} 月`;
 ---
 
 <BaseLayout title={`照片墙 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
@@ -81,8 +52,7 @@ const monthLabel = (m: number) => `${m} 月`;
 					本地跑一条命令就行：<code>npm run photo -- 图片路径</code>，脚本会压图并生成同名记录；
 					也可以打开 <a href="/admin">/admin</a> 直接上传，或者手动把图片放进
 					<code>src/assets/gallery/</code>、在 <code>src/content/gallery/</code>
-					里新建一个 <code>.md</code> 填上日期。放好后这张墙会自动按年月排好，
-					并在这里和首页的流动照片带里出现。
+					里新建一个 <code>.md</code> 填上日期。放好后这张墙会自动按年月排好。
 				</p>
 				<pre><code># 一条命令：压图 + 写记录（支持文件夹批量）
 npm run photo -- ./照片.jpg -t "江边的傍晚" -d 2026-10-22 -g 生活,风景
@@ -97,91 +67,28 @@ tags: ["生活", "风景"]
 ---</code></pre>
 			</div>
 		) : (
-			<>
-				{photos.length >= 1 && (
-					<div class="gallery-chroma" data-reveal="scale">
-						<ChromaGrid
-							items={chromaItems}
-							reveal="spotlight"
-							columns={4}
-							minCardWidth={180}
-							gap={14}
-							radius={220}
-							softness={0.72}
-							damping={0.5}
-							fadeOut={0.5}
-							grayscale={1}
-							dim={0.1}
-							glow={0.62}
-							borderGlow={1}
-							aspectRatio="4 / 3"
-							cardRadius={22}
-							showInfo={true}
-							frame={true}
-							theme="dark"
-						/>
-					</div>
-				)}
-
-				<div class="gallery-timeline">
-					{yearGroups.map((year) => (
-					<section class="year-section">
-						<h2 class="year-title" data-reveal>
-							{year.year}
-							<span class="year-count">年 · {year.months.reduce((n, m) => n + m.items.length, 0)} 张</span>
-						</h2>
-
-						{year.months.map((month) => (
-							<div class="month-group">
-								<h3 class="month-title" data-reveal>{monthLabel(month.month)}</h3>
-								<div class="gallery-grid">
-									{month.items.map((photo, i) => (
-										<FadeContent
-											effect="develop"
-											blur={10}
-											duration={1.1}
-											delay={Math.min(i * 60, 240)}
-											threshold={0.12}
-											class="shot"
-										>
-											<button
-												class="shot-btn"
-												type="button"
-												data-lightbox
-												data-full={bigUrls.get(photo.id)}
-												data-caption={`${photo.data.title ?? ''}${photo.data.caption ? ' · ' + photo.data.caption : ''}`}
-												aria-label={`放大查看：${photo.data.title ?? '照片'}`}
-											>
-												<Image
-													src={photo.data.image}
-													alt={photo.data.caption ?? photo.data.title ?? ''}
-													widths={[400, 640, 900]}
-													sizes="(max-width: 720px) 46vw, 300px"
-													loading="lazy"
-												/>
-												<span class="shot-zoom" aria-hidden="true">
-													<svg viewBox="0 0 16 16" width="14" height="14">
-														<path
-															fill="none"
-															stroke="currentColor"
-															stroke-width="1.6"
-															stroke-linecap="round"
-															d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
-													</svg>
-												</span>
-											</button>
-											{photo.data.caption && (
-												<p class="shot-caption">{photo.data.caption}</p>
-											)}
-										</FadeContent>
-									))}
-								</div>
-							</div>
-						))}
-					</section>
-				))}
-				</div>
-			</>
+			<div class="gallery-chroma" data-reveal="scale">
+				<ChromaGrid
+					items={chromaItems}
+					reveal="spotlight"
+					columns={4}
+					minCardWidth={180}
+					gap={14}
+					radius={220}
+					softness={0.72}
+					damping={0.5}
+					fadeOut={0.5}
+					grayscale={1}
+					dim={0.1}
+					glow={0.62}
+					borderGlow={1}
+					aspectRatio="4 / 3"
+					cardRadius={22}
+					showInfo={true}
+					frame={true}
+					theme="dark"
+				/>
+			</div>
 		)}
 	</main>
 
@@ -355,108 +262,6 @@ tags: ["生活", "风景"]
 		line-height: 1.7;
 	}
 
-	.year-section {
-		margin-bottom: clamp(2rem, 4vw, 3rem);
-	}
-	.year-title {
-		display: flex;
-		align-items: baseline;
-		gap: 0.6rem;
-		font-size: 1.35rem;
-		color: rgb(var(--ink));
-		margin: 0 0 1.1rem;
-		padding-bottom: 0.6rem;
-		border-bottom: 1px solid rgba(var(--line), 1);
-	}
-	.year-count {
-		font-size: 0.74rem;
-		font-weight: 500;
-		letter-spacing: 0.14em;
-		color: rgb(var(--muted-light));
-	}
-	.month-group {
-		margin-bottom: 1.8rem;
-	}
-	.month-title {
-		font-size: 0.82rem;
-		font-weight: 600;
-		letter-spacing: 0.2em;
-		color: rgb(var(--muted));
-		margin: 0 0 0.8rem;
-		text-transform: uppercase;
-	}
-
-	.gallery-grid {
-		columns: 3;
-		column-gap: clamp(0.7rem, 1.6vw, 1.1rem);
-	}
-	.shot {
-		break-inside: avoid;
-		margin: 0 0 clamp(0.7rem, 1.6vw, 1.1rem);
-		border-radius: var(--r-lg);
-		overflow: hidden;
-		background: var(--glass-bg);
-		border: 1px solid var(--glass-brd);
-		backdrop-filter: blur(10px);
-		box-shadow: var(--glass-shine), var(--shadow-sm);
-		transition:
-			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out);
-	}
-	.shot:hover {
-		transform: translateY(-3px);
-		box-shadow: var(--glass-shine), var(--shadow-lg);
-	}
-	.shot-btn {
-		position: relative;
-		display: block;
-		width: 100%;
-		padding: 0;
-		border: none;
-		background: none;
-		cursor: zoom-in;
-	}
-	.shot-btn img {
-		display: block;
-		width: 100%;
-		border-radius: 0;
-		transition: transform 0.9s var(--ease-out);
-	}
-	.shot:hover .shot-btn img {
-		transform: scale(1.04);
-	}
-	.shot-zoom {
-		position: absolute;
-		top: 0.7rem;
-		right: 0.7rem;
-		display: grid;
-		place-items: center;
-		width: 30px;
-		height: 30px;
-		border-radius: 50%;
-		background: rgba(255, 253, 248, 0.85);
-		color: rgb(var(--ink-soft));
-		opacity: 0;
-		transform: scale(0.85);
-		transition:
-			opacity var(--dur-fast) var(--ease-out),
-			transform var(--dur-fast) var(--ease-spring);
-	}
-	.shot:hover .shot-zoom {
-		opacity: 1;
-		transform: none;
-	}
-	.shot figcaption,
-	.shot-caption {
-		padding: 0.6rem 0.85rem 0.75rem;
-		font-size: 0.82rem;
-		line-height: 1.55;
-		color: rgb(var(--muted));
-	}
-	.shot-caption {
-		margin: 0;
-	}
-
 	/* ---- 灯箱 ---- */
 	.lightbox {
 		position: fixed;
@@ -528,12 +333,6 @@ tags: ["生活", "风景"]
 	}
 	.lightbox-close:hover {
 		background: rgba(255, 255, 255, 0.22);
-	}
-
-	@media (max-width: 860px) {
-		.gallery-grid {
-			columns: 2;
-		}
 	}
 </style>
 

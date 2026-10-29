@@ -58,6 +58,8 @@ const ogImage = new URL(image.src, Astro.url);
 	(() => {
 		const d = document.documentElement;
 		const KEY = 'ystlr-theme';
+		const ACCENT_KEY = 'ystlr-accent';
+		const ACCENTS = ['orange', 'blue', 'teal', 'violet', 'pink'];
 		const sync = () => {
 			d.classList.add('js');
 			let theme = 'dark';
@@ -67,6 +69,13 @@ const ogImage = new URL(image.src, Astro.url);
 			} catch {}
 			d.dataset.theme = theme;
 			d.dataset.glass = 'frosted';
+			// 调色盘：默认暖橙
+			let accent = 'orange';
+			try {
+				const stored = localStorage.getItem(ACCENT_KEY);
+				if (ACCENTS.includes(stored ?? '')) accent = stored!;
+			} catch {}
+			d.dataset.accent = accent;
 			window.__setTheme = (t) => {
 				d.dataset.theme = t;
 				try {
@@ -76,6 +85,15 @@ const ogImage = new URL(image.src, Astro.url);
 				window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: t } }));
 			};
 			window.__getTheme = () => d.dataset.theme || 'dark';
+			window.__setAccent = (a) => {
+				if (!ACCENTS.includes(a)) return;
+				d.dataset.accent = a;
+				try {
+					localStorage.setItem(ACCENT_KEY, a);
+				} catch {}
+				window.dispatchEvent(new CustomEvent('accent-change', { detail: { accent: a } }));
+			};
+			window.__getAccent = () => d.dataset.accent || 'orange';
 		};
 		sync();
 		document.addEventListener('astro:after-swap', sync);

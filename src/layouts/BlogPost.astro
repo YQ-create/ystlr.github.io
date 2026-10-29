@@ -15,6 +15,8 @@ interface Props {
 	readingMinutes?: number;
 	prev?: { href: string; title: string };
 	next?: { href: string; title: string };
+	/** 相关文章：优先标签交集，其次最新（排除自己与相邻文章） */
+	related?: { href: string; title: string; date: string }[];
 }
 
 const {
@@ -27,6 +29,7 @@ const {
 	readingMinutes,
 	prev,
 	next,
+	related = [],
 } = Astro.props;
 ---
 
@@ -71,7 +74,7 @@ const {
 
 		{heroImage && (
 			<figure class="post-hero">
-				<Image width={1080} height={560} src={heroImage} alt="" loading="eager" />
+				<Image width={1080} height={560} src={heroImage} alt="" loading="eager" fetchpriority="high" decoding="async" />
 			</figure>
 		)}
 
@@ -99,6 +102,31 @@ const {
 				<span></span>
 			)}
 		</nav>
+
+		{related.length > 0 && (
+			<section class="related" aria-label="相关文章">
+				<h2 class="related__title">继续阅读</h2>
+				<ul class="related__list">
+					{related.map((item) => (
+						<li>
+							<a class="related__item glass" href={item.href}>
+								<span class="related__date">{item.date}</span>
+								<span class="related__name">{item.title}</span>
+								<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+									<path
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.7"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+								</svg>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		)}
 
 		<Giscus />
 	</main>
@@ -223,6 +251,72 @@ const {
 	}
 	.post-nav__item:hover .post-nav__title {
 		color: rgb(var(--accent-deep));
+	}
+
+	.related {
+		margin: 0 0 2rem;
+	}
+	.related__title {
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.16em;
+		color: rgb(var(--muted-light));
+		margin: 0 0 0.9rem;
+		text-transform: uppercase;
+	}
+	.related__list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+	}
+	.related__item {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
+		padding: 0.85rem 1.1rem;
+		border-radius: var(--r-md);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform var(--dur) var(--ease-out),
+			box-shadow var(--dur) var(--ease-out);
+	}
+	.related__item:hover {
+		transform: translateX(4px);
+		box-shadow: var(--glass-shine), var(--shadow-md);
+	}
+	.related__date {
+		font-size: 0.76rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		flex-shrink: 0;
+	}
+	.related__name {
+		flex: 1;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: rgb(var(--ink));
+		line-height: 1.4;
+	}
+	.related__item:hover .related__name {
+		color: rgb(var(--accent-deep));
+	}
+	.related__item svg {
+		color: rgb(var(--muted-light));
+		opacity: 0;
+		transform: translateX(-6px);
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.related__item:hover svg {
+		opacity: 1;
+		transform: none;
+		color: rgb(var(--accent));
 	}
 
 	@media (max-width: 620px) {

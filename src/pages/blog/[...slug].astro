@@ -11,12 +11,28 @@ export async function getStaticPaths() {
 		// posts 是倒序：i+1 更早（上一篇），i-1 更新（下一篇）
 		const older = posts[i + 1];
 		const newer = posts[i - 1];
+		// 相关文章：优先挑标签有交集的（按交集数量降序），不够再用最新的补，
+		// 排除自己、上一篇、下一篇，避免和底部导航重复。
+		const exclude = new Set([post.id, older?.id, newer?.id].filter(Boolean));
+		const others = posts.filter((p) => !exclude.has(p.id));
+		const scored = others
+			.map((p) => {
+				const overlap = p.data.tags.filter((t) => post.data.tags.includes(t)).length;
+				return { p, overlap };
+			})
+			.sort((a, b) => b.overlap - a.overlap || b.p.data.pubDate.valueOf() - a.p.data.pubDate.valueOf());
+		const related = scored.slice(0, 3).map(({ p }) => ({
+			href: `/blog/${p.id}/`,
+			title: p.data.title,
+			date: p.data.pubDate.toISOString().slice(0, 10),
+		}));
 		return {
 			params: { slug: post.id },
 			props: {
 				post,
 				prev: older && { href: `/blog/${older.id}/`, title: older.data.title },
 				next: newer && { href: `/blog/${newer.id}/`, title: newer.data.title },
+				related,
 			},
 		};
 	});
@@ -25,9 +41,10 @@ type Props = {
 	post: CollectionEntry<'blog'>;
 	prev?: { href: string; title: string };
 	next?: { href: string; title: string };
+	related?: { href: string; title: string; date: string }[];
 };
 
-const { post, prev, next } = Astro.props;
+const { post, prev, next, related = [] } = Astro.props;
 const { Content } = await render(post);
 
 // 粗估阅读时长：去掉 Markdown 记号后按 350 字/分钟算
@@ -39,6 +56,6 @@ const plain = (post.body ?? '')
 const readingMinutes = Math.max(1, Math.round(plain.length / 350));
 ---
 
-<BlogPost {...post.data} readingMinutes={readingMinutes} prev={prev} next={next}>
+<BlogPost {...post.data} readingMinutes={readingMinutes} prev={prev} next={next} related={related}>
 	<Content />
 </BlogPost>

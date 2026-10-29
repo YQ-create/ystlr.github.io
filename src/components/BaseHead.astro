@@ -40,6 +40,13 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
+<!-- 首屏防白闪：CSS 加载前先把深色背景铺上，避免深色主题闪一下白 -->
+<style is:inline>
+	html {
+		background-color: #181512;
+		color-scheme: dark;
+	}
+</style>
 <script is:inline>
 	/* 站点固定深色，只把 data-theme=dark 写进 <html> 并补 js 类。
 	   View Transitions 切页时 Astro 会用新文档的 <html> 属性覆盖当前节点，

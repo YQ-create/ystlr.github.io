@@ -18,6 +18,15 @@ for (const post of posts) {
 const allTags = [...tagCount.entries()]
 	.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'))
 	.map(([tag]) => tag);
+
+// 按年份分组（时间线视图用）：年份从新到旧
+const byYear = new Map<number, typeof posts>();
+for (const post of posts) {
+	const year = post.data.pubDate.getFullYear();
+	if (!byYear.has(year)) byYear.set(year, []);
+	byYear.get(year)!.push(post);
+}
+const years = [...byYear.entries()].sort((a, b) => b[0] - a[0]);
 ---
 
 <BaseLayout title={`文章 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
@@ -59,11 +68,46 @@ const allTags = [...tagCount.entries()]
 
 		<p class="result-count" id="result-count" aria-live="polite"></p>
 
-		<ul class="post-list" id="post-list">
+		<div class="view-toggle" data-reveal data-reveal-delay="40">
+			<button class="view-toggle__btn is-active" type="button" data-view="list">列表</button>
+			<button class="view-toggle__btn" type="button" data-view="timeline">时间线</button>
+		</div>
+
+		<ul class="post-list" id="post-list" data-list-view>
 			{posts.map((post, i) => (
 				<PostListItem post={post} tags={post.data.tags} index={i} delay={i * 60} />
 			))}
 		</ul>
+
+		<div class="timeline" id="post-timeline" data-timeline-view hidden>
+			{years.map(([year, list]) => (
+				<section class="timeline-year">
+					<h2 class="timeline-year__head">
+						<span class="timeline-year__num">{year}</span>
+						<span class="timeline-year__count">{list.length} 篇</span>
+					</h2>
+					<ul class="timeline-year__list">
+						{list.map((post) => (
+							<li>
+								<a
+									class="timeline-item"
+									href={`/blog/${post.id}/`}
+									data-tags={post.data.tags.join(',')}
+								>
+									<span class="timeline-item__date">
+										{post.data.pubDate.toISOString().slice(5, 10).replace('-', '·')}
+									</span>
+									<span class="timeline-item__title">{post.data.title}</span>
+									{post.data.tags.length > 0 && (
+										<span class="timeline-item__tags">{post.data.tags.join(' / ')}</span>
+									)}
+								</a>
+							</li>
+						))}
+					</ul>
+				</section>
+			))}
+		</div>
 
 		<div class="empty-state" id="empty-state" hidden>
 			<p>没有匹配的文章，换个关键词试试。</p>
@@ -75,17 +119,19 @@ const allTags = [...tagCount.entries()]
 	// View Transitions 下页面脚本只执行一次，绑定逻辑集中在 init()，每次导航后重跑。
 	let wired = false;
 	let activeTag = '';
+	let view: 'list' | 'timeline' = 'list';
 
 	function applyFilter() {
+		const searchInput = document.getElementById('post-search') as HTMLInputElement | null;
+		const q = searchInput?.value.trim().toLowerCase() ?? '';
+		const emptyState = document.getElementById('empty-state');
+		const resultCount = document.getElementById('result-count');
+
+		// 列表视图：逐行过滤
 		const items = Array.from(
 			document.querySelectorAll<HTMLElement>('#post-list .post-row'),
 		);
-		const emptyState = document.getElementById('empty-state');
-		const resultCount = document.getElementById('result-count');
-		const searchInput = document.getElementById('post-search') as HTMLInputElement | null;
-		const q = searchInput?.value.trim().toLowerCase() ?? '';
 		let visible = 0;
-
 		for (const item of items) {
 			const text = item.textContent?.toLowerCase() ?? '';
 			// 精确匹配标签：用 includes 会把「生活」误判成命中「生活片段」
@@ -97,8 +143,44 @@ const allTags = [...tagCount.entries()]
 			if (show) visible++;
 		}
 
+		// 时间线视图：逐条过滤，并按年份分组收起空年份
+		const timeline = document.getElementById('post-timeline');
+		if (timeline) {
+			const tItems = Array.from(timeline.querySelectorAll<HTMLElement>('.timeline-item'));
+			let tVisible = 0;
+			for (const item of tItems) {
+				const text = item.textContent?.toLowerCase() ?? '';
+				const tags = (item.dataset.tags ?? '').split(',').filter(Boolean);
+				const matchTag = !activeTag || tags.includes(activeTag);
+				const matchQuery = !q || text.includes(q);
+				const show = matchTag && matchQuery;
+				(item.closest('li') as HTMLElement).hidden = !show;
+				if (show) tVisible++;
+			}
+			for (const section of Array.from(timeline.querySelectorAll<HTMLElement>('.timeline-year'))) {
+				const anyVisible = Array.from(
+					section.querySelectorAll<HTMLElement>('.timeline-item'),
+				).some((it) => !(it.closest('li') as HTMLElement).hidden);
+				section.hidden = !anyVisible;
+			}
+			visible = view === 'timeline' ? tVisible : visible;
+		}
+
 		if (resultCount) resultCount.textContent = visible > 0 ? `共 ${visible} 篇` : '';
 		if (emptyState) emptyState.hidden = visible !== 0;
+	}
+
+	/** 切换列表 / 时间线视图 */
+	function setView(next: 'list' | 'timeline') {
+		view = next;
+		const list = document.getElementById('post-list');
+		const timeline = document.getElementById('post-timeline');
+		if (list) list.hidden = next !== 'list';
+		if (timeline) timeline.hidden = next !== 'timeline';
+		document
+			.querySelectorAll<HTMLButtonElement>('.view-toggle__btn')
+			.forEach((b) => b.classList.toggle('is-active', b.dataset.view === next));
+		applyFilter();
 	}
 
 	/** 地址栏跟着筛选走：刷新、分享、从文章页返回都能还原状态 */
@@ -148,6 +230,16 @@ const allTags = [...tagCount.entries()]
 				setActive(match);
 			}
 		}
+
+		// 列表 / 时间线视图切换
+		const viewButtons = Array.from(
+			document.querySelectorAll<HTMLButtonElement>('.view-toggle__btn'),
+		);
+		viewButtons.forEach((btn) => {
+			btn.addEventListener('click', () => {
+				setView((btn.dataset.view as 'list' | 'timeline') ?? 'list');
+			});
+		});
 
 		applyFilter();
 	}
@@ -268,6 +360,126 @@ const allTags = [...tagCount.entries()]
 		margin: 0;
 		padding: 0;
 	}
+	.view-toggle {
+		display: inline-flex;
+		gap: 0.2rem;
+		padding: 0.2rem;
+		border-radius: var(--r-pill);
+		background: var(--chip-bg-dim);
+		margin: 0 0 1rem;
+	}
+	.view-toggle__btn {
+		font-size: 0.8rem;
+		padding: 0.32rem 0.95rem;
+		border-radius: var(--r-pill);
+		border: none;
+		background: transparent;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		transition: all var(--dur-fast) var(--ease-out);
+	}
+	.view-toggle__btn:hover {
+		color: rgb(var(--ink));
+	}
+	.view-toggle__btn.is-active {
+		background: var(--glass-bg-strong);
+		color: rgb(var(--accent-deep));
+		font-weight: 700;
+		box-shadow: 0 1px 2px rgba(var(--shadow-color), 0.12);
+	}
+
+	/* ---- 时间线视图 ---- */
+	.timeline[hidden] {
+		display: none;
+	}
+	.timeline-year {
+		position: relative;
+		padding-left: 1.6rem;
+		margin-bottom: 2.2rem;
+	}
+	/* 左侧年份竖线 */
+	.timeline-year::before {
+		content: '';
+		position: absolute;
+		left: 0.28rem;
+		top: 0.5rem;
+		bottom: 0.5rem;
+		width: 1px;
+		background: linear-gradient(rgba(var(--accent), 0.5), rgba(var(--line), 0.9));
+	}
+	.timeline-year__head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.8rem;
+		margin: 0 0 0.9rem;
+		position: relative;
+	}
+	.timeline-year__head::before {
+		content: '';
+		position: absolute;
+		left: -1.6rem;
+		top: 0.5em;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: rgb(var(--accent));
+		box-shadow: 0 0 0 4px rgba(var(--accent), 0.15);
+	}
+	.timeline-year__num {
+		font-size: 1.5rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: rgb(var(--ink));
+		line-height: 1;
+	}
+	.timeline-year__count {
+		font-size: 0.72rem;
+		letter-spacing: 0.14em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.timeline-year__list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+	.timeline-item {
+		display: flex;
+		align-items: baseline;
+		gap: 0.9rem;
+		padding: 0.55rem 0.7rem;
+		border-radius: var(--r-md);
+		text-decoration: none;
+		color: inherit;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.timeline-item:hover {
+		background: var(--glass-bg);
+	}
+	.timeline-item__date {
+		font-size: 0.78rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		flex-shrink: 0;
+	}
+	.timeline-item__title {
+		font-size: 0.98rem;
+		font-weight: 600;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.timeline-item:hover .timeline-item__title {
+		color: rgb(var(--accent-deep));
+	}
+	.timeline-item__tags {
+		margin-left: auto;
+		font-size: 0.72rem;
+		color: rgb(var(--muted-light));
+		white-space: nowrap;
+	}
 	.empty-state {
 		margin-top: 2em;
 		text-align: center;
@@ -276,6 +488,14 @@ const allTags = [...tagCount.entries()]
 	@media (max-width: 720px) {
 		.toolbar {
 			position: static;
+		}
+		.timeline-item {
+			flex-wrap: wrap;
+			gap: 0.2rem 0.7rem;
+		}
+		.timeline-item__tags {
+			margin-left: 0;
+			width: 100%;
 		}
 	}
 </style>

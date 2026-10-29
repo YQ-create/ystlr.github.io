@@ -1,0 +1,191 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { getCollection } from 'astro:content';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+
+const posts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+// 按标签分组：每个标签收集文章；标签按文章数量降序、同数按拼音
+const byTag = new Map<string, typeof posts>();
+for (const post of posts) {
+	for (const tag of post.data.tags) {
+		if (!byTag.has(tag)) byTag.set(tag, []);
+		byTag.get(tag)!.push(post);
+	}
+}
+const groups = [...byTag.entries()]
+	.sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-Hans-CN'))
+	.map(([tag, list]) => ({ tag, list }));
+const totalTags = groups.length;
+---
+
+<BaseLayout title={`标签 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main class="tags">
+		<header class="page-head" data-reveal>
+			<span class="sec-head__index">TAGS / {String(totalTags).padStart(2, '0')}</span>
+			<h1>标签</h1>
+			<p>按主题浏览全部文章，共 {totalTags} 个标签、{posts.length} 篇文章。</p>
+		</header>
+
+		<div class="tag-cloud" data-reveal data-reveal-delay="80">
+			{groups.map(({ tag, list }) => (
+				<a class="tag-chip" href={`/blog/?tag=${encodeURIComponent(tag)}`} data-tag={tag}>
+					{tag}
+					<span class="tag-chip__count">{list.length}</span>
+				</a>
+			))}
+		</div>
+
+		{groups.map(({ tag, list }, gi) => (
+			<section class="tag-group" data-reveal data-reveal-delay={gi * 40}>
+				<header class="tag-group__head">
+					<h2 class="tag-group__title">
+						<a href={`/blog/?tag=${encodeURIComponent(tag)}`}>{tag}</a>
+					</h2>
+					<span class="tag-group__count">{list.length} 篇</span>
+				</header>
+				<ul class="tag-group__list">
+					{list.map((post) => (
+						<li>
+							<a class="tag-post" href={`/blog/${post.id}/`}>
+								<span class="tag-post__date"><FormattedDate date={post.data.pubDate} /></span>
+								<span class="tag-post__title">{post.data.title}</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		))}
+	</main>
+</BaseLayout>
+
+<style>
+	.tags {
+		width: var(--w-page);
+	}
+	.page-head {
+		padding: 1rem 0 1.6rem;
+	}
+	.page-head h1 {
+		margin: 0.2em 0 0.35em;
+	}
+	.page-head p {
+		color: rgb(var(--muted));
+		margin: 0;
+	}
+
+	.tag-cloud {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin-bottom: 2.4rem;
+	}
+	.tag-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.82rem;
+		padding: 0.36rem 0.85rem;
+		border-radius: var(--r-pill);
+		border: 1px solid rgba(var(--line), 1);
+		background: var(--chip-bg);
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out);
+	}
+	.tag-chip:hover {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.5);
+		transform: translateY(-1px);
+	}
+	.tag-chip__count {
+		font-size: 0.7rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.tag-chip:hover .tag-chip__count {
+		color: rgb(var(--accent));
+	}
+
+	.tag-group {
+		padding-top: 1.3rem;
+		margin-bottom: 1.6rem;
+		border-top: 1px solid rgba(var(--line), 0.9);
+	}
+	.tag-group__head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.7rem;
+		margin-bottom: 0.9rem;
+	}
+	.tag-group__title {
+		margin: 0;
+		font-size: 1.12rem;
+	}
+	.tag-group__title a {
+		color: rgb(var(--ink));
+		text-decoration: none;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.tag-group__title a:hover {
+		color: rgb(var(--accent-deep));
+	}
+	.tag-group__count {
+		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.tag-group__list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.tag-post {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.62rem 0.7rem;
+		border-radius: var(--r-md);
+		text-decoration: none;
+		color: inherit;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.tag-post:hover {
+		background: var(--glass-bg);
+	}
+	.tag-post__date {
+		font-size: 0.78rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		flex-shrink: 0;
+		width: 6.2rem;
+	}
+	.tag-post__title {
+		font-size: 0.96rem;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.tag-post:hover .tag-post__title {
+		color: rgb(var(--accent-deep));
+	}
+
+	@media (max-width: 600px) {
+		.tag-post {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.15rem;
+		}
+		.tag-post__date {
+			width: auto;
+		}
+	}
+</style>

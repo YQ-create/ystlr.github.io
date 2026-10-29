@@ -85,7 +85,7 @@ const start = 0;
 						aria-label={it.alt ?? `第 ${i + 1} 张`}
 						tabindex={i === start ? 0 : -1}
 					>
-						<Image src={it.image} alt={it.alt ?? ''} widths={[400, 800]} sizes="(max-width: 720px) 60vw, 320px" loading={i < 3 ? 'eager' : 'lazy'} />
+						<Image src={it.image} alt={it.alt ?? ''} widths={[400, 800]} sizes="(max-width: 720px) 60vw, 320px" loading={i < 3 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : 'auto'} decoding="async" />
 						{it.title && <span class="dc-cap">{it.title}</span>}
 					</Tag>
 				);

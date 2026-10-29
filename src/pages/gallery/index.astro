@@ -43,7 +43,7 @@ for (const photo of photos) {
 	bigUrls.set(photo.id, big.src);
 }
 
-// 追光网格数据：每张照片生成一张彩色卡片，附日期/标题/强调色
+// 追光网格数据：每张照片生成一张彩色卡片，附日期/标题/强调色，可点开灯箱看大图
 const ACCENTS = ['#ffb86c', '#7c5cff', '#ff6b9d', '#4cc2ff', '#5ad1a0', '#ffd166'];
 const chromaItems = await Promise.all(
 	photos.map(async (photo, i) => {
@@ -51,12 +51,13 @@ const chromaItems = await Promise.all(
 		const d = photo.data.date;
 		const month = String(d.getMonth() + 1).padStart(2, '0');
 		const day = String(d.getDate()).padStart(2, '0');
+		const title = photo.data.title ?? photo.data.caption ?? '';
 		return {
 			image: img.src,
-			title: photo.data.title ?? photo.data.caption ?? '',
+			title,
 			subtitle: `${d.getFullYear()} · ${month} 月 ${day} 日`,
 			accent: ACCENTS[i % ACCENTS.length],
-			url: null,
+			lightbox: bigUrls.get(photo.id),
 		};
 	})
 );
@@ -105,18 +106,18 @@ tags: ["生活", "风景"]
 							columns={4}
 							minCardWidth={180}
 							gap={14}
-							radius={260}
-							softness={0.6}
-							damping={0.45}
-							fadeOut={0.6}
+							radius={220}
+							softness={0.72}
+							damping={0.5}
+							fadeOut={0.5}
 							grayscale={1}
-							dim={0.12}
-							glow={0.5}
+							dim={0.1}
+							glow={0.62}
 							borderGlow={1}
 							aspectRatio="4 / 3"
 							cardRadius={22}
 							showInfo={true}
-							frame={false}
+							frame={true}
 							theme="dark"
 						/>
 					</div>

@@ -38,6 +38,8 @@ interface Item {
 	subtitle?: string;
 	accent?: string;
 	url?: string;
+	/** 大图 URL：设置后卡片变成可点击按钮，点击派发 chroma:open 事件（用于接灯箱） */
+	lightbox?: string;
 }
 
 interface Props {
@@ -111,6 +113,7 @@ const safeItems = items.map((it, i) => ({
 	subtitle: it.subtitle ?? '',
 	accent: it.accent ?? accentDefault,
 	url: it.url ?? null,
+	lightbox: it.lightbox ?? null,
 	key: i,
 }));
 ---
@@ -152,7 +155,20 @@ const safeItems = items.map((it, i) => ({
 				) : null}
 			</>
 		);
-		return item.url ? (
+		return item.lightbox ? (
+			<button
+				class="cg-card"
+				type="button"
+				data-accent={accent}
+				data-lightbox
+				data-full={item.lightbox}
+				data-caption={item.title || item.subtitle || ''}
+				aria-label={`放大查看：${item.title || '照片'}`}
+				style={`--cg-accent:${accent};`}
+			>
+				{inner}
+			</button>
+		) : item.url ? (
 			<a
 				class="cg-card"
 				data-accent={accent}
@@ -197,11 +213,27 @@ const safeItems = items.map((it, i) => ({
 		color: inherit;
 		background: #111;
 		isolation: isolate;
+		padding: 0;
+		border: none;
+		text-align: left;
+		font: inherit;
+		cursor: default;
+		transform: translateY(0);
+		transition: transform 0.45s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
 		--cg-mask-x: 50%;
 		--cg-mask-y: 50%;
 		--cg-mask-r: var(--cg-radius, 260px);
 		--cg-mask-o: 0; /* 彩色层不透明度（悬停/进入时为 1） */
 		--cg-fade-o: 1; /* 淡出回灰控制 */
+	}
+	/* 可点击卡片（灯箱/链接）给手型 + 悬停上浮 */
+	.cg-card[data-lightbox],
+	a.cg-card {
+		cursor: pointer;
+	}
+	.cg-card[data-lightbox]:hover,
+	a.cg-card:hover {
+		transform: translateY(-5px);
 	}
 	.cg-card::after {
 		content: '';
@@ -232,6 +264,11 @@ const safeItems = items.map((it, i) => ({
 		height: 100%;
 		object-fit: cover;
 		display: block;
+		transition: transform 0.7s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+	}
+	.cg-card:hover .cg-card__gray,
+	.cg-card:hover .cg-card__color {
+		transform: scale(1.06);
 	}
 	/* 底层：灰度 + 压暗 */
 	.cg-card__gray {

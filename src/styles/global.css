@@ -123,57 +123,6 @@
 	--btn-tint: 232, 224, 212;
 }
 
-/* ============ 调色盘：多套强调色（深浅主题各自一套） ============ */
-/* 默认「暖橙」即上面的 :root / [data-theme='light']，这里只覆盖其余配色。 */
-
-/* 海蓝 */
-html[data-accent='blue'] {
-	--accent: 96, 140, 200;
-	--accent-soft: 124, 166, 218;
-	--accent-deep: 152, 190, 232;
-}
-html[data-accent='blue'][data-theme='light'] {
-	--accent: 86, 126, 184;
-	--accent-soft: 114, 152, 204;
-	--accent-deep: 68, 102, 156;
-}
-
-/* 青绿 */
-html[data-accent='teal'] {
-	--accent: 82, 166, 148;
-	--accent-soft: 112, 186, 170;
-	--accent-deep: 142, 206, 190;
-}
-html[data-accent='teal'][data-theme='light'] {
-	--accent: 74, 150, 134;
-	--accent-soft: 102, 172, 158;
-	--accent-deep: 58, 126, 112;
-}
-
-/* 藕紫 */
-html[data-accent='violet'] {
-	--accent: 150, 120, 196;
-	--accent-soft: 172, 146, 214;
-	--accent-deep: 194, 172, 230;
-}
-html[data-accent='violet'][data-theme='light'] {
-	--accent: 136, 106, 182;
-	--accent-soft: 160, 134, 202;
-	--accent-deep: 114, 86, 156;
-}
-
-/* 玫粉 */
-html[data-accent='pink'] {
-	--accent: 198, 110, 138;
-	--accent-soft: 216, 136, 160;
-	--accent-deep: 230, 160, 180;
-}
-html[data-accent='pink'][data-theme='light'] {
-	--accent: 184, 98, 126;
-	--accent-soft: 204, 126, 150;
-	--accent-deep: 156, 78, 104;
-}
-
 /* ============ Studio 版式：近黑台面 + 米白显示体 + 1px 发丝线 ============ */
 /*
   参考「studio / 产品页」的视觉体系：极深底色、紧收的巨型标题、克制的暖白按钮、

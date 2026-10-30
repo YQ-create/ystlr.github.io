@@ -21,7 +21,7 @@ export const HERO = {
 export const PROFILE = {
 	// 头像图片：把图片放进 public/ 目录（如 public/avatar.png），这里填 '/avatar.png'；
 	// 留空字符串则显示名字首字母。
-	avatar: '/avatar.jpg',
+	avatar: '',
 	role: 'Notes on life & writing',
 	bio: '奇奇怪怪',
 	topics: ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '照片记录', '慢慢整理'],

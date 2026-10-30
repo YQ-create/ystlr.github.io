@@ -53,6 +53,7 @@ const latest = posts[0]?.data.pubDate;
 import CursorGrid from '../components/CursorGrid.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
+import HoloCard from '../components/HoloCard.astro';
 import discoverData from '../data/discover.json';
 
 import { STACK as stack } from '../data/stack';
@@ -176,10 +177,10 @@ const explore = [
 			</nav>
 		</section>
 
-		<!-- ═══════════ Act 2: Statement（钉住式逐字揭示） ═══════════ -->
+		<!-- ═══════════ Act 2: Statement（单屏宣言，一次淡入上浮） ═══════════ -->
 		<section class="statement" id="statement" aria-label="宣言">
 			<span class="statement__mark" aria-hidden="true">NOTES</span>
-			<div class="pin">
+			<div class="pin" data-reveal>
 				<span class="eyebrow statement__eyebrow">01 / 宣言</span>
 				<p id="stmt">
 					在这里，把日常写成文字<br>
@@ -237,7 +238,23 @@ const explore = [
 				</div>
 				<figure class="split__media">
 					{splitImgSrc ? (
-						<img id="split-img" src={splitImgSrc} alt="记录下的生活瞬间" loading="lazy" decoding="async" />
+						<HoloCard
+							class="split__holo"
+							image={splitImgSrc}
+							alt="记录下的生活瞬间"
+							preset="bursts"
+							intensity={0.8}
+							scale={1}
+							edgeSparkle={0.75}
+							frame={4}
+							glare={0.5}
+							width={440}
+							ratio={0.8}
+							tiltMax={12}
+							hoverScale={1.04}
+							idle
+							shadow
+						/>
 					) : (
 						<div class="split-img-fallback" aria-hidden="true"></div>
 					)}
@@ -498,15 +515,15 @@ const explore = [
 
 		const splitSection = document.getElementById('split');
 
-		// ---- 颜色：一次读取、按需刷新（原来每帧 4 次 getComputedStyle） ----
+		// ---- 颜色：一次读取（站点固定深色主题，无需再响应换肤） ----
 		const readColors = () => ({
 			ink: cssColor('--ink', 'rgb(241,238,232)'),
 			accent: cssColor('--accent', 'rgb(208,132,92)'),
 			ghost: cssColor('--muted-light', 'rgb(104,102,98)'),
-			creamInk: cssColor('--cream-ink', 'rgb(18,17,15)', splitSection ?? document.body),
-			creamGhost: cssColor('--cream-muted', 'rgb(110,106,99)', splitSection ?? document.body),
+			creamInk: cssColor('--cream-ink', 'rgb(241,238,232)', splitSection ?? document.body),
+			creamGhost: cssColor('--cream-muted', 'rgb(142,139,133)', splitSection ?? document.body),
 		});
-		let C = readColors();
+		const C = readColors();
 
 		// ---- Act 1: Hero 逐字揭示（时间驱动 1.25s） ----
 		const heroTitleEl = document.querySelector<HTMLElement>('[data-hero-letters]');
@@ -527,17 +544,13 @@ const explore = [
 		}
 		requestAnimationFrame(tickHero);
 
-		// ---- Act 2: Statement（滚动驱动） ----
-		const stmtEl = document.getElementById('stmt');
-		const stmtChars = stmtEl ? splitChars(stmtEl) : [];
+		// ---- Act 2: Statement —— 由 Motion 引擎用 data-reveal 一次性淡入上浮 ----
 
-		// ---- Act 3: 反色分栏 ----
+		// ---- Act 3: 分栏（02 / 关于这里）标题逐字揭示 + 事实列表 ----
 		const splitH2El = document.getElementById('split-h2');
 		const splitCharsArr = splitH2El ? splitChars(splitH2El) : [];
 		const splitRow = document.querySelector<HTMLElement>('[data-split-row]');
-		const splitImg = document.getElementById('split-img') as HTMLImageElement | null;
 
-		// 视口高度、分栏顶边：只在尺寸变化时量一次（原来每帧 getBoundingClientRect 强制布局）
 		let vh = window.innerHeight;
 		let splitTop = 0;
 		const measure = () => {
@@ -546,22 +559,7 @@ const explore = [
 		};
 		measure();
 
-		// 可见性：两幕各自只在视口内参与绘制
-		const seen = { stmt: true, split: true };
-		new IntersectionObserver(
-			([e]) => {
-				seen.stmt = e.isIntersecting;
-			},
-			{ rootMargin: '12% 0px' },
-		).observe(document.getElementById('statement') ?? document.body);
-
-		// 已画到的进度：p 不变就不重复写 style（避免离屏/饱和后仍每帧写 195 个属性）
-		let lastStmt = -1;
 		let lastSplit = -1;
-
-		// 初始隐藏：先按 p=0 画一次，之后交给滚动
-		paint(stmtChars, 0, 0.16, C.ink, C.accent, C.ghost);
-		lastStmt = 0;
 		paint(splitCharsArr, 0, 0.35, C.creamInk, C.accent, C.creamGhost);
 		lastSplit = 0;
 
@@ -572,61 +570,39 @@ const explore = [
 			ticking = true;
 			requestAnimationFrame(() => {
 				ticking = false;
+				if (!splitSection) return;
 				const y = window.scrollY;
-				const q = y / Math.max(1, vh);
-
-				if (seen.stmt) {
-					// Statement: rise + reveal（压缩到约 1 屏内完成，避免滚动过长）
-					const s = clamp((q - 0.6) / 0.7, 0, 1);
-					const riseY = 0.205 * Math.pow(1 - s, 2) * vh;
-					if (stmtEl) stmtEl.style.transform = `translateY(${riseY.toFixed(1)}px)`;
-
-					const stmtP = clamp((q - 0.5) / 1.0, 0, 1);
-					if (stmtP !== lastStmt) {
-						paint(stmtChars, stmtP, 0.16, C.ink, C.accent, C.ghost);
-						lastStmt = stmtP;
+				const top = splitTop - y;
+				if (top < vh && top > -splitSection.offsetHeight) {
+					const p2 = clamp((0.8 - top / vh) / 0.65, 0, 1);
+					if (p2 !== lastSplit) {
+						paint(splitCharsArr, p2, 0.35, C.creamInk, C.accent, C.creamGhost);
+						lastSplit = p2;
 					}
-					// 导航 CTA 弹入（statement 40% 时）
-					document.body.classList.toggle('stmt-on', stmtP > 0.4);
-				}
-
-				// 反色分栏：标题逐字揭示 + 事实列表 + 图片缩放
-				if (splitSection) {
-					const top = splitTop - y;
-					if (top < vh && top > -splitSection.offsetHeight) {
-						const p2 = clamp((0.8 - top / vh) / 0.65, 0, 1);
-						if (p2 !== lastSplit) {
-							paint(splitCharsArr, p2, 0.35, C.creamInk, C.accent, C.creamGhost);
-							lastSplit = p2;
-						}
-						if (splitRow) splitRow.toggleAttribute('data-on', p2 > 0.86);
-						if (splitImg) {
-							const scaleP = clamp(1 - top / vh, 0, 1);
-							splitImg.style.transform = `scale(${(1.06 - 0.06 * scaleP).toFixed(4)})`;
-						}
-					}
+					if (splitRow) splitRow.toggleAttribute('data-on', p2 > 0.86);
 				}
 			});
 		}
 		window.addEventListener('scroll', onScroll, { passive: true });
 		window.addEventListener('resize', () => {
 			measure();
-			lastStmt = -1;
 			lastSplit = -1;
 			onScroll();
 		});
 		window.addEventListener('load', measure, { once: true });
 		onScroll();
 
-		// 换肤 / 换配色后重算颜色，并让下一帧重画
-		const syncColors = () => {
-			C = readColors();
-			lastStmt = -1;
-			lastSplit = -1;
-			onScroll();
-		};
-		document.addEventListener('theme-change', syncColors);
-		document.addEventListener('accent-change', syncColors);
+		// ---- 浮动 CTA：宣言进入视口时浮现 ----
+		const stmtSection = document.getElementById('statement');
+		if (stmtSection) {
+			const io = new IntersectionObserver(
+				([e]) => {
+					document.body.classList.toggle('stmt-on', e.isIntersecting && e.intersectionRatio > 0.3);
+				},
+				{ threshold: [0, 0.3, 0.5] },
+			);
+			io.observe(stmtSection);
+		}
 	}
 
 	document.addEventListener('astro:page-load', init);
@@ -866,13 +842,14 @@ const explore = [
 		font-size: 0.86rem;
 	}
 
-	/* ═══════════ Act 2: Statement ═══════════ */
+	/* ═══════════ Act 2: Statement（单屏宣言） ═══════════ */
 	.statement {
 		position: relative;
-		height: 200vh;
-		margin-top: -4vh;
+		min-height: 82vh;
+		display: grid;
+		place-items: center;
 		overflow: hidden;
-		pointer-events: none;
+		padding: clamp(3rem, 8vw, 5rem) var(--gutter);
 	}
 	.statement__mark {
 		position: absolute;
@@ -888,14 +865,12 @@ const explore = [
 		pointer-events: none;
 	}
 	.statement .pin {
-		position: sticky;
-		top: 0;
-		height: 100vh;
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 1.7rem;
+		gap: 1.1rem;
 	}
 	.statement__eyebrow {
 		position: relative;
@@ -908,11 +883,10 @@ const explore = [
 		text-align: center;
 		font-size: clamp(1.45rem, 3.3vw, 3rem);
 		font-weight: 600;
-		line-height: 1.2;
+		line-height: 1.35;
 		letter-spacing: -0.032em;
 		color: rgb(var(--ink));
 		white-space: nowrap;
-		will-change: transform;
 	}
 
 	/* ═══════════ Act 3: 关于这里（跟随主题的面板） ═══════════ */
@@ -939,10 +913,6 @@ const explore = [
 	/* 网格追光垫在内容下面，只做装饰 */
 	:global(.split__grid) {
 		z-index: 0;
-	}
-	/* 浅色主题白底压对比，网格线要更实一点 */
-	:global(html[data-theme='light']) :global(.split__grid) {
-		--cg-boost: 2.2;
 	}
 	.split__eyebrow {
 		color: rgba(var(--cream-ink), 0.5);
@@ -1020,17 +990,15 @@ const explore = [
 	}
 	.split__media {
 		margin: 0;
+		display: flex;
+		justify-content: center;
 	}
-	.split__media img {
-		width: 100%;
-		height: auto;
-		aspect-ratio: 4 / 5;
-		object-fit: cover;
-		border-radius: 14px;
-		transform-origin: 50% 60%;
-		transform: scale(1.06);
+	.split__media :global(.holo-card) {
+		/* 全息卡在右栏居中，宽度由组件 --hc-w 决定、随容器收缩 */
+		margin-top: 0.25rem;
 	}
 	.split-img-fallback {
+		width: 100%;
 		aspect-ratio: 4 / 5;
 		border-radius: 14px;
 		background: linear-gradient(160deg, rgba(var(--cream-ink), 0.16) 0%, rgba(var(--cream-ink), 0.05) 100%);
@@ -1690,7 +1658,9 @@ const explore = [
 		.split__media {
 			order: -1;
 		}
-		.split__media img,
+		.split__media :global(.holo-card) {
+			--hc-ratio: 0.66 !important;
+		}
 		.split-img-fallback {
 			aspect-ratio: 16 / 10;
 		}

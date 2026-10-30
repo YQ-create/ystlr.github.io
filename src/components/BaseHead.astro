@@ -51,60 +51,24 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
-<!-- 首屏防白闪：CSS 加载前先把当前主题背景铺上，避免主题闪一下 -->
+<!-- 首屏防白闪：CSS 加载前先把深色背景铺上（站点固定深色主题，无浅色切换） -->
 <style is:inline>
 	html {
 		background-color: #181512;
 		color-scheme: dark;
 	}
-	html[data-theme='light'] {
-		background-color: #f6f3ee;
-		color-scheme: light;
-	}
 </style>
 <script is:inline>
-	/* 默认深色，用户手动切换后记住偏好（localStorage）。
+	/* 站点固定深色主题（已移除浅色与调色盘）。
 	   View Transitions 切页时 Astro 会用新文档的 <html> 属性覆盖当前节点，
-	   所以 after-swap 立刻再写一次，保证主题 token 不丢。 */
+	   所以 after-swap 再写一次，保证 token 不丢。 */
 	(() => {
-		const d = document.documentElement;
-		const KEY = 'ystlr-theme';
-		const ACCENT_KEY = 'ystlr-accent';
-		const ACCENTS = ['orange', 'blue', 'teal', 'violet', 'pink'];
 		const sync = () => {
+			const d = document.documentElement;
 			d.classList.add('js');
-			let theme = 'dark';
-			try {
-				const stored = localStorage.getItem(KEY);
-				if (stored === 'dark' || stored === 'light') theme = stored;
-			} catch {}
-			d.dataset.theme = theme;
+			d.dataset.theme = 'dark';
 			d.dataset.glass = 'frosted';
-			// 调色盘：默认暖橙
-			let accent = 'orange';
-			try {
-				const stored = localStorage.getItem(ACCENT_KEY);
-				if (stored && ACCENTS.includes(stored)) accent = stored;
-			} catch {}
-			d.dataset.accent = accent;
-			window.__setTheme = (t) => {
-				d.dataset.theme = t;
-				try {
-					localStorage.setItem(KEY, t);
-				} catch {}
-				// 广播给评论等需要跟随主题的第三方组件
-				window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: t } }));
-			};
-			window.__getTheme = () => d.dataset.theme || 'dark';
-			window.__setAccent = (a) => {
-				if (!ACCENTS.includes(a)) return;
-				d.dataset.accent = a;
-				try {
-					localStorage.setItem(ACCENT_KEY, a);
-				} catch {}
-				window.dispatchEvent(new CustomEvent('accent-change', { detail: { accent: a } }));
-			};
-			window.__getAccent = () => d.dataset.accent || 'orange';
+			window.__getTheme = () => 'dark';
 		};
 		sync();
 		document.addEventListener('astro:after-swap', sync);

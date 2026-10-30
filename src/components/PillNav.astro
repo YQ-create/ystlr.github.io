@@ -1078,6 +1078,10 @@ const {
 				window.removeEventListener('pointerup', release);
 				window.removeEventListener('pointercancel', release);
 				window.removeEventListener('scroll-spy', onSpy);
+				// 关键：换页时 header 被 transition:persist 保活，旧的实例被销毁后必须
+				// 清掉 ready 标记，否则 mount() 的 :not([data-pn-ready]) 会跳过它，
+				// 导致导航换页后高亮胶囊「冻住」、悬停/点击全部失效。
+				root.removeAttribute('data-pn-ready');
 			},
 		};
 	}

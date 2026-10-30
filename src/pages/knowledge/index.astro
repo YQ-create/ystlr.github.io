@@ -1,4 +1,6 @@
 ---
+// 知识库总览：左侧「索引」栏（分类 / 标签 / 条目清单）+ 右侧按分类分组的卡片。
+// 索引栏在桌面端常驻吸附，窄屏收成一条可横滑的分类胶囊，节省首屏高度。
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import { getCollection } from 'astro:content';
@@ -22,14 +24,43 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 	if (ap !== bp) return bp - ap;
 	return a[0].localeCompare(b[0], 'zh-Hans-CN');
 });
+
+// 锚点用序号（cat-01），避免中文分类名进 id；索引栏与正文共用这份编号
+const groups = categories.map(([name, list], i) => ({
+	id: `cat-${String(i + 1).padStart(2, '0')}`,
+	num: String(i + 1).padStart(2, '0'),
+	name,
+	list,
+}));
+
+// 标签聚合：出现次数多的排前面，同次数按拼音
+const tagCount = new Map<string, number>();
+for (const note of notes) {
+	for (const tag of note.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
+}
+const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'));
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const pinnedCount = notes.filter((n) => n.data.pinned).length;
 ---
 
 <BaseLayout title={`知识库 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
 	<main class="kb-main">
-		<header class="page-head" data-reveal>
-			<span class="sec-head__index">KNOWLEDGE / {String(notes.length).padStart(2, '0')}</span>
+		<header class="kb-head" data-reveal>
+			<span class="sec-head__index">KNOWLEDGE / {pad(notes.length)}</span>
 			<h1>知识库</h1>
-			<p>成体系的笔记与心得，独立于日常随笔，按分类慢慢沉淀。</p>
+			<p class="kb-head__desc">
+				成体系的笔记与心得，独立于日常随笔，按分类慢慢沉淀。
+			</p>
+			<p class="kb-head__meta">
+				<span>{pad(groups.length)} 个分类</span>
+				<span>{pad(tags.length)} 个标签</span>
+				{pinnedCount > 0 && <span>{pad(pinnedCount)} 条置顶</span>}
+			</p>
+			<p class="kb-filter-note" data-kb-note hidden>
+				<span data-kb-note-text></span>
+				<button type="button" class="kb-filter-note__reset" data-kb-reset>清除筛选</button>
+			</p>
 		</header>
 
 		{notes.length === 0 ? (
@@ -42,60 +73,288 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 				</p>
 			</div>
 		) : (
-			categories.map(([category, list]) => (
-				<section class="kb-cat" data-reveal>
-					<h2 class="kb-cat__title">
-						<span class="kb-cat__name">{category}</span>
-						<span class="kb-cat__count">{list.length}</span>
-					</h2>
-					<div class="kb-grid">
-						{list.map((note) => (
-							<a class="kb-card glass" href={`/knowledge/${note.id}/`}>
-								<div class="kb-card__top">
-									<span class="kb-card__tags">
-										{note.data.tags.slice(0, 3).map((t) => (
-											<span class="kb-card__tag">{t}</span>
-										))}
-									</span>
-									{note.data.pinned && (
-										<span class="kb-card__pin" title="置顶">◆</span>
-									)}
-								</div>
-								<h3 class="kb-card__title">{note.data.title}</h3>
-								{note.data.description && (
-									<p class="kb-card__desc">{note.data.description}</p>
-								)}
-								<time class="kb-card__date" datetime={note.data.pubDate.toISOString()}>
-									<FormattedDate date={note.data.pubDate} />
-								</time>
-							</a>
-						))}
+			<div class="kb-shell">
+				<!-- ═══ 索引栏 ═══ -->
+				<aside class="kb-index" aria-label="知识库索引">
+					<div class="kb-index__head">
+						<span class="sec-head__index">INDEX</span>
+						<span class="kb-index__total" data-kb-total>{pad(notes.length)} 条</span>
 					</div>
-				</section>
-			))
+
+					{tags.length > 0 && (
+						<div class="kb-index__tags" role="group" aria-label="按标签筛选">
+							{tags.map(([tag, count]) => (
+								<button class="kb-tag" type="button" data-kb-tag={tag} aria-pressed="false">
+									<span class="kb-tag__name">{tag}</span>
+									<span class="kb-tag__count">{count}</span>
+								</button>
+							))}
+						</div>
+					)}
+
+					<nav class="kb-index__nav" aria-label="按分类跳转">
+						{groups.map((group) => (
+							<div class="kb-group" data-kb-group={group.id}>
+								<a class="kb-group__head" href={`#${group.id}`} data-kb-anchor={group.id}>
+									<span class="kb-group__n">{group.num}</span>
+									<span class="kb-group__name">{group.name}</span>
+									<span class="kb-group__count" data-kb-gcount>{pad(group.list.length)}</span>
+								</a>
+								<ul class="kb-group__list">
+									{group.list.map((note, i) => (
+										<li>
+											<a
+												class="kb-index__link"
+												href={`/knowledge/${note.id}/`}
+												data-kb-link
+												data-tags={note.data.tags.join(',')}
+											>
+												<span class="kb-index__n">{pad(i + 1)}</span>
+												<span class="kb-index__t">{note.data.title}</span>
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						))}
+					</nav>
+
+					<p class="kb-index__empty" data-kb-empty hidden>没有匹配的条目</p>
+				</aside>
+
+				<!-- ═══ 正文：按分类分组 ═══ -->
+				<div class="kb-body">
+					{groups.map((group) => (
+						<section class="kb-cat" id={group.id} data-kb-section={group.id}>
+							<h2 class="kb-cat__title">
+								<span class="kb-cat__n">{group.num}</span>
+								<span class="kb-cat__name">{group.name}</span>
+								<span class="kb-cat__rule" aria-hidden="true"></span>
+								<span class="kb-cat__count" data-kb-count>{pad(group.list.length)} 条</span>
+							</h2>
+							<div class="kb-grid">
+								{group.list.map((note) => (
+									<a
+										class="kb-card"
+										href={`/knowledge/${note.id}/`}
+										data-kb-card
+										data-tags={note.data.tags.join(',')}
+									>
+										<div class="kb-card__top">
+											<span class="kb-card__tags">
+												{note.data.tags.slice(0, 3).map((t) => (
+													<span class="kb-card__tag">{t}</span>
+												))}
+											</span>
+											{note.data.pinned && (
+												<span class="kb-card__pin" title="置顶">◆</span>
+											)}
+										</div>
+										<h3 class="kb-card__title">{note.data.title}</h3>
+										{note.data.description && (
+											<p class="kb-card__desc">{note.data.description}</p>
+										)}
+										<time class="kb-card__date" datetime={note.data.pubDate.toISOString()}>
+											<FormattedDate date={note.data.pubDate} />
+										</time>
+									</a>
+								))}
+							</div>
+						</section>
+					))}
+
+					<p class="kb-body__end">
+						— 共 <span data-kb-end>{pad(notes.length)}</span> 条
+					</p>
+				</div>
+			</div>
 		)}
 	</main>
 </BaseLayout>
 
-<style>
-	.kb-main {
-		width: var(--w-page);
-		margin-inline: auto;
-	}
-	.page-head {
-		padding: 1rem 0 1.2rem;
-	}
-	.page-head h1 {
-		margin: 0.2em 0 0.35em;
-	}
-	.page-head p {
-		color: rgb(var(--muted));
-		margin: 0;
+<script>
+	// 索引栏两件事：标签筛选（同步过滤索引条目与正文卡片）、分类高亮（跟随滚动）。
+	function init() {
+		const main = document.querySelector<HTMLElement>('.kb-main');
+		if (!main || main.dataset.kbWired) return;
+		main.dataset.kbWired = '1';
+
+		const chips = Array.from(main.querySelectorAll<HTMLButtonElement>('[data-kb-tag]'));
+		const cards = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-card]'));
+		const links = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-link]'));
+		const sections = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-section]'));
+		const groups = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-group]'));
+		const anchors = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-anchor]'));
+		const note = main.querySelector<HTMLElement>('[data-kb-note]');
+		const noteText = main.querySelector<HTMLElement>('[data-kb-note-text]');
+		const reset = main.querySelector<HTMLButtonElement>('[data-kb-reset]');
+		const empty = main.querySelector<HTMLElement>('[data-kb-empty]');
+		const total = main.querySelector<HTMLElement>('[data-kb-total]');
+		const end = main.querySelector<HTMLElement>('[data-kb-end]');
+		const totalLabel = total?.textContent ?? '';
+		const endLabel = end?.textContent ?? '';
+
+		const hasTag = (el: HTMLElement, tag: string) =>
+			(tag ? (el.dataset.tags ?? '') : '')
+				.split(',')
+				.map((t) => t.trim())
+				.filter(Boolean)
+				.includes(tag);
+
+		let active = '';
+
+		const apply = (tag: string) => {
+			active = tag;
+			chips.forEach((chip) => {
+				const on = chip.dataset.kbTag === tag;
+				chip.classList.toggle('is-active', on);
+				chip.setAttribute('aria-pressed', String(on));
+			});
+
+			let visibleCards = 0;
+			cards.forEach((card) => {
+				const on = !tag || hasTag(card, tag);
+				card.hidden = !on;
+				if (on) visibleCards += 1;
+			});
+
+			links.forEach((link) => {
+				const on = !tag || hasTag(link, tag);
+				const li = link.parentElement;
+				if (li) li.hidden = !on;
+			});
+
+			sections.forEach((section) => {
+				const on = Array.from(section.querySelectorAll<HTMLElement>('[data-kb-card]')).some((c) => !c.hidden);
+				section.hidden = !on;
+				const count = section.querySelector<HTMLElement>('[data-kb-count]');
+				if (count) {
+					const n = Array.from(section.querySelectorAll<HTMLElement>('[data-kb-card]')).filter(
+						(c) => !c.hidden,
+					).length;
+					count.textContent = `${String(n).padStart(2, '0')} 条`;
+				}
+			});
+
+			groups.forEach((group) => {
+				const linksInGroup = Array.from(group.querySelectorAll<HTMLElement>('[data-kb-link]'));
+				const shown = linksInGroup.filter((link) => !link.parentElement?.hidden).length;
+				group.hidden = shown === 0;
+				const count = group.querySelector<HTMLElement>('[data-kb-gcount]');
+				if (count) count.textContent = String(shown).padStart(2, '0');
+			});
+
+			if (empty) empty.hidden = visibleCards > 0;
+			if (total) total.textContent = tag ? `${String(visibleCards).padStart(2, '0')} 条` : totalLabel;
+			if (end) end.textContent = tag ? String(visibleCards).padStart(2, '0') : endLabel;
+			if (note) note.hidden = !tag;
+			if (noteText) noteText.textContent = tag ? `筛选「${tag}」· ${visibleCards} 条` : '';
+		};
+
+		chips.forEach((chip) => {
+			chip.addEventListener('click', () => {
+				const tag = chip.dataset.kbTag ?? '';
+				apply(active === tag ? '' : tag);
+			});
+		});
+		reset?.addEventListener('click', () => apply(''));
+
+		// 分类高亮：视口上半区进入哪个分类，索引栏对应组就点亮
+		if (sections.length && 'IntersectionObserver' in window) {
+			let currentId = '';
+			const io = new IntersectionObserver(
+				(entries) => {
+					const hit = entries
+						.filter((entry) => entry.isIntersecting)
+						.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+					if (!hit) return;
+					const id = (hit.target as HTMLElement).dataset.kbSection ?? '';
+					if (!id || id === currentId) return;
+					currentId = id;
+					anchors.forEach((anchor) => {
+						anchor.classList.toggle('is-active', anchor.dataset.kbAnchor === id);
+					});
+					if (window.matchMedia('(max-width: 980px)').matches) {
+						const activeAnchor = anchors.find((a) => a.dataset.kbAnchor === id);
+						activeAnchor?.scrollIntoView({ block: 'nearest', inline: 'center' });
+					}
+				},
+				{ rootMargin: '-96px 0px -62% 0px', threshold: 0 },
+			);
+			sections.forEach((section) => io.observe(section));
+		}
 	}
 
+	document.addEventListener('astro:page-load', init);
+	if (document.readyState !== 'loading') init();
+</script>
+
+<style>
+	.kb-main {
+		width: var(--w-wide);
+		max-width: calc(100% - var(--gutter) * 2);
+		margin-inline: auto;
+	}
+
+	/* ── 页头 ── */
+	.kb-head {
+		padding: 1rem 0 clamp(1.4rem, 3vw, 2.2rem);
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.kb-head h1 {
+		margin: 0.16em 0 0.3em;
+		font-size: clamp(2.1rem, 5vw, 3.4rem);
+		letter-spacing: -0.04em;
+	}
+	.kb-head__desc {
+		margin: 0;
+		max-width: 34em;
+		color: rgb(var(--muted));
+		line-height: 1.75;
+	}
+	.kb-head__meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem 1.4rem;
+		margin: 0.9rem 0 0;
+		font-size: 0.72rem;
+		letter-spacing: 0.13em;
+		text-transform: uppercase;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-filter-note {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 1rem 0 0;
+		font-size: 0.8rem;
+		color: rgb(var(--ink-soft));
+	}
+	.kb-filter-note[hidden] {
+		display: none;
+	}
+	.kb-filter-note__reset {
+		padding: 0.16rem 0.6rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.74rem;
+		cursor: pointer;
+		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+	}
+	.kb-filter-note__reset:hover {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--ink));
+	}
+
+	/* ── 空状态 ── */
 	.kb-empty {
+		margin-top: clamp(1.4rem, 3vw, 2rem);
 		padding: clamp(1.4rem, 3.4vw, 2.4rem);
-		border-radius: var(--r-lg);
+		border-radius: var(--card-radius);
 		max-width: 44rem;
 	}
 	.kb-empty h2 {
@@ -116,56 +375,261 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 		color: rgb(var(--accent-deep));
 	}
 
+	/* ── 两栏骨架：索引 264px + 正文 ── */
+	.kb-shell {
+		display: grid;
+		grid-template-columns: 264px minmax(0, 1fr);
+		gap: clamp(1.6rem, 3vw, 3rem);
+		align-items: start;
+		padding-top: clamp(1.4rem, 3vw, 2.2rem);
+	}
+
+	/* ── 索引栏 ── */
+	.kb-index {
+		position: sticky;
+		top: calc(72px + 0.6rem);
+		display: flex;
+		flex-direction: column;
+		gap: 1.1rem;
+		max-height: calc(100vh - 96px - 1rem);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding-right: 0.25rem;
+		scrollbar-width: thin;
+	}
+	.kb-index__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding-bottom: 0.7rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.kb-index__total {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+
+	.kb-index__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+	}
+	.kb-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.22rem 0.55rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.72rem;
+		line-height: 1.2;
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
+	}
+	.kb-tag__count {
+		font-size: 0.64rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-tag:hover {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--line));
+	}
+	.kb-tag.is-active {
+		color: rgb(var(--btn-solid-ink));
+		background: rgb(var(--btn-solid));
+		border-color: rgb(var(--btn-solid));
+	}
+	.kb-tag.is-active .kb-tag__count {
+		color: rgb(var(--btn-solid-ink));
+		opacity: 0.62;
+	}
+
+	.kb-index__nav {
+		display: flex;
+		flex-direction: column;
+		gap: 1.05rem;
+	}
+	.kb-group[hidden] {
+		display: none;
+	}
+	.kb-group__head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+		padding-bottom: 0.4rem;
+		border-bottom: 1px solid rgb(var(--line-soft));
+		color: rgb(var(--ink));
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.kb-group__n {
+		font-size: 0.64rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-group__name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.kb-group__count {
+		font-size: 0.64rem;
+		font-weight: 500;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-group__head:hover,
+	.kb-group__head.is-active {
+		color: rgb(var(--accent));
+	}
+	.kb-group__head.is-active .kb-group__n,
+	.kb-group__head.is-active .kb-group__count {
+		color: rgb(var(--accent));
+	}
+
+	.kb-group__list {
+		list-style: none;
+		margin: 0.45rem 0 0;
+		padding: 0 0 0 0.9rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		border-left: 1px solid rgb(var(--line-soft));
+	}
+	.kb-group__list li[hidden] {
+		display: none;
+	}
+	.kb-index__link {
+		display: flex;
+		align-items: baseline;
+		gap: 0.4rem;
+		padding: 0.24rem 0.3rem 0.24rem 0;
+		color: rgb(var(--muted));
+		font-size: 0.78rem;
+		line-height: 1.45;
+		text-decoration: none;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.kb-index__n {
+		flex: none;
+		font-size: 0.64rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-index__t {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.kb-index__link:hover {
+		color: rgb(var(--ink));
+	}
+	.kb-index__empty {
+		margin: 0;
+		font-size: 0.76rem;
+		color: rgb(var(--muted-light));
+	}
+	.kb-index__empty[hidden] {
+		display: none;
+	}
+
+	/* ── 正文 ── */
+	.kb-body {
+		min-width: 0;
+	}
 	.kb-cat {
 		margin-bottom: clamp(2rem, 4vw, 3rem);
+		scroll-margin-top: 96px;
+	}
+	.kb-cat[hidden] {
+		display: none;
 	}
 	.kb-cat__title {
 		display: flex;
 		align-items: baseline;
 		gap: 0.6rem;
-		font-size: 1.2rem;
+		margin: 0 0 1.1rem;
+		font-size: 1.02rem;
+		font-weight: 600;
+		letter-spacing: 0;
+	}
+	.kb-cat__n {
+		font-size: 0.66rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-cat__name {
+		font-size: 1.06rem;
+		font-weight: 650;
 		color: rgb(var(--ink));
-		margin: 0 0 1rem;
-		padding-bottom: 0.6rem;
-		border-bottom: 1px solid rgba(var(--line), 1);
+	}
+	.kb-cat__rule {
+		flex: 1;
+		height: 1px;
+		background: rgb(var(--line));
+		transform: translateY(-0.2em);
 	}
 	.kb-cat__count {
-		font-size: 0.74rem;
-		font-weight: 600;
+		font-size: 0.68rem;
+		font-weight: 500;
+		letter-spacing: 0.08em;
 		color: rgb(var(--muted-light));
-		background: var(--chip-bg);
-		border-radius: var(--r-pill);
-		padding: 0.1rem 0.6rem;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.kb-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: clamp(0.8rem, 1.6vw, 1.1rem);
+		grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+		gap: clamp(0.7rem, 1.4vw, 1rem);
 	}
 	.kb-card {
 		display: flex;
 		flex-direction: column;
 		gap: 0.45rem;
-		padding: 1.1rem 1.2rem;
-		border-radius: var(--r-md);
+		padding: 1.05rem 1.15rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--card-radius);
+		background: rgb(var(--paper));
 		text-decoration: none;
 		color: inherit;
 		transition:
 			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out),
-			border-color var(--dur) var(--ease-out);
+			border-color var(--dur) var(--ease-out),
+			background-color var(--dur) var(--ease-out);
+	}
+	.kb-card[hidden] {
+		display: none;
 	}
 	.kb-card:hover {
-		transform: translateY(-3px);
-		box-shadow: var(--glass-shine), var(--shadow-lg);
-		border-color: rgba(var(--accent), 0.4);
+		transform: translateY(-2px);
+		border-color: rgb(var(--line));
+		background: rgb(var(--surface));
 	}
 	.kb-card__top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.5rem;
+		min-height: 1.1rem;
 	}
 	.kb-card__tags {
 		display: flex;
@@ -173,27 +637,29 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 		gap: 0.3rem;
 	}
 	.kb-card__tag {
-		font-size: 0.68rem;
-		color: rgb(var(--accent-deep));
-		background: rgba(var(--accent), 0.12);
-		border-radius: var(--r-pill);
-		padding: 0.1rem 0.5rem;
+		font-size: 0.66rem;
+		letter-spacing: 0.02em;
+		color: rgb(var(--muted));
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: 999px;
+		padding: 0.06rem 0.45rem;
 	}
 	.kb-card__pin {
-		font-size: 0.7rem;
-		color: rgb(var(--ochre));
+		font-size: 0.64rem;
+		color: rgb(var(--accent));
 	}
 	.kb-card__title {
 		margin: 0;
-		font-size: 1.02rem;
+		font-size: 1rem;
 		font-weight: 650;
-		line-height: 1.4;
+		line-height: 1.42;
+		letter-spacing: -0.01em;
 	}
 	.kb-card__desc {
 		margin: 0;
-		font-size: 0.84rem;
+		font-size: 0.82rem;
 		color: rgb(var(--muted));
-		line-height: 1.6;
+		line-height: 1.65;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
@@ -201,8 +667,95 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 	}
 	.kb-card__date {
 		margin-top: auto;
-		font-size: 0.74rem;
+		padding-top: 0.3rem;
+		font-size: 0.7rem;
 		color: rgb(var(--muted-light));
 		letter-spacing: 0.04em;
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-body__end {
+		margin: 0;
+		padding-top: 1rem;
+		border-top: 1px solid rgb(var(--line-soft));
+		font-size: 0.68rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted-light));
+	}
+
+	/* ── 窄屏：索引栏收成一条可横滑的胶囊 ── */
+	@media (max-width: 980px) {
+		.kb-shell {
+			display: block;
+			padding-top: 1rem;
+		}
+		.kb-index {
+			position: sticky;
+			top: 66px;
+			z-index: 40;
+			flex-direction: row;
+			align-items: center;
+			width: fit-content;
+			max-width: 100%;
+			max-height: none;
+			margin-bottom: 1.4rem;
+			padding: 0.32rem;
+			overflow: hidden;
+			border: 1px solid rgb(var(--line));
+			border-radius: 999px;
+			background: var(--glass-bg-strong);
+			-webkit-backdrop-filter: blur(16px) saturate(1.3);
+			backdrop-filter: blur(16px) saturate(1.3);
+		}
+		.kb-index__head,
+		.kb-index__tags,
+		.kb-group__list,
+		.kb-index__empty {
+			display: none;
+		}
+		.kb-index__nav {
+			flex-direction: row;
+			gap: 0.2rem;
+			width: 100%;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+		.kb-index__nav::-webkit-scrollbar {
+			display: none;
+		}
+		.kb-group {
+			display: contents;
+		}
+		.kb-group__head {
+			flex: none;
+			gap: 0.3rem;
+			padding: 0.4rem 0.7rem;
+			border-bottom: 0;
+			border-radius: 999px;
+			font-size: 0.78rem;
+			white-space: nowrap;
+		}
+		.kb-group__head.is-active {
+			color: rgb(var(--btn-solid-ink));
+			background: rgb(var(--btn-solid));
+		}
+		.kb-group__head.is-active .kb-group__n,
+		.kb-group__head.is-active .kb-group__count {
+			color: rgb(var(--btn-solid-ink));
+			opacity: 0.6;
+		}
+		.kb-group__name {
+			flex: none;
+		}
+	}
+	@media (max-width: 600px) {
+		.kb-head {
+			padding-top: 0.6rem;
+		}
+		.kb-head__meta {
+			gap: 0.35rem 1rem;
+		}
+		.kb-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

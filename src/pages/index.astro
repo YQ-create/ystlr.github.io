@@ -1,19 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ShapeWaves from '../components/ShapeWaves.astro';
-import SplitText from '../components/SplitText.astro';
-import SpecularButton from '../components/SpecularButton.astro';
 import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
 import { AUTHOR_NAME, HERO, PROFILE, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
 	.filter((post) => !post.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-// 精选 = 手动标了 featured 的（按时间倒序），不足 3 篇时用最新的补齐
 const pinned = posts.filter((post) => post.data.featured);
 const featured = [...pinned, ...posts.filter((post) => !post.data.featured)].slice(0, 3);
 
@@ -21,12 +18,11 @@ const photos = (await getCollection('gallery')).sort(
 	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
-// 知识库：仅用于首页统计（板块改为入口卡片，点击进入独立页）
 const knowledge = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// 标签云 + 最新动态 + 站点统计（门户式版块用）
+// 标签云 + 最新动态 + 站点统计
 const tagCount = new Map<string, number>();
 for (const post of posts) for (const tag of post.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
 const tagStats = [...tagCount.entries()]
@@ -54,149 +50,113 @@ const stats = [
 
 const latest = posts[0]?.data.pubDate;
 
-// 发现页链接摘要：首页「发现」板块展示前几条
 import discoverData from '../data/discover.json';
 const discoverPreview = discoverData.collections
 	.flatMap((g) => g.links)
 	.slice(0, 6);
+
+// 深色分栏配图：取最新一张照片
+let splitImgSrc = '';
+if (photos.length > 0) {
+	const img = await getImage({ src: photos[0].data.image as ImageMetadata, width: 1400, format: 'webp' });
+	splitImgSrc = img.src;
+}
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero>
+	<!-- 碗状辉光画布（固定层，全屏拉伸） -->
+	<div class="atmo" aria-hidden="true">
+		<canvas data-bowl-glow width="96" height="60"></canvas>
+	</div>
+
 	<main class="home">
-		<!-- ============ 首页 Hero ============ -->
+		<!-- ═══════════ Act 1: Hero ═══════════ -->
 		<section class="hero" id="home" data-section="home">
-			<div class="hero-waves" aria-hidden="true">
-				<ShapeWaves
-					shapes="mixed"
-					cellSize={12}
-					dotSize={0.72}
-					speed={0.8}
-					scale={1.1}
-					contrast={1.15}
-					brightness={0.42}
-					flow={0.6}
-					direction={24}
-					fade={0.28}
-					interactive={true}
-					splashRadius={60}
-					splashStrength={0.5}
-					glow={0.45}
-					intro={true}
-					introDuration={1.8}
-				/>
-			</div>
-
 			<div class="hero-inner">
-				<p class="hero-eyebrow">
-					<span class="pulse" aria-hidden="true"></span>
-					{HERO.role}
-				</p>
-
-				<div class="hero-head">
-					<h1 class="hero-title">
-						<SplitText
-							text={HERO.title}
-							tag="span"
-							effect="blur"
-							duration={0.9}
-							delay={45}
-							staggerFrom="start"
-							trigger="load"
-							mask
-							class="hero-title__text"
-						/>
-					</h1>
-					<p class="hero-sub">
-						<SplitText
-							text={HERO.subtitle}
-							tag="span"
-							effect="fade"
-							duration={0.9}
-							delay={70}
-							staggerFrom="start"
-							trigger="load"
-							class="hero-sub__text"
-						/>
+				<div class="hero-copy">
+					<p class="hero-eyebrow fade-up" style="--d:0.15s">
+						<span class="pulse" aria-hidden="true"></span>
+						{HERO.role}
 					</p>
+
+					<h1 class="hero-title" data-hero-letters>
+						在这里<span class="hl">记录日常</span>
+					</h1>
+					<p class="hero-sub" data-hero-sub>
+						想法与读过的东西
+					</p>
+
+					<p class="hero-trust fade-up" style="--d:0.9s">{HERO.tagline2}。</p>
+
+					<div class="hero-actions fade-up" style="--d:1.05s">
+						<a class="btn lg" href="/blog">
+							<span class="lbl">阅读文章</span>
+							<span class="dot" aria-hidden="true">
+								<svg viewBox="0 0 12 12" width="12" height="12"><path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+							</span>
+						</a>
+						<a class="btn ghost" href="/gallery">
+							<span class="lbl">看看照片</span>
+							<span class="dot" aria-hidden="true">
+								<svg viewBox="0 0 12 12" width="12" height="12"><path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+							</span>
+						</a>
+					</div>
 				</div>
 
-				<p class="hero-lede">{HERO.tagline2}。</p>
-
-				<div class="hero-actions">
-					<SpecularButton
-						href="/blog"
-						size="md"
-						radius={999}
-						tintOpacity={0.8}
-						blur={10}
-						lineColor="#c2743f"
-						baseColor="#e7d9c8"
-						idleIntensity={0.3}
-						intensity={1.15}
-						shineSize={8}
-						shineFade={24}
-						thickness={2}
-						glow={0.75}
-						proximity={260}
-						autoAnimate
-						speed={0.22}
-					>
-						阅读文章
-					</SpecularButton>
-					<SpecularButton
-						href="/gallery"
-						size="md"
-						radius={999}
-						class="sb-ghost"
-						tintOpacity={0.4}
-						blur={8}
-						textColor="var(--muted)"
-						lineColor="#9c8168"
-						baseColor="#e2d3c1"
-						idleIntensity={0.16}
-						shineSize={10}
-						shineFade={30}
-						thickness={1}
-						glow={0.7}
-						proximity={220}
-					>
-						看看照片
-					</SpecularButton>
+				<div class="topics fade-up" style="--d:1.2s" aria-label="关注方向">
+					{PROFILE.topics.map((topic, i) => (
+						<div class="topic-cell" style={`--td:${1.25 + i * 0.07}s`}>
+							<span class="topic-mark" aria-hidden="true"></span>
+							<span class="topic-word">{topic}</span>
+						</div>
+					))}
 				</div>
-
-				<dl class="hero-stats">
-					<div>
-						<dt>文章</dt>
-						<dd><CountUp to={posts.length} /><span>篇</span></dd>
-					</div>
-					<div>
-						<dt>照片</dt>
-						<dd><CountUp to={photos.length} /><span>张</span></dd>
-					</div>
-					<div>
-						<dt>最近更新</dt>
-						<dd class="hero-stats__date">
-							{latest ? <FormattedDate date={latest} /> : '—'}
-						</dd>
-					</div>
-				</dl>
 			</div>
-
-			<a class="scroll-cue" href="#articles" aria-label="向下浏览">
-				<span>SCROLL</span>
-				<svg viewBox="0 0 16 26" width="14" height="22" aria-hidden="true">
-					<path
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.4"
-						stroke-linecap="round"
-						d="M8 2v18M3 15l5 5 5-5"></path>
-				</svg>
-			</a>
-
 		</section>
 
-		<!-- ============ 文章（精选） ============ -->
+		<!-- ═══════════ Act 2: Statement（钉住式逐字揭示） ═══════════ -->
+		<section class="statement" id="statement" aria-label="宣言">
+			<div class="pin">
+				<p id="stmt">
+					在这里，把日常写成文字<br>
+					把读过的书、走过的路、看过的风景<br>
+					慢慢整理成属于自己的记录<br>
+					不求产量，只留真实的痕迹
+				</p>
+			</div>
+		</section>
+
+		<!-- ═══════════ Act 3: Dark Split ═══════════ -->
+		<section class="split" id="split">
+			<div class="l">
+				<div class="split-guide" aria-hidden="true"></div>
+				<h2 id="split-h2">
+					记录生活的方式<br>像呼吸一样自然
+				</h2>
+				<div id="split-row">
+					<h3>关注方向</h3>
+					<p><strong>文字、照片、不定期更新。</strong>把零散的日常整理成有序的记录，慢慢沉淀成属于自己的空间。</p>
+				</div>
+			</div>
+			<div class="r">
+				{splitImgSrc ? (
+					<img id="split-img" src={splitImgSrc} alt="记录下的生活瞬间" loading="lazy" decoding="async" />
+				) : (
+					<div class="split-img-fallback" aria-hidden="true"></div>
+				)}
+			</div>
+		</section>
+
+		<!-- 声明阅读时浮现的浮动 CTA -->
+		<a class="float-cta" href="/blog" aria-label="阅读文章">
+			<span class="float-cta__dot" aria-hidden="true">
+				<svg viewBox="0 0 12 12" width="14" height="14"><path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</span>
+			<span class="float-cta__text">阅读文章</span>
+		</a>
+
+		<!-- ═══════════ 文章（精选） ═══════════ -->
 		<section class="sec sec--blog" id="articles" data-section="articles">
 			<div class="wrap">
 				<div class="tagbar" data-reveal>
@@ -231,10 +191,7 @@ const discoverPreview = discoverData.collections
 									<li>
 										<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener" aria-label="GitHub">
 											<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-												<path
-													fill="currentColor"
-													d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-												></path>
+												<path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
 											</svg>
 										</a>
 									</li>
@@ -243,10 +200,7 @@ const discoverPreview = discoverData.collections
 									<li>
 										<a href={SOCIAL_LINKS.email} aria-label="邮箱">
 											<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-												<path
-													fill="currentColor"
-													d="M1.5 3h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Zm.7 1 5.68 4.38a.5.5 0 0 0 .64 0L14.1 4H2.2ZM14 5.62 9.62 8.99a1.5 1.5 0 0 1-1.92 0L3 5.62V12h11V5.62Z"
-												></path>
+												<path fill="currentColor" d="M1.5 3h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Zm.7 1 5.68 4.38a.5.5 0 0 0 .64 0L14.1 4H2.2ZM14 5.62 9.62 8.99a1.5 1.5 0 0 1-1.92 0L3 5.62V12h11V5.62Z"></path>
 											</svg>
 										</a>
 									</li>
@@ -314,7 +268,7 @@ const discoverPreview = discoverData.collections
 			</div>
 		</section>
 
-		<!-- ============ 滚动标语 ============ -->
+		<!-- 滚动标语 -->
 		<div class="ticker" aria-hidden="true">
 			<div class="ticker-track">
 				{[0, 1, 2, 3].map(() => (
@@ -325,7 +279,7 @@ const discoverPreview = discoverData.collections
 			</div>
 		</div>
 
-		<!-- ============ 知识库 ============ -->
+		<!-- 知识库 -->
 		<section class="sec sec--knowledge" id="knowledge" data-section="knowledge">
 			<div class="wrap">
 				<header class="sec-head">
@@ -334,25 +288,20 @@ const discoverPreview = discoverData.collections
 						<h2>知识库</h2>
 					</div>
 				</header>
-
 				<a class="portal-entry glass" href="/knowledge" data-reveal data-glow>
 					<div class="portal-entry__body">
 						<span class="portal-entry__kicker">成体系的笔记 · 分类沉淀</span>
 						<h3 class="portal-entry__title">进入知识库</h3>
-						<p class="portal-entry__desc">
-							前端、工具、阅读……把零散的想法整理成结构化的笔记，慢慢累积成自己的知识体系。
-						</p>
+						<p class="portal-entry__desc">前端、工具、阅读……把零散的想法整理成结构化的笔记，慢慢累积成自己的知识体系。</p>
 					</div>
 					<span class="portal-entry__arrow" aria-hidden="true">
-						<svg viewBox="0 0 16 16" width="20" height="20">
-							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-						</svg>
+						<svg viewBox="0 0 16 16" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
 					</span>
 				</a>
 			</div>
 		</section>
 
-		<!-- ============ 发现 ============ -->
+		<!-- 发现 -->
 		<section class="sec sec--discover" id="discover" data-section="discover">
 			<div class="wrap">
 				<header class="sec-head">
@@ -370,14 +319,7 @@ const discoverPreview = discoverData.collections
 
 				<div class="discover-grid">
 					{discoverPreview.map((link, i) => (
-						<a
-							class="discover-card glass"
-							href={link.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							data-reveal
-							data-reveal-delay={i * 60}
-						>
+						<a class="discover-card glass" href={link.url} target="_blank" rel="noopener noreferrer" data-reveal data-reveal-delay={i * 60}>
 							<span class="discover-card__logo" data-logo data-domain={new URL(link.url).hostname.replace(/^www\./, '')}>
 								<span class="discover-card__fallback" aria-hidden="true">{link.title.slice(0, 1).toUpperCase()}</span>
 							</span>
@@ -389,25 +331,20 @@ const discoverPreview = discoverData.collections
 					))}
 				</div>
 
-				<!-- 照片墙入口：放在发现模块 -->
 				<a class="portal-entry portal-entry--photos glass" href="/gallery" data-reveal data-glow>
 					<div class="portal-entry__body">
 						<span class="portal-entry__kicker">生活里的光影 · 按年月整理</span>
 						<h3 class="portal-entry__title">进入照片墙</h3>
-						<p class="portal-entry__desc">
-							记录下的瞬间都收在这里，追光网格里点开看每一张照片。
-						</p>
+						<p class="portal-entry__desc">记录下的瞬间都收在这里，追光网格里点开看每一张照片。</p>
 					</div>
 					<span class="portal-entry__arrow" aria-hidden="true">
-						<svg viewBox="0 0 16 16" width="20" height="20">
-							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-						</svg>
+						<svg viewBox="0 0 16 16" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
 					</span>
 				</a>
 			</div>
 		</section>
 
-		<!-- ============ 关于 ============ -->
+		<!-- 关于 -->
 		<section class="sec" id="about" data-section="about">
 			<div class="wrap">
 				<div class="about-card glass" data-reveal data-glow>
@@ -418,13 +355,7 @@ const discoverPreview = discoverData.collections
 						<a class="about-link" href="/about">
 							了解一下
 							<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-								<path
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.8"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+								<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
 							</svg>
 						</a>
 					</div>
@@ -441,68 +372,111 @@ const discoverPreview = discoverData.collections
 </BaseLayout>
 
 <script>
-	// 首页 scroll-spy：滚动时根据各板块位置，更新顶部导航高亮 + 发现页 favicon 自动加载。
-	// 板块顺序即导航顺序；板块 id 需映射到导航的 href。
-	const SECTION_MAP = [
-		{ id: 'home', href: '/' },
-		{ id: 'articles', href: '/blog' },
-		{ id: 'knowledge', href: '/knowledge' },
-		{ id: 'discover', href: '/discover' },
-		{ id: 'about', href: '/about' },
-	];
+	import { bootBowlGlow } from '../scripts/bowl-glow';
+	import { splitChars, paint } from '../scripts/letter-reveal';
 
-	function loadFavicons() {
-		const logos = document.querySelectorAll<HTMLElement>('[data-logo]');
-		for (const logo of logos) {
-			if (logo.dataset.done === '1') continue;
-			logo.dataset.done = '1';
-			const domain = logo.dataset.domain;
-			if (!domain) continue;
-			const img = document.createElement('img');
-			img.alt = '';
-			img.loading = 'lazy';
-			img.decoding = 'async';
-			img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
-			img.onload = () => logo.prepend(img);
-		}
+	function clamp(v: number, a: number, b: number) {
+		return Math.min(b, Math.max(a, v));
 	}
 
-	function initScrollSpy() {
-		const sections = SECTION_MAP.map((s) => ({ ...s, el: document.getElementById(s.id) })).filter((s) => s.el);
-		if (!sections.length) return;
-
-		let ticking = false;
-		const update = () => {
-			ticking = false;
-			const probe = window.innerHeight * 0.4;
-			let current = sections[0];
-			for (const sec of sections) {
-				const r = sec.el!.getBoundingClientRect();
-				if (r.top <= probe) current = sec;
-			}
-			// 同步导航高亮：给对应 nav-link 加/去 is-active，并触发 Header 高亮块滑动
-			const navLinks = Array.from(document.querySelectorAll<HTMLElement>('[data-nav-item]'));
-			navLinks.forEach((link) => {
-				const on = link.dataset.href === current.href;
-				link.classList.toggle('is-active', on);
-				if (on) link.setAttribute('aria-current', 'page');
-				else link.removeAttribute('aria-current');
-			});
-			window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: current.href } }));
-		};
-		const onScroll = () => {
-			if (!ticking) {
-				ticking = true;
-				requestAnimationFrame(update);
-			}
-		};
-		window.addEventListener('scroll', onScroll, { passive: true });
-		update();
+	/** 从 CSS 变量取颜色字符串（"r, g, b" → "rgb(r,g,b)"） */
+	function cssColor(name: string, fallback: string): string {
+		const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+		if (!raw) return fallback;
+		return raw.includes(',') ? `rgb(${raw})` : raw;
 	}
+
+	let wired = false;
 
 	function init() {
-		loadFavicons();
-		initScrollSpy();
+		// 碗状辉光
+		bootBowlGlow();
+
+		if (wired) return;
+		wired = true;
+
+		// ---- 颜色 ----
+		const ink = () => cssColor('--ink', 'rgb(24,21,18)');
+		const accent = () => cssColor('--accent', 'rgb(208,132,92)');
+		const ghost = () => cssColor('--muted-light', 'rgb(180,170,158)');
+		const darkFinal = '#f0ede8';
+		const darkAccent = () => cssColor('--accent', 'rgb(208,132,92)');
+		const darkGhost = 'rgb(92,111,146)';
+
+		// ---- Act 1: Hero 逐字揭示（时间驱动 1.25s） ----
+		const heroTitleEl = document.querySelector<HTMLElement>('[data-hero-letters]');
+		const heroSubEl = document.querySelector<HTMLElement>('[data-hero-sub]');
+		let heroChars: ReturnType<typeof splitChars> = [];
+		let heroSubChars: ReturnType<typeof splitChars> = [];
+		if (heroTitleEl) heroChars = splitChars(heroTitleEl);
+		if (heroSubEl) heroSubChars = splitChars(heroSubEl);
+
+		const heroStart = performance.now();
+		function tickHero(now: number) {
+			const p = clamp((now - heroStart) / 1250, 0, 1);
+			paint(heroChars, p, 0.35, ink(), accent(), ghost());
+			// 副标题延迟 0.3s 启动，spread 更窄
+			const pSub = clamp((now - heroStart - 300) / 1000, 0, 1);
+			paint(heroSubChars, pSub, 0.25, accent(), accent(), ghost());
+			if (p < 1 || pSub < 1) requestAnimationFrame(tickHero);
+		}
+		requestAnimationFrame(tickHero);
+
+		// ---- Act 2: Statement（滚动驱动） ----
+		const stmtEl = document.getElementById('stmt');
+		const stmtChars = stmtEl ? splitChars(stmtEl) : [];
+
+		// ---- Act 3: Dark split ----
+		const splitH2El = document.getElementById('split-h2');
+		const splitCharsArr = splitH2El ? splitChars(splitH2El) : [];
+		const splitRow = document.getElementById('split-row');
+		const splitImg = document.getElementById('split-img') as HTMLImageElement | null;
+		const splitSection = document.getElementById('split');
+
+		// ---- 滚动主循环 ----
+		let ticking = false;
+		function onScroll() {
+			if (ticking) return;
+			ticking = true;
+			requestAnimationFrame(() => {
+				ticking = false;
+				const q = window.scrollY / Math.max(1, window.innerHeight);
+
+				// Statement: rise + reveal
+				// rise: s = clamp((q - 0.69) / 0.74) → translateY(.205 * (1-s)^2 * vh)
+				const s = clamp((q - 0.69) / 0.74, 0, 1);
+				const riseY = 0.205 * Math.pow(1 - s, 2) * window.innerHeight;
+				if (stmtEl) stmtEl.style.transform = `translateY(${riseY.toFixed(1)}px)`;
+
+				// reveal: p = clamp((q - 0.56) / 2.03)
+				const stmtP = clamp((q - 0.56) / 2.03, 0, 1);
+				paint(stmtChars, stmtP, 0.16, ink(), accent(), ghost());
+
+				// 导航 CTA 弹入（statement 40% 时）
+				document.body.classList.toggle('stmt-on', stmtP > 0.4);
+
+				// Dark split: headline reveal + row + image scale
+				if (splitSection) {
+					const splitTop = splitSection.getBoundingClientRect().top;
+					const p2 = clamp((0.8 - splitTop / window.innerHeight) / 0.65, 0, 1);
+					paint(splitCharsArr, p2, 0.35, darkFinal, darkAccent(), darkGhost);
+
+					if (splitRow) {
+						const rowOn = p2 > 0.92;
+						splitRow.classList.toggle('is-on', rowOn);
+					}
+					if (splitImg) {
+						const scaleP = clamp(1 - splitTop / window.innerHeight, 0, 1);
+						splitImg.style.transform = `scale(${(1.08 - 0.08 * scaleP).toFixed(4)})`;
+					}
+				}
+			});
+		}
+		window.addEventListener('scroll', onScroll, { passive: true });
+		onScroll();
+
+		// ---- fade-up 入场 ----
+		requestAnimationFrame(() => document.body.classList.add('ready'));
 	}
 
 	document.addEventListener('astro:page-load', init);
@@ -511,7 +485,25 @@ const discoverPreview = discoverData.collections
 </script>
 
 <style>
+	/* ═══════════ 碗状辉光固定层 ═══════════ */
+	.atmo {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background: rgb(var(--bg));
+	}
+	.atmo canvas {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
 	.home {
+		position: relative;
+		z-index: 1;
 		width: 100%;
 		max-width: none;
 		padding: 0;
@@ -524,42 +516,53 @@ const discoverPreview = discoverData.collections
 		padding: 0 var(--gutter);
 	}
 
-	/* ---------- Hero ---------- */
+	/* ═══════════ fade-up 入场 ═══════════ */
+	.fade-up {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	:global(body.ready) .fade-up {
+		animation: fu 0.9s var(--ease, cubic-bezier(0.22, 0.7, 0.2, 1)) forwards;
+		animation-delay: var(--d, 0s);
+	}
+	@keyframes fu {
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	/* ═══════════ 逐字揭示字符 ═══════════ */
+	:global(.w) {
+		display: inline-block;
+		white-space: nowrap;
+	}
+	:global(.ch) {
+		display: inline-block;
+		will-change: opacity, filter, color;
+	}
+
+	/* ═══════════ Act 1: Hero ═══════════ */
 	.hero {
 		position: relative;
 		min-height: 100svh;
 		display: flex;
 		align-items: center;
-		padding: clamp(6rem, 14vh, 9rem) 0 clamp(4rem, 9vh, 6rem);
+		padding: clamp(5rem, 12vh, 8rem) 0 clamp(3rem, 7vh, 5rem);
 		overflow: hidden;
-		isolation: isolate;
-	}
-	.hero-waves {
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		/* 方格地面往下渐隐，避免和后面的卡片抢注意力 */
-		-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
-		mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
-	}
-	/* 让整屏像一张连续的画：底部压暗、左上角留一层暖雾 */
-	.hero::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background:
-			radial-gradient(120% 80% at 8% 6%, rgba(var(--bg), 0.66), transparent 46%),
-			linear-gradient(to bottom, transparent 58%, rgba(var(--bg), 0.88) 100%);
 	}
 	.hero-inner {
-		position: relative;
-		z-index: 1;
 		width: 100%;
 		max-width: var(--w-wide);
 		margin: 0 auto;
 		padding: 0 var(--gutter);
+		display: grid;
+		grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+		gap: clamp(1.5rem, 4vw, 3.5rem);
+		align-items: end;
+	}
+	.hero-copy {
+		align-self: center;
 	}
 	.hero-eyebrow {
 		display: inline-flex;
@@ -582,146 +585,353 @@ const discoverPreview = discoverData.collections
 		border-radius: 50%;
 		background: rgb(var(--accent));
 		box-shadow: 0 0 0 0 rgba(var(--accent), 0.5);
-		animation: pulse-ring 2.8s var(--ease-out) infinite;
+		animation: pulse-ring 2.8s var(--ease-out, ease-out) infinite;
 	}
 	@keyframes pulse-ring {
-		0%,
-		70%,
-		100% {
-			box-shadow: 0 0 0 0 rgba(var(--accent), 0.45);
-		}
-		35% {
-			box-shadow: 0 0 0 6px rgba(var(--accent), 0);
-		}
+		0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent), 0.45); }
+		35% { box-shadow: 0 0 0 6px rgba(var(--accent), 0); }
 	}
 
-	/* 标题由 SplitText 逐字拆分，样式要 :global 才能穿进子组件 */
-	.hero-head {
-		display: grid;
-		gap: 1.4rem;
-		margin: 0 0 1.7rem;
-	}
-	:global(.hero-title) {
+	.hero-title {
 		margin: 0;
+		font-size: clamp(2.3rem, 5.2vw, 4.6rem);
+		font-weight: 750;
+		line-height: 1.08;
+		letter-spacing: -0.03em;
 		color: rgb(var(--ink));
 	}
-	:global(.hero-title__text) {
-		font-size: clamp(2.5rem, 7vw, 5rem);
-		line-height: 1.12;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		text-wrap: balance;
+	.hero-title :global(.hl) {
+		color: rgb(var(--accent));
 	}
 	.hero-sub {
-		margin: 0;
-		font-size: clamp(1.02rem, 1.7vw, 1.32rem);
-		font-weight: 600;
-		letter-spacing: 0.16em;
+		margin: 0.6rem 0 0;
+		font-size: clamp(1.05rem, 1.8vw, 1.45rem);
+		font-weight: 500;
+		letter-spacing: 0.12em;
 		color: rgb(var(--accent));
-		/* SplitText 逐字拆分后每个字是 inline-block，保证间距一致 */
 	}
-	.hero-sub :global(.split-char) {
-		letter-spacing: 0.16em;
+	.hero-trust {
+		margin: 1.6rem 0 0;
+		font-size: clamp(0.95rem, 1.3vw, 1.15rem);
+		letter-spacing: -0.015em;
+		color: rgb(var(--muted));
 	}
 
-	.hero-lede {
-		max-width: 34em;
-		margin: 0 0 2rem;
-		font-size: clamp(1rem, 1.5vw, 1.12rem);
-		color: rgb(var(--muted));
-		opacity: 0;
-		animation: soft-in 0.9s var(--ease-out) 0.34s forwards;
-	}
+	/* ── 点阵箭头按钮 ── */
 	.hero-actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.75rem;
+		margin-top: 2rem;
+	}
+	.btn {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		height: 44px;
+		padding: 0 50px 0 20px;
+		border-radius: 999px;
+		background: rgb(var(--ink));
+		color: rgb(var(--bg));
+		font-size: 0.88rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		white-space: nowrap;
+		text-decoration: none;
+		overflow: hidden;
+		transition: filter 0.2s ease;
+	}
+	.btn:hover {
+		filter: brightness(1.12);
+	}
+	.btn .dot {
+		position: absolute;
+		right: 16px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: rgb(var(--accent));
+		box-shadow: 0 0 10px rgba(var(--accent), 0.6);
+		display: grid;
+		place-items: center;
+		transition:
+			width 0.45s cubic-bezier(0.22, 0.7, 0.2, 1),
+			height 0.45s cubic-bezier(0.22, 0.7, 0.2, 1),
+			right 0.45s cubic-bezier(0.22, 0.7, 0.2, 1),
+			box-shadow 0.3s ease;
+	}
+	.btn .dot svg {
 		opacity: 0;
-		animation: soft-in 0.9s var(--ease-out) 0.46s forwards;
+		transform: translateX(-4px);
+		transition:
+			opacity 0.3s ease 0.05s,
+			transform 0.3s ease 0.05s;
+		color: rgb(var(--bg));
 	}
-	.hero-stats {
-		display: flex;
-		flex-wrap: wrap;
-		gap: clamp(1.4rem, 5vw, 3.4rem);
-		margin: clamp(2.2rem, 5vh, 3.4rem) 0 0;
-		padding-top: 1.4rem;
-		border-top: 1px solid rgba(var(--line), 0.9);
-		opacity: 0;
-		animation: soft-in 0.9s var(--ease-out) 0.58s forwards;
+	.btn:hover .dot {
+		width: 32px;
+		height: 32px;
+		right: 5px;
+		box-shadow: none;
 	}
-	.hero-stats div {
-		display: flex;
-		flex-direction: column-reverse;
-		gap: 0.2rem;
+	.btn:hover .dot svg {
+		opacity: 1;
+		transform: none;
 	}
-	.hero-stats dt {
-		font-size: 0.72rem;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-		color: rgb(var(--muted-light));
+	.btn.lg {
+		height: 58px;
+		padding: 0 62px 0 28px;
+		font-size: 1.02rem;
 	}
-	.hero-stats dd {
-		margin: 0;
-		font-size: clamp(1.3rem, 2.4vw, 1.7rem);
-		font-weight: 800;
-		font-variant-numeric: tabular-nums;
-		letter-spacing: -0.02em;
+	.btn.lg .dot {
+		width: 14px;
+		height: 14px;
+		right: 24px;
+	}
+	.btn.lg .dot svg {
+		width: 16px;
+		height: 16px;
+	}
+	.btn.lg:hover .dot {
+		width: 44px;
+		height: 44px;
+		right: 7px;
+	}
+	.btn.ghost {
+		background: rgba(var(--ink), 0.08);
 		color: rgb(var(--ink));
+		border: 1px solid rgba(var(--ink), 0.15);
 	}
-	.hero-stats dd span {
-		margin-left: 0.25em;
-		font-size: 0.7rem;
-		font-weight: 500;
-		color: rgb(var(--muted));
+	.btn.ghost .dot svg {
+		color: rgb(var(--bg));
 	}
-	.hero-stats__date {
-		font-size: 1rem !important;
-		font-weight: 600 !important;
-		color: rgb(var(--muted)) !important;
-		padding-top: 0.35rem;
-	}
-	@keyframes soft-in {
-		from {
-			opacity: 0;
-			transform: translateY(14px);
-		}
-		to {
-			opacity: 1;
-			transform: none;
-		}
+	.btn.ghost:hover {
+		filter: none;
+		background: rgba(var(--ink), 0.12);
 	}
 
-	.scroll-cue {
-		position: absolute;
-		left: 50%;
-		bottom: 1.6rem;
-		transform: translateX(-50%);
-		display: inline-flex;
+	/* ── 主题词发丝线网格 ── */
+	.topics {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		align-self: end;
+	}
+	.topic-cell {
+		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.62rem;
-		letter-spacing: 0.34em;
-		color: rgb(var(--muted-light));
+		justify-content: center;
+		gap: 0.55rem;
+		padding: clamp(1rem, 2.2vw, 1.6rem) 0.6rem;
+		border-left: 1px solid rgba(var(--line), 0.6);
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	.topic-cell:nth-child(n + 4) {
+		border-top: 1px solid rgba(var(--line), 0.5);
+	}
+	:global(body.ready) .topic-cell {
+		animation: fu 0.8s var(--ease, cubic-bezier(0.22, 0.7, 0.2, 1)) forwards;
+		animation-delay: var(--td, 1.25s);
+	}
+	.topic-mark {
+		width: 20px;
+		height: 2px;
+		border-radius: 2px;
+		background: rgba(var(--ink), 0.18);
+	}
+	.topic-word {
+		font-size: clamp(0.72rem, 1vw, 0.88rem);
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		color: rgba(var(--ink), 0.5);
+	}
+
+	/* ═══════════ Act 2: Statement ═══════════ */
+	.statement {
+		position: relative;
+		height: 306vh;
+		margin-top: -31vh;
+		pointer-events: none;
+	}
+	.statement .pin {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	#stmt {
+		position: absolute;
+		top: 41.5vh;
+		left: 0;
+		right: 0;
+		margin: 0;
+		text-align: center;
+		font-size: clamp(1.25rem, 2.8vw, 2.55rem);
+		font-weight: 450;
+		line-height: 1.22;
+		letter-spacing: -0.03em;
+		color: rgb(var(--ink));
+		white-space: nowrap;
+		will-change: transform;
+	}
+
+	/* ═══════════ Act 3: Dark Split ═══════════ */
+	.split {
+		position: relative;
+		z-index: 2;
+		min-height: 100vh;
+		display: grid;
+		grid-template-columns: 58.3% 41.7%;
+		background: #1e1822;
+		color: #f0ede8;
+	}
+	.split .l {
+		position: relative;
+		padding-left: var(--gutter);
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	.split-guide {
+		position: absolute;
+		left: var(--gutter);
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		background: rgba(255, 255, 255, 0.12);
+	}
+	#split-h2 {
+		margin: 0;
+		padding: 18vh 0 0 5.5vw;
+		font-size: clamp(1.75rem, 3.1vw, 2.85rem);
+		font-weight: 450;
+		line-height: 1.12;
+		letter-spacing: -0.03em;
+		color: #f0ede8;
+	}
+	#split-row {
+		margin-top: 5.5vh;
+		padding: 3vh 5vw 8vh 5.5vw;
+		border-top: 1px solid rgba(255, 255, 255, 0.12);
+		display: grid;
+		grid-template-columns: 1fr 1.15fr;
+		gap: 1.5rem;
+		opacity: 0;
+		transform: translateY(14px);
+		transition:
+			opacity 0.9s cubic-bezier(0.22, 0.7, 0.2, 1),
+			transform 0.9s cubic-bezier(0.22, 0.7, 0.2, 1);
+	}
+	#split-row.is-on {
+		opacity: 1;
+		transform: none;
+	}
+	#split-row h3 {
+		margin: 0;
+		font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+		font-weight: 450;
+	}
+	#split-row p {
+		margin: 0;
+		max-width: 22em;
+		font-size: clamp(0.82rem, 1.1vw, 1rem);
+		line-height: 1.55;
+		color: rgba(255, 255, 255, 0.5);
+	}
+	#split-row p strong {
+		color: #fff;
+		font-weight: 600;
+	}
+	.split .r {
+		position: relative;
+		overflow: hidden;
+	}
+	#split-img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transform-origin: 50% 60%;
+		transform: scale(1.08);
+	}
+	.split-img-fallback {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(160deg, #2a2233 0%, #1e1822 100%);
+	}
+
+	/* ═══════════ 浮动 CTA（声明 40% 时弹入） ═══════════ */
+	.float-cta {
+		position: fixed;
+		bottom: 2rem;
+		right: 2rem;
+		z-index: 40;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		height: 48px;
+		padding: 0 1.25rem 0 1rem;
+		border-radius: 999px;
+		background: rgb(var(--ink));
+		color: rgb(var(--bg));
+		font-size: 0.88rem;
+		font-weight: 600;
 		text-decoration: none;
-		animation: cue-float 3.4s var(--ease-out) infinite;
+		box-shadow: 0 8px 28px -10px rgba(0, 0, 0, 0.35);
+		transform: scale(0);
+		opacity: 0;
+		transition:
+			transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+			opacity 0.35s ease;
+		pointer-events: none;
 	}
-	.scroll-cue svg {
-		opacity: 0.65;
+	:global(body.stmt-on) .float-cta {
+		transform: scale(1);
+		opacity: 1;
+		pointer-events: auto;
 	}
-	@keyframes cue-float {
-		0%,
-		100% {
-			transform: translate(-50%, 0);
-		}
-		50% {
-			transform: translate(-50%, 7px);
-		}
+	.float-cta__dot {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: rgb(var(--accent));
+		transition:
+			width 0.4s cubic-bezier(0.22, 0.7, 0.2, 1),
+			height 0.4s cubic-bezier(0.22, 0.7, 0.2, 1);
+	}
+	.float-cta:hover .float-cta__dot {
+		width: 36px;
+		height: 36px;
+	}
+	.float-cta__text {
+		transition: transform 0.3s ease;
+	}
+	.float-cta:hover .float-cta__text {
+		transform: translateX(2px);
 	}
 
-	/* ---------- 区块 ---------- */
+	/* ═══════════ 下方板块需遮住辉光 ═══════════ */
+	.sec {
+		position: relative;
+		z-index: 1;
+		background: rgb(var(--bg));
+		padding: clamp(3.6rem, 8vw, 6.5rem) 0;
+	}
+	.ticker {
+		position: relative;
+		z-index: 1;
+		background: rgb(var(--bg));
+	}
 
-	/* ---------- 门户式精选区 ---------- */
+	/* ═══════════ 门户式精选区 ═══════════ */
 	.tagbar {
 		display: flex;
 		align-items: center;
@@ -751,7 +961,7 @@ const discoverPreview = discoverData.collections
 		font-size: 0.82rem;
 		color: rgb(var(--ink-soft));
 		text-decoration: none;
-		transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+		transition: background 0.2s, color 0.2s;
 	}
 	.tagbar__item span {
 		font-size: 0.72rem;
@@ -774,15 +984,11 @@ const discoverPreview = discoverData.collections
 		gap: clamp(1rem, 2vw, 1.6rem);
 		align-items: start;
 	}
-	.bloggrid__main {
-		min-width: 0;
-	}
+	.bloggrid__main { min-width: 0; }
 	.bloggrid__side {
 		display: grid;
 		gap: clamp(1rem, 2vw, 1.4rem);
 	}
-
-	/* 精选区只要文字，不要封面图 */
 	.bloggrid__main :global(.card img),
 	.bloggrid__main :global(.card-glyph),
 	.bloggrid__main :global(.card figure),
@@ -807,7 +1013,6 @@ const discoverPreview = discoverData.collections
 		border-radius: var(--r-lg);
 		border: 1px solid var(--glass-brd-dim);
 		background: var(--glass-bg);
-		-webkit-backdrop-filter: blur(22px) saturate(1.4);
 		backdrop-filter: blur(22px) saturate(1.4);
 		box-shadow: var(--glass-shine);
 	}
@@ -817,7 +1022,6 @@ const discoverPreview = discoverData.collections
 		border-radius: var(--r-lg);
 		border: 1px solid var(--glass-brd-dim);
 		background: var(--glass-bg);
-		-webkit-backdrop-filter: blur(22px) saturate(1.4);
 		backdrop-filter: blur(22px) saturate(1.4);
 		box-shadow: var(--glass-shine);
 		text-align: center;
@@ -886,10 +1090,7 @@ const discoverPreview = discoverData.collections
 		border: 1px solid var(--glass-brd-dim);
 		background: var(--chip-bg);
 		color: rgb(var(--muted));
-		transition:
-			color var(--dur-fast) var(--ease-out),
-			border-color var(--dur-fast) var(--ease-out),
-			transform var(--dur-fast) var(--ease-out);
+		transition: color 0.2s, border-color 0.2s, transform 0.2s;
 	}
 	.profile__social a:hover {
 		color: rgb(var(--accent));
@@ -906,7 +1107,7 @@ const discoverPreview = discoverData.collections
 		color: rgb(var(--accent-deep));
 		text-decoration: none;
 		border-bottom: 1px solid transparent;
-		transition: border-color var(--dur-fast) var(--ease-out);
+		transition: border-color 0.2s;
 	}
 	.profile__links a:hover {
 		border-color: rgb(var(--accent));
@@ -941,9 +1142,7 @@ const discoverPreview = discoverData.collections
 		text-decoration: none;
 		line-height: 1.45;
 	}
-	.feed__item a:hover {
-		color: rgb(var(--accent));
-	}
+	.feed__item a:hover { color: rgb(var(--accent)); }
 	.feed__item time {
 		font-size: 0.72rem;
 		color: rgb(var(--muted-light));
@@ -971,10 +1170,7 @@ const discoverPreview = discoverData.collections
 		border-bottom: 1px dashed rgba(var(--line), 0.9);
 		padding-bottom: 0.45rem;
 	}
-	.stats li:last-child {
-		border-bottom: none;
-		padding-bottom: 0;
-	}
+	.stats li:last-child { border-bottom: none; padding-bottom: 0; }
 	.stats b {
 		color: rgb(var(--ink));
 		font-weight: 700;
@@ -987,6 +1183,7 @@ const discoverPreview = discoverData.collections
 		font-weight: 500;
 		color: rgb(var(--muted));
 	}
+
 	@media (max-width: 1080px) {
 		.bloggrid {
 			grid-template-columns: 210px minmax(0, 1fr);
@@ -1012,37 +1209,21 @@ const discoverPreview = discoverData.collections
 			aspect-ratio: 1;
 			grid-row: 1 / span 2;
 		}
-		.profile__id {
-			align-items: flex-start;
-		}
-		.profile__bio {
-			margin-bottom: 0.5rem;
-		}
-		.profile__social {
-			justify-content: flex-start;
-			grid-column: 2;
-		}
-		.profile__links {
-			justify-content: flex-start;
-			grid-column: 2;
-		}
-		.bloggrid__side {
-			grid-template-columns: 1fr;
-		}
+		.profile__id { align-items: flex-start; }
+		.profile__bio { margin-bottom: 0.5rem; }
+		.profile__social { justify-content: flex-start; grid-column: 2; }
+		.profile__links { justify-content: flex-start; grid-column: 2; }
+		.bloggrid__side { grid-template-columns: 1fr; }
 	}
 
-	.sec {
-		padding: clamp(3.6rem, 8vw, 6.5rem) 0;
-	}
 	.post-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: clamp(1rem, 2vw, 1.5rem);
 	}
 
-	/* ---------- 滚动标语 ---------- */
+	/* ═══════════ 滚动标语 ═══════════ */
 	.ticker {
-		position: relative;
 		overflow: hidden;
 		padding: 0.9rem 0;
 		border-block: 1px solid rgba(var(--line), 0.85);
@@ -1069,12 +1250,10 @@ const discoverPreview = discoverData.collections
 		color: rgba(var(--accent), 0.5);
 	}
 	@keyframes ticker-move {
-		to {
-			transform: translateX(-50%);
-		}
+		to { transform: translateX(-50%); }
 	}
 
-	/* ---------- 入口卡片（知识库 / 照片墙） ---------- */
+	/* ═══════════ 入口卡片 ═══════════ */
 	.portal-entry {
 		display: flex;
 		align-items: center;
@@ -1084,19 +1263,14 @@ const discoverPreview = discoverData.collections
 		border-radius: var(--r-xl);
 		text-decoration: none;
 		color: inherit;
-		transition:
-			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out),
-			border-color var(--dur) var(--ease-out);
+		transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
 	}
 	.portal-entry:hover {
 		transform: translateY(-3px);
 		box-shadow: var(--glass-shine), var(--shadow-lg);
 		border-color: rgba(var(--accent), 0.4);
 	}
-	.portal-entry__body {
-		min-width: 0;
-	}
+	.portal-entry__body { min-width: 0; }
 	.portal-entry__kicker {
 		display: block;
 		font-size: 0.68rem;
@@ -1109,7 +1283,7 @@ const discoverPreview = discoverData.collections
 		margin: 0 0 0.4rem;
 		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
 		font-weight: 750;
-		transition: color var(--dur-fast) var(--ease-out);
+		transition: color 0.2s;
 	}
 	.portal-entry:hover .portal-entry__title {
 		color: rgb(var(--accent-deep));
@@ -1131,10 +1305,7 @@ const discoverPreview = discoverData.collections
 		border: 1px solid var(--glass-brd-dim);
 		background: var(--chip-bg);
 		color: rgb(var(--accent));
-		transition:
-			transform var(--dur) var(--ease-spring),
-			background-color var(--dur-fast) var(--ease-out),
-			color var(--dur-fast) var(--ease-out);
+		transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, color 0.2s;
 	}
 	.portal-entry:hover .portal-entry__arrow {
 		transform: translateX(4px);
@@ -1145,7 +1316,7 @@ const discoverPreview = discoverData.collections
 		margin-top: clamp(1rem, 2.2vw, 1.6rem);
 	}
 
-	/* ---------- 发现 ---------- */
+	/* ═══════════ 发现 ═══════════ */
 	.discover-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1159,10 +1330,7 @@ const discoverPreview = discoverData.collections
 		border-radius: var(--r-md);
 		text-decoration: none;
 		color: inherit;
-		transition:
-			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out),
-			border-color var(--dur) var(--ease-out);
+		transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
 	}
 	.discover-card:hover {
 		transform: translateY(-3px);
@@ -1199,7 +1367,7 @@ const discoverPreview = discoverData.collections
 		margin: 0 0 0.2rem;
 		font-size: 1rem;
 		font-weight: 650;
-		transition: color var(--dur-fast) var(--ease-out);
+		transition: color 0.2s;
 	}
 	.discover-card:hover h3 {
 		color: rgb(var(--accent-deep));
@@ -1215,7 +1383,7 @@ const discoverPreview = discoverData.collections
 		overflow: hidden;
 	}
 
-	/* ---------- 关于 ---------- */
+	/* ═══════════ 关于 ═══════════ */
 	.about-card {
 		display: grid;
 		grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
@@ -1243,7 +1411,7 @@ const discoverPreview = discoverData.collections
 		font-weight: 700;
 		color: rgb(var(--accent));
 		text-decoration: none;
-		transition: gap var(--dur-fast) var(--ease-out);
+		transition: gap 0.2s;
 	}
 	.about-link:hover {
 		gap: 0.65rem;
@@ -1266,12 +1434,8 @@ const discoverPreview = discoverData.collections
 		color: rgb(var(--ink-soft));
 		border-bottom: 1px dashed rgba(var(--line), 0.95);
 	}
-	.about-facts li:first-child {
-		padding-top: 0.2rem;
-	}
-	.about-facts li:last-child {
-		border-bottom: none;
-	}
+	.about-facts li:first-child { padding-top: 0.2rem; }
+	.about-facts li:last-child { border-bottom: none; }
 	.about-facts span {
 		flex-shrink: 0;
 		font-size: 0.76rem;
@@ -1289,32 +1453,53 @@ const discoverPreview = discoverData.collections
 		}
 	}
 
-	/* ---------- 小屏 ---------- */
+	/* ═══════════ 响应式 ═══════════ */
+	@media (max-width: 820px) {
+		.hero-inner {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.topics {
+			grid-template-columns: repeat(3, 1fr);
+			margin-top: 1.5rem;
+		}
+		#stmt {
+			white-space: normal;
+			max-width: 15em;
+			margin: 0 auto;
+			left: 1rem;
+			right: 1rem;
+			font-size: clamp(1.15rem, 5vw, 1.55rem);
+		}
+		#stmt br {
+			display: none;
+		}
+		.split {
+			grid-template-columns: 1fr;
+			grid-template-rows: auto 70vh;
+		}
+		#split-h2 {
+			padding: 14vh 0 0 4vw;
+		}
+		#split-row {
+			grid-template-columns: 1fr;
+			padding: 3vh 6vw 8vh 5vw;
+		}
+	}
 	@media (max-width: 640px) {
 		.hero {
 			min-height: 92svh;
-			padding-top: clamp(5rem, 20vh, 7rem);
+			padding-top: clamp(5rem, 18vh, 7rem);
 		}
-		.hero-head {
-			gap: 0.85rem;
+		.hero-title {
+			font-size: clamp(2rem, 10vw, 2.75rem);
 		}
-		:global(.hero-title__text) {
-			font-size: clamp(2.1rem, 11.5vw, 2.9rem);
+		.topics {
+			grid-template-columns: repeat(2, 1fr);
 		}
-		.hero-stats {
-			gap: 1.6rem;
-		}
-		.post-grid {
-			grid-template-columns: 1fr;
-		}
-		.post-grid > :first-child {
-			grid-column: auto;
-		}
-		.scroll-cue {
-			display: none;
+		.btn.lg {
+			height: 50px;
+			padding: 0 52px 0 22px;
+			font-size: 0.95rem;
 		}
 	}
 </style>
-
-
-

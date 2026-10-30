@@ -31,7 +31,8 @@ const { title, description, image, noindex, bodyClass, hero = false, type, publi
 	<head>
 		<BaseHead title={title} description={description} image={image} noindex={noindex} type={type} publishedTime={publishedTime} />
 	</head>
-	<body class={bodyClass} data-hero={hero ? '1' : undefined}>
+	<!-- studio：全站统一走「近黑台面 + 发丝线」版式（见 global.css 的 .studio） -->
+	<body class:list={['studio', bodyClass]} data-hero={hero ? '1' : undefined}>
 		<a class="skip-link" href="#main-content" data-skip-link>跳到正文</a>
 		<div class="scroll-progress" data-progress aria-hidden="true"></div>
 		<Header />

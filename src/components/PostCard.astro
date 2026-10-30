@@ -74,7 +74,7 @@ const { title, description, pubDate, heroImage, tags } = post.data;
 <style>
 	.card {
 		position: relative;
-		border-radius: var(--r-xl);
+		border-radius: var(--card-radius, var(--r-xl));
 		overflow: hidden;
 		height: 100%;
 	}
@@ -82,14 +82,15 @@ const { title, description, pubDate, heroImage, tags } = post.data;
 	   注意 top 不能为负：.card 有 overflow:hidden，负偏移会把字顶裁掉。 */
 	.card-num {
 		position: absolute;
-		top: 0;
-		right: 0.22em;
-		font-size: clamp(3.6rem, 6vw, 5.4rem);
-		font-weight: 800;
+		top: 50%;
+		right: 0.18em;
+		transform: translateY(-50%);
+		font-size: clamp(6rem, 10vw, 10rem);
+		font-weight: 700;
 		line-height: 1;
-		letter-spacing: -0.05em;
+		letter-spacing: -0.06em;
 		color: transparent;
-		-webkit-text-stroke: 1px rgba(var(--accent), 0.26);
+		-webkit-text-stroke: 1px rgba(var(--ink), 0.12);
 		pointer-events: none;
 		user-select: none;
 	}

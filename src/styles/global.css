@@ -174,6 +174,144 @@ html[data-accent='pink'][data-theme='light'] {
 	--accent-deep: 156, 78, 104;
 }
 
+/* ============ Studio 版式：近黑台面 + 米白显示体 + 1px 发丝线 ============ */
+/*
+  参考「studio / 产品页」的视觉体系：极深底色、紧收的巨型标题、克制的暖白按钮、
+  用 1px 线而不是阴影来分区。加深 .studio 即整套换肤，不动任何组件代码。
+  给 <body class="studio"> 使用；浅色主题下自动翻成米白台面 + 近黑文字。
+*/
+.studio {
+	--bg: 10, 10, 11;
+	--bg-deep: 6, 6, 7;
+	--paper: 16, 16, 18;
+	--surface: 22, 22, 25;
+	--line: 42, 42, 46;
+	--line-soft: 28, 28, 31;
+
+	--ink: 241, 238, 232;
+	--ink-soft: 206, 202, 195;
+	--muted: 142, 139, 133;
+	--muted-light: 104, 102, 98;
+
+	--glass-bg: rgba(18, 18, 20, 0.62);
+	--glass-bg-strong: rgba(13, 13, 15, 0.86);
+	--glass-brd: rgba(255, 255, 255, 0.1);
+	--glass-brd-dim: rgba(255, 255, 255, 0.06);
+
+	/* 反色区块（米白）与它上面的墨色 */
+	--cream: 240, 236, 228;
+	--cream-ink: 18, 17, 15;
+	--cream-muted: 110, 106, 99;
+	/* 主按钮：暖白底 + 近黑字 */
+	--btn-solid: 240, 236, 228;
+	--btn-solid-ink: 14, 14, 16;
+	/* 版心与页头条同宽，保证标题、栏目头和导航左右对齐 */
+	--w-wide: 1272px;
+	/* 卡片圆角：参考站更方一些 */
+	--card-radius: 14px;
+}
+:root[data-theme='light'] .studio,
+.studio[data-theme='light'] {
+	--bg: 239, 236, 230;
+	--bg-deep: 232, 228, 221;
+	--paper: 246, 243, 237;
+	--surface: 250, 248, 243;
+	--line: 208, 203, 194;
+	--line-soft: 221, 217, 208;
+
+	--ink: 18, 17, 15;
+	--ink-soft: 58, 55, 50;
+	--muted: 110, 106, 99;
+	--muted-light: 148, 143, 134;
+
+	--glass-bg: rgba(250, 248, 243, 0.62);
+	--glass-bg-strong: rgba(252, 250, 246, 0.88);
+	--glass-brd: rgba(0, 0, 0, 0.1);
+	--glass-brd-dim: rgba(0, 0, 0, 0.06);
+
+	--cream: 24, 23, 21;
+	--cream-ink: 240, 236, 228;
+	--cream-muted: 160, 155, 146;
+	--btn-solid: 18, 17, 15;
+	--btn-solid-ink: 244, 241, 234;
+}
+
+/* 小标签：10px 大写、宽字距，用来做段落索引（01 / WRITING） */
+.eyebrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55em;
+	font-size: 0.68rem;
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: rgb(var(--muted));
+}
+.eyebrow--ink {
+	color: rgb(var(--ink-soft));
+}
+
+/* 发丝线 */
+.hairline {
+	height: 1px;
+	border: 0;
+	margin: 0;
+	background: rgb(var(--line));
+}
+
+/* Studio 下把玻璃卡片降级为「实底 + 发丝描边」：
+   更贴版式体系，同时省掉逐帧重算的 backdrop-filter。 */
+.studio .glass,
+.studio .glass-soft {
+	background: rgb(var(--paper));
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+	border: 1px solid rgb(var(--line-soft));
+	box-shadow: none;
+}
+.studio .glass-hover:hover {
+	border-color: rgb(var(--line));
+	box-shadow: none;
+}
+
+/* 显示体：紧字距、紧行高，标题专用 */
+.display {
+	margin: 0;
+	font-weight: 700;
+	letter-spacing: -0.038em;
+	line-height: 0.94;
+	text-wrap: balance;
+}
+
+/* 实心主按钮（米白底 / 反色时为墨底）与文字型次按钮 */
+.btn-solid {
+	display: inline-flex;
+	align-items: center;
+	gap: 1.6rem;
+	padding: 0.95rem 1.15rem 0.95rem 1.35rem;
+	border: 0;
+	border-radius: 8px;
+	background: rgb(var(--btn-solid));
+	color: rgb(var(--btn-solid-ink));
+	font: inherit;
+	font-size: 0.9rem;
+	font-weight: 500;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		transform 0.3s var(--ease-out),
+		opacity 0.3s var(--ease-out);
+}
+.btn-solid:hover {
+	transform: translateY(-2px);
+	opacity: 0.94;
+}
+.btn-solid svg {
+	flex: none;
+}
+
 /* ============ 基础 ============ */
 *,
 *::before,
@@ -527,21 +665,29 @@ select:focus {
 	justify-content: space-between;
 	gap: 1em;
 	margin-bottom: clamp(1.4rem, 3vw, 2.4rem);
+	padding-top: clamp(0.9rem, 1.6vw, 1.3rem);
+	border-top: 1px solid rgb(var(--line-soft));
 }
 .sec-head__index {
-	font-size: 0.78rem;
-	letter-spacing: 0.28em;
+	display: block;
+	margin-bottom: 0.65em;
+	font-size: 0.68rem;
+	font-weight: 500;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
 	color: rgb(var(--muted-light));
 	font-variant-numeric: tabular-nums;
-	display: block;
-	margin-bottom: 0.5em;
 }
 .sec-head h2 {
 	margin: 0;
+	font-size: clamp(1.75rem, 3.1vw, 2.7rem);
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: -0.035em;
 }
 .sec-head__more {
-	font-size: 0.9rem;
-	font-weight: 600;
+	font-size: 0.8rem;
+	font-weight: 500;
 	text-decoration: none;
 	color: rgb(var(--muted));
 	white-space: nowrap;
@@ -552,7 +698,7 @@ select:focus {
 	transition: color var(--dur-fast) var(--ease-out), gap var(--dur-fast) var(--ease-out);
 }
 .sec-head__more:hover {
-	color: rgb(var(--accent));
+	color: rgb(var(--ink));
 	gap: 0.6em;
 }
 

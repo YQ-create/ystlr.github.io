@@ -1,58 +1,43 @@
 ---
-// 悬浮玻璃页头（卡片式导航 CardNav）：居中 logo，左汉堡展开卡片菜单，右侧主题/配色/音乐。
+// 悬浮页头：PillNav 胶囊导航（圆形 logo + 胶囊条 + 当前页小点），右侧工具组。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
-import CardNav from './CardNav.astro';
+import PillNav from './PillNav.astro';
 import MusicPlayer from './MusicPlayer.astro';
 
-// 卡片菜单数据：三个分组，每个分组一张卡片（标题 + 描述 + 链接）
-const navItems = [
-	{
-		label: '文字',
-		description: '文章与成体系的笔记',
-		links: [
-			{ label: '文章', href: '/blog' },
-			{ label: '知识库', href: '/knowledge' },
-		],
-	},
-	{
-		label: '影像',
-		description: '照片墙与收藏的链接',
-		links: [
-			{ label: '照片', href: '/gallery' },
-			{ label: '发现', href: '/discover' },
-		],
-	},
-	{
-		label: '关于',
-		description: '认识我，或联系我',
-		links: [
-			{ label: '关于我', href: '/about' },
-			...(SOCIAL_LINKS.github ? [{ label: 'GitHub', href: SOCIAL_LINKS.github, external: true }] : []),
-			...(SOCIAL_LINKS.email ? [{ label: '邮箱', href: SOCIAL_LINKS.email, external: true }] : []),
-		],
-	},
+// 主导航：PillNav 的项就是这五个页面
+const primaryNav = [
+	{ label: '文章', href: '/blog' },
+	{ label: '知识库', href: '/knowledge' },
+	{ label: '照片', href: '/gallery' },
+	{ label: '发现', href: '/discover' },
+	{ label: '关于', href: '/about' },
 ];
+
+// 首屏就给出正确的当前页，避免 hydration 前高亮闪一下
+const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 ---
 
 <header class="site-head" transition:persist="site-head" transition:name="site-header">
-	<CardNav
-		items={navItems}
-		logoHref="/"
-		logoAlt={`${SITE_TITLE} 首页`}
-		openOn="hover"
-		cardEffect="rise"
-		stagger={0.12}
-		bounce={0.2}
-		maxWidth={1272}
-		menuLabel={true}
-		intro={true}
-	>
-		<span slot="logo" class="brand">
-			<span class="brand-dot" aria-hidden="true"><i></i></span>
-			<span class="brand-name">{SITE_TITLE}</span>
-		</span>
-
-		<Fragment slot="actions">
+	<div class="head-shell">
+		<div class="head-nav">
+			<PillNav
+				items={primaryNav}
+				logoText="Y"
+				logoHref="/"
+				logoAlt={`${SITE_TITLE} 首页`}
+				activeHref={activePath}
+				layout="split"
+				size="md"
+				itemStyle="plain"
+				hoverEffect="glide"
+				indicator="dot"
+				collapse="auto"
+				bounce={0.3}
+				stretch={0.55}
+				intro={true}
+			/>
+		</div>
+		<div class="head-actions">
 			<button class="head-search" type="button" data-search-open aria-label="站内搜索（⌘K）" title="站内搜索 ⌘K">
 				<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
 					<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
@@ -88,8 +73,8 @@ const navItems = [
 					<path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3.4 8.6 8.6 3.4M4.3 3.4h4.3v4.3"></path>
 				</svg>
 			</a>
-		</Fragment>
-	</CardNav>
+		</div>
+	</div>
 </header>
 
 <script>
@@ -102,27 +87,8 @@ const navItems = [
 		const shell = document.querySelector<HTMLElement>('.site-head');
 		if (!shell) return;
 
-		// 卡片菜单里的导航链接（CardNav 内部已渲染 data-nav-item）
-		const links = Array.from(document.querySelectorAll<HTMLElement>('[data-card-nav] [data-nav-item]'));
-
-		// 当前页 active 高亮
-		const path = currentPath();
-		let active = links.find((a) => a.dataset.href === path);
-		if (!active) {
-			active =
-				links
-					.filter((a) => {
-						const h = a.dataset.href || '';
-						return h !== '/' && !/^(https?:|mailto:)/.test(h) && path.startsWith(h);
-					})
-					.sort((a, b) => (b.dataset.href || '').length - (a.dataset.href || '').length)[0];
-		}
-		links.forEach((a) => {
-			const on = a === active;
-			a.classList.toggle('is-active', on);
-			if (on) a.setAttribute('aria-current', 'page');
-			else a.removeAttribute('aria-current');
-		});
+		// PillNav 内部的导航项（当前页高亮由组件自己算，这里只做首页平滑滚动）
+		const links = Array.from(document.querySelectorAll<HTMLElement>('[data-pn-item]'));
 
 		// 滚动收缩
 		let raf = 0;
@@ -197,17 +163,35 @@ const navItems = [
 			syncActive();
 		}
 
-		// 首页 scroll-spy：收到板块切换事件时，更新 active 高亮
-		window.addEventListener('scroll-spy', ((e: CustomEvent) => {
-			const href = e.detail?.href;
-			if (!href) return;
-			links.forEach((a) => {
-				const on = a.dataset.href === href;
-				a.classList.toggle('is-active', on);
-				if (on) a.setAttribute('aria-current', 'page');
-				else a.removeAttribute('aria-current');
-			});
-		}) as EventListener);
+		// 首页 scroll-spy：视口中线落在哪个板块，就把哪个导航项点亮
+		// （PillNav 自己监听 scroll-spy 事件，这里只负责发现当前板块）
+		if (!shell.dataset.spyWired) {
+			const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
+			if (sections.length) {
+				shell.dataset.spyWired = '1';
+				const map: Record<string, string> = {
+					articles: '/blog',
+					knowledge: '/knowledge',
+					discover: '/discover',
+					about: '/about',
+				};
+				let current = '';
+				const io = new IntersectionObserver(
+					(entries) => {
+						const visible = entries
+							.filter((entry) => entry.isIntersecting)
+							.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+						if (!visible) return;
+						const name = (visible.target as HTMLElement).dataset.section ?? '';
+						if (name === current) return;
+						current = name;
+						window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: map[name] ?? '' } }));
+					},
+					{ rootMargin: '-45% 0px -45% 0px', threshold: 0 },
+				);
+				sections.forEach((section) => io.observe(section));
+			}
+		}
 
 		// 首页上点导航：平滑滚到对应板块，而不是跳转页面
 		const sectionByHref: Record<string, string> = {
@@ -244,48 +228,30 @@ const navItems = [
 		padding: 0.75rem var(--gutter) 0;
 		pointer-events: none;
 	}
-	.site-head :global(.card-nav) {
+	/* 版心：左侧胶囊导航，右侧工具组，与正文同宽 */
+	.head-shell {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.9rem;
+		width: 100%;
+		max-width: var(--w-wide, 1272px);
+		margin: 0 auto;
+		pointer-events: none;
+	}
+	.head-shell > * {
 		pointer-events: auto;
 	}
-
-	/* 品牌（居中 logo） */
-	.brand {
-		display: inline-flex;
+	.head-nav {
+		display: flex;
+		min-width: 0;
+		flex: 1 1 auto;
+	}
+	.head-actions {
+		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-weight: 800;
-		letter-spacing: 0.02em;
-		font-size: 1.05rem;
-		color: rgb(var(--ink));
-		line-height: 1;
-	}
-	.brand-dot {
-		position: relative;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background: rgb(var(--accent));
-		box-shadow: 0 0 0 0 rgba(var(--accent), 0.45);
-		animation: dot-pulse 3.6s var(--ease-out) infinite;
-	}
-	.brand-dot i {
-		position: absolute;
-		inset: -3px;
-		border-radius: 50%;
-		border: 1px solid rgba(var(--accent), 0.35);
-	}
-	.brand-name {
-		white-space: nowrap;
-	}
-	@keyframes dot-pulse {
-		0%,
-		62%,
-		100% {
-			box-shadow: 0 0 0 0 rgba(var(--accent), 0.4);
-		}
-		30% {
-			box-shadow: 0 0 0 7px rgba(var(--accent), 0);
-		}
+		gap: 0.15rem;
+		flex: none;
 	}
 
 	/* 首页：页头脱离文档流，Hero 从屏幕最顶端开始 */

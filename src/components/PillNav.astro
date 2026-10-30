@@ -1,0 +1,1112 @@
+---
+// PillNav：胶囊式导航（原生移植 React Bits 版本，无 React）
+// 一个圆形 logo 气泡 + 一条胶囊导航；悬停时高亮胶囊滑到指针下的项（glide），
+// 或从项底部升起一个圆并把文字卷上去（fill）；当前页用一个小点或实心胶囊标记。
+// 宽度不够时自动折成汉堡按钮 + 展开面板。
+//
+// 主题不写死：--pn-* 全部映射到站点的 studio token，所以深浅色和调色盘自动跟随。
+export interface PillItem {
+	label: string;
+	href?: string;
+}
+
+interface Props {
+	items: PillItem[];
+	/** 圆形 logo 里放的字，留空则不显示 logo 气泡 */
+	logoText?: string;
+	logoHref?: string;
+	logoAlt?: string;
+	/** 服务端首屏的当前页；客户端会用 location 自行校正 */
+	activeHref?: string;
+	layout?: 'split' | 'joined';
+	size?: 'sm' | 'md' | 'lg';
+	itemStyle?: 'pill' | 'plain';
+	hoverEffect?: 'fill' | 'glide' | 'none';
+	indicator?: 'dot' | 'pill' | 'none';
+	collapse?: 'auto' | 'always' | 'never';
+	bounce?: number;
+	stretch?: number;
+	intro?: boolean;
+	ariaLabel?: string;
+	class?: string;
+}
+
+const {
+	items,
+	logoText = 'Y',
+	logoHref = '/',
+	logoAlt = '首页',
+	activeHref,
+	layout = 'split',
+	size = 'md',
+	itemStyle = 'plain',
+	hoverEffect = 'glide',
+	indicator = 'dot',
+	collapse = 'auto',
+	bounce = 0.3,
+	stretch = 0.5,
+	intro = true,
+	ariaLabel = '主导航',
+	class: className = '',
+} = Astro.props;
+---
+
+<nav
+	class:list={['pill-nav', className]}
+	aria-label={ariaLabel}
+	data-pn
+	data-layout={layout}
+	data-size={size}
+	data-items={itemStyle}
+	data-hover={hoverEffect}
+	data-indicator={indicator}
+	data-collapse={collapse}
+	data-bounce={bounce}
+	data-stretch={stretch}
+	data-active={activeHref}
+	{...(intro ? { 'data-intro': '' } : {})}
+>
+	{
+		logoText && (
+			<span class="pill-nav__logo pill-nav__surface" data-pn-logo>
+				<a class="pill-nav__logo-link" href={logoHref} aria-label={logoAlt} data-pn-logo-link>
+					<span class="pill-nav__mark" data-pn-mark>
+						{logoText}
+					</span>
+				</a>
+				<span class="pill-nav__rim" />
+			</span>
+		)
+	}
+
+	<div class="pill-nav__bar pill-nav__surface" data-pn-bar>
+		<div class="pill-nav__track" data-pn-track>
+			<ul class="pill-nav__list">
+				{
+					items.map((item, index) => (
+						<li class="pill-nav__slot" data-pn-slot data-index={index}>
+							<a class="pill-nav__item" href={item.href ?? '#'} data-pn-item data-href={item.href}>
+								{hoverEffect === 'fill' && <span class="pill-nav__fill" aria-hidden="true" />}
+								<span class="pill-nav__face">{item.label}</span>
+								{hoverEffect === 'fill' && (
+									<span class="pill-nav__face-alt" aria-hidden="true">
+										{item.label}
+									</span>
+								)}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+			{(hoverEffect === 'glide' || indicator === 'pill') && <span class="pill-nav__glide" data-pn-glide aria-hidden="true" />}
+			{(hoverEffect === 'glide' || indicator === 'pill') && (
+				<div class="pill-nav__ink" data-pn-ink aria-hidden="true">
+					{items.map((item) => (
+						<span class="pill-nav__ink-item">{item.label}</span>
+					))}
+				</div>
+			)}
+			{indicator === 'dot' && <span class="pill-nav__dot" data-pn-dot aria-hidden="true" />}
+		</div>
+		<span class="pill-nav__rim" />
+	</div>
+
+	<button class="pill-nav__toggle pill-nav__surface" type="button" data-pn-toggle aria-expanded="false" aria-label="展开菜单">
+		<span class="pill-nav__burger" aria-hidden="true">
+			<span class="pill-nav__line pill-nav__line--top"></span>
+			<span class="pill-nav__line pill-nav__line--bottom"></span>
+		</span>
+		<span class="pill-nav__rim" />
+	</button>
+
+	<div class="pill-nav__panel pill-nav__surface" data-pn-panel hidden>
+		<ul class="pill-nav__menu">
+			{
+				items.map((item, index) => (
+					<li>
+						<a class="pill-nav__row" href={item.href ?? '#'} data-pn-row data-index={index} data-href={item.href}>
+							{item.label}
+						</a>
+					</li>
+				))
+			}
+		</ul>
+		<span class="pill-nav__rim" />
+	</div>
+
+	<div class="pill-nav__measure" aria-hidden="true">
+		<div class="pill-nav__list">
+			{items.map((item) => <span class="pill-nav__ink-item">{item.label}</span>)}
+		</div>
+	</div>
+</nav>
+
+<style>
+	.pill-nav {
+		--pn-h: 44px;
+		--pn-pad: 4px;
+		--pn-inner: 36px;
+		--pn-x: 16px;
+		--pn-font: 14px;
+		--pn-gap: 8px;
+		--pn-mark: 22px;
+		--pn-roll: calc(var(--pn-inner) / 2 + 0.7em);
+
+		/* 全部接到站点 token，主题和调色盘切换自动跟随 */
+		--pn-surface: rgba(var(--surface), 0.82);
+		--pn-edge: rgba(var(--ink), 0.1);
+		--pn-rim: rgba(var(--ink), 0.05);
+		--pn-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.55), 0 4px 12px -8px rgba(0, 0, 0, 0.35);
+		--pn-text: rgba(var(--ink), 0.58);
+		--pn-strong: rgb(var(--ink));
+		--pn-pill: rgb(var(--btn-solid));
+		--pn-pill-ink: rgb(var(--btn-solid-ink));
+		--pn-pill-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.5);
+		--pn-dot: rgb(var(--accent));
+		--pn-ring: rgba(var(--accent), 0.55);
+		--pn-row-hover: rgba(var(--ink), 0.06);
+		--pn-tile: rgb(var(--surface));
+		--pn-tile-rim: inset 0 0 0 1px rgba(var(--ink), 0.07), 0 2px 8px -4px rgba(0, 0, 0, 0.35);
+		--pn-blur: blur(18px) saturate(1.5);
+
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--pn-gap);
+		max-width: 100%;
+		font-size: var(--pn-font);
+		line-height: 1;
+		-webkit-tap-highlight-color: transparent;
+		pointer-events: auto;
+	}
+	.pill-nav[data-size='sm'] {
+		--pn-h: 36px;
+		--pn-pad: 3px;
+		--pn-inner: 30px;
+		--pn-x: 12px;
+		--pn-font: 13px;
+		--pn-gap: 6px;
+		--pn-mark: 18px;
+	}
+	.pill-nav[data-size='lg'] {
+		--pn-h: 52px;
+		--pn-pad: 5px;
+		--pn-inner: 42px;
+		--pn-x: 20px;
+		--pn-font: 15px;
+		--pn-gap: 10px;
+		--pn-mark: 26px;
+	}
+
+	.pill-nav[data-collapsed] {
+		display: flex;
+		width: 100%;
+		justify-content: space-between;
+	}
+	.pill-nav[data-layout='joined'] {
+		gap: 2px;
+		padding: var(--pn-pad);
+		border-radius: 999px;
+	}
+
+	.pill-nav__surface {
+		background: var(--pn-surface);
+		box-shadow: var(--pn-shadow);
+		-webkit-backdrop-filter: var(--pn-blur);
+		backdrop-filter: var(--pn-blur);
+	}
+
+	.pill-nav__rim {
+		position: absolute;
+		inset: 0;
+		z-index: 4;
+		border-radius: inherit;
+		box-shadow:
+			inset 0 0 0 1px var(--pn-edge),
+			inset 0 1px 0 var(--pn-rim);
+		pointer-events: none;
+	}
+
+	/* 圆形 logo 气泡 */
+	.pill-nav__logo {
+		position: relative;
+		z-index: 2;
+		display: inline-grid;
+		flex: none;
+		place-items: center;
+		width: var(--pn-h);
+		height: var(--pn-h);
+		border-radius: 999px;
+	}
+	.pill-nav__logo-link {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		border-radius: inherit;
+		color: var(--pn-strong);
+		text-decoration: none;
+		outline: none;
+	}
+	.pill-nav[data-layout='joined'] .pill-nav__logo {
+		width: var(--pn-inner);
+		height: var(--pn-inner);
+	}
+	.pill-nav__logo-link:focus-visible,
+	.pill-nav__toggle:focus-visible {
+		outline: 2px solid var(--pn-ring);
+		outline-offset: 2px;
+	}
+	.pill-nav__mark {
+		display: grid;
+		place-items: center;
+		width: var(--pn-mark);
+		height: var(--pn-mark);
+		font-size: calc(var(--pn-mark) * 0.62);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1;
+		transform: rotate(0deg);
+	}
+
+	/* 导航条 */
+	.pill-nav__bar {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		min-width: 0;
+		height: var(--pn-h);
+		padding: var(--pn-pad);
+		border-radius: 999px;
+		box-sizing: border-box;
+	}
+	.pill-nav[data-layout='joined'] .pill-nav__bar {
+		height: var(--pn-inner);
+		padding: 0;
+	}
+	.pill-nav__track {
+		position: relative;
+		height: 100%;
+	}
+	.pill-nav__list {
+		display: flex;
+		align-items: stretch;
+		gap: var(--pn-item-gap, 2px);
+		height: 100%;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.pill-nav__slot {
+		display: flex;
+	}
+	.pill-nav__item {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		padding: 0 var(--pn-x);
+		border: 0;
+		border-radius: 999px;
+		background: none;
+		color: var(--pn-text);
+		font-family: inherit;
+		font-size: inherit;
+		line-height: inherit;
+		font-weight: 500;
+		letter-spacing: -0.005em;
+		white-space: nowrap;
+		text-decoration: none;
+		cursor: pointer;
+		outline: none;
+		overflow: hidden;
+		isolation: isolate;
+		transition: color 0.25s ease;
+	}
+	.pill-nav__slot[data-lit] .pill-nav__item,
+	.pill-nav__item[aria-current] {
+		color: var(--pn-strong);
+	}
+	.pill-nav[data-items='pill'] {
+		--pn-item-gap: 3px;
+	}
+	.pill-nav[data-items='pill'] .pill-nav__item {
+		background: var(--pn-tile);
+		box-shadow: var(--pn-tile-rim);
+		color: var(--pn-strong);
+	}
+	.pill-nav__item:focus-visible,
+	.pill-nav__row:focus-visible {
+		outline: 2px solid var(--pn-ring);
+		outline-offset: -2px;
+	}
+
+	/* fill：从底部升起一个圆，文字同时卷上去换成反色 */
+	.pill-nav__face {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45em;
+		transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.pill-nav__face-alt {
+		position: absolute;
+		inset: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.45em;
+		color: var(--pn-pill-ink);
+		transform: translateY(var(--pn-roll));
+		transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.pill-nav__slot[data-on] .pill-nav__face,
+	.pill-nav__slot[data-hover] .pill-nav__face {
+		transform: translateY(calc(var(--pn-roll) * -1));
+		transition-duration: 0.5s;
+	}
+	.pill-nav__slot[data-on] .pill-nav__face-alt,
+	.pill-nav__slot[data-hover] .pill-nav__face-alt {
+		transform: translateY(0);
+		transition-duration: 0.5s;
+	}
+	.pill-nav__fill {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		z-index: -1;
+		width: var(--pn-fill, 200%);
+		height: var(--pn-fill, 200%);
+		margin: calc(var(--pn-fill, 200%) / -2) 0 0 calc(var(--pn-fill, 200%) / -2);
+		border-radius: 50%;
+		background: var(--pn-pill);
+		transform: scale(0);
+		transition: transform 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+		pointer-events: none;
+	}
+	.pill-nav__slot[data-on] .pill-nav__fill,
+	.pill-nav__slot[data-hover] .pill-nav__fill {
+		transform: scale(1);
+		transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	/* glide：一个胶囊在项之间滑动 */
+	.pill-nav__glide {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 0;
+		border-radius: 999px;
+		background: var(--pn-pill);
+		box-shadow: var(--pn-pill-shadow);
+		opacity: 0;
+		pointer-events: none;
+		transform-origin: 50% 50%;
+		will-change: transform, width, opacity;
+	}
+	.pill-nav[data-focus] .pill-nav__glide {
+		box-shadow:
+			var(--pn-pill-shadow),
+			0 0 0 2px var(--pn-ring);
+	}
+	.pill-nav__ink {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: stretch;
+		gap: var(--pn-item-gap, 2px);
+		color: var(--pn-pill-ink);
+		pointer-events: none;
+		clip-path: inset(0 100% 0 0);
+	}
+	.pill-nav__ink-item {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.45em;
+		height: 100%;
+		padding: 0 var(--pn-x);
+		font-weight: 500;
+		letter-spacing: -0.005em;
+		white-space: nowrap;
+	}
+
+	/* 当前页小点 */
+	.pill-nav__dot {
+		position: absolute;
+		bottom: calc((var(--pn-inner) - var(--pn-font)) / 4 - 2px);
+		left: 0;
+		width: 4px;
+		height: 4px;
+		margin-left: -2px;
+		border-radius: 999px;
+		background: var(--pn-dot);
+		opacity: 0;
+		pointer-events: none;
+		transition: background-color 0.3s ease;
+		will-change: transform, opacity;
+	}
+	.pill-nav[data-dot-lit] .pill-nav__dot {
+		background: var(--pn-pill-ink);
+	}
+
+	/* 折叠后的汉堡按钮 */
+	.pill-nav__toggle {
+		position: relative;
+		z-index: 3;
+		display: none;
+		flex: none;
+		place-items: center;
+		width: var(--pn-h);
+		height: var(--pn-h);
+		padding: 0;
+		border: 0;
+		border-radius: 999px;
+		color: var(--pn-strong);
+		cursor: pointer;
+		outline: none;
+	}
+	.pill-nav[data-collapsed] .pill-nav__toggle {
+		display: inline-grid;
+	}
+	.pill-nav[data-collapsed] .pill-nav__bar {
+		display: none;
+	}
+	.pill-nav__burger {
+		position: relative;
+		width: 16px;
+		height: 10px;
+	}
+	.pill-nav__line {
+		position: absolute;
+		left: 0;
+		width: 100%;
+		height: 1.5px;
+		border-radius: 2px;
+		background: currentColor;
+		transition:
+			transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+			top 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.pill-nav__line--top {
+		top: 1.5px;
+	}
+	.pill-nav__line--bottom {
+		top: 7px;
+	}
+	.pill-nav[data-open] .pill-nav__line--top {
+		top: 4.25px;
+		transform: rotate(45deg);
+	}
+	.pill-nav[data-open] .pill-nav__line--bottom {
+		top: 4.25px;
+		transform: rotate(-45deg);
+	}
+
+	/* 展开面板 */
+	.pill-nav__panel {
+		position: absolute;
+		top: 0;
+		right: 0;
+		left: 0;
+		z-index: 1;
+		padding: calc(var(--pn-h) + 10px) 6px 6px;
+		border-radius: 22px;
+		box-sizing: border-box;
+		/* 面板要盖住正文，用实色（不依赖 backdrop-filter，避免某些环境合成层出问题） */
+		background: rgb(var(--surface));
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+	}
+	.pill-nav__panel[hidden] {
+		display: none;
+	}
+	.pill-nav__menu {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.pill-nav__row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		height: calc(var(--pn-h) + 2px);
+		padding: 0 16px;
+		border: 0;
+		border-radius: 16px;
+		box-sizing: border-box;
+		background: none;
+		color: var(--pn-strong);
+		font-family: inherit;
+		font-size: calc(var(--pn-font) + 1px);
+		line-height: 1;
+		font-weight: 500;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		outline: none;
+		transition: background-color 0.2s ease;
+	}
+	.pill-nav__row:hover {
+		background: var(--pn-row-hover);
+	}
+	.pill-nav__row[aria-current] {
+		background: var(--pn-pill);
+		box-shadow: var(--pn-pill-shadow);
+		color: var(--pn-pill-ink);
+	}
+
+	/* 量宽用的隐藏副本 */
+	.pill-nav__measure {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: flex;
+		gap: 2px;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.pill-nav__face,
+		.pill-nav__face-alt,
+		.pill-nav__fill,
+		.pill-nav__line,
+		.pill-nav__item,
+		.pill-nav__row,
+		.pill-nav__dot {
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	type Slot = { left: number; width: number };
+
+	const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+	const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+	const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	const instances: { refresh: (active?: number) => void; destroy: () => void }[] = [];
+	let bound = false;
+	let pageToken = 0;
+	let mountedToken = -1;
+
+	const pathNow = () => {
+		const p = location.pathname.replace(/\/+$/, '');
+		return p === '' ? '/' : p;
+	};
+
+	function setup(root: HTMLElement) {
+		const slots = Array.from(root.querySelectorAll<HTMLElement>('[data-pn-slot]'));
+		const links = Array.from(root.querySelectorAll<HTMLElement>('[data-pn-item]'));
+		const rows = Array.from(root.querySelectorAll<HTMLElement>('[data-pn-row]'));
+		const track = root.querySelector<HTMLElement>('[data-pn-track]');
+		const bar = root.querySelector<HTMLElement>('[data-pn-bar]');
+		const logo = root.querySelector<HTMLElement>('[data-pn-logo]');
+		const mark = root.querySelector<HTMLElement>('[data-pn-mark]');
+		const toggle = root.querySelector<HTMLElement>('[data-pn-toggle]');
+		const panel = root.querySelector<HTMLElement>('[data-pn-panel]');
+		const glide = root.querySelector<HTMLElement>('[data-pn-glide]');
+		const ink = root.querySelector<HTMLElement>('[data-pn-ink]');
+		const dot = root.querySelector<HTMLElement>('[data-pn-dot]');
+		const measureList = root.querySelector<HTMLElement>('.pill-nav__measure .pill-nav__list');
+		if (!track || !bar || !toggle || !panel) return null;
+
+		const hover = root.dataset.hover ?? 'glide';
+		const indicatorKind = root.dataset.indicator ?? 'dot';
+		const joined = root.dataset.layout === 'joined';
+		const bounce = clamp(Number(root.dataset.bounce) || 0.3, 0, 1);
+		const stretchAmount = clamp(Number(root.dataset.stretch) || 0.5, 0, 1);
+		const hasLogo = Boolean(logo);
+
+		const state = {
+			x0: 0,
+			x1: 0,
+			v0: 0,
+			v1: 0,
+			alpha: 0,
+			pop: 1,
+			press: 1,
+			pressV: 0,
+			dotX: 0,
+			dotV: 0,
+			dotAlpha: 0,
+			hovered: -1,
+			keyboard: false,
+			pressing: false,
+			active: 0,
+		};
+		const rects: Slot[] = [];
+		let trackWidth = 0;
+		let trackHeight = 0;
+		let raf = 0;
+		let last = 0;
+		let alive = true;
+
+		/* ---------- 当前页 ---------- */
+		const markCurrent = (index: number) => {
+			state.active = index;
+			links.forEach((a, i) => {
+				if (i === index) a.setAttribute('aria-current', 'page');
+				else a.removeAttribute('aria-current');
+			});
+			rows.forEach((a, i) => {
+				if (i === index) a.setAttribute('aria-current', 'page');
+				else a.removeAttribute('aria-current');
+			});
+		};
+
+		const resolveActive = () => {
+			const path = pathNow();
+			const target =
+				links.find((a) => a.dataset.href === path) ??
+				links
+					.filter((a) => {
+						const h = a.dataset.href ?? '';
+						return h !== '/' && !/^https?:|^mailto:/.test(h) && path.startsWith(h);
+					})
+					.sort((a, b) => (b.dataset.href ?? '').length - (a.dataset.href ?? '').length)[0];
+			const index = target ? links.indexOf(target) : -1;
+			markCurrent(index);
+			return index;
+		};
+
+		/* ---------- 测量 ---------- */
+		const measure = () => {
+			trackWidth = track.offsetWidth;
+			trackHeight = track.offsetHeight;
+			slots.forEach((slot, index) => {
+				rects[index] = { left: slot.offsetLeft, width: slot.offsetWidth };
+				const reach = Math.ceil(2 * Math.sqrt((slot.offsetWidth / 2) ** 2 + slot.offsetHeight ** 2)) + 2;
+				slot.style.setProperty('--pn-fill', `${reach}px`);
+			});
+		};
+
+		const glideIndex = () => {
+			if (hover === 'fill') return -1;
+			if (hover === 'glide' && state.hovered >= 0) return state.hovered;
+			return indicatorKind === 'pill' ? state.active : -1;
+		};
+
+		const syncLit = () => {
+			slots.forEach((slot, index) => {
+				const lit = state.hovered === index;
+				slot.toggleAttribute('data-lit', lit);
+				slot.toggleAttribute('data-hover', lit && hover === 'fill');
+				slot.toggleAttribute('data-on', hover === 'fill' && indicatorKind === 'pill' && index === state.active);
+			});
+			root.toggleAttribute('data-focus', state.keyboard && state.hovered >= 0);
+			root.toggleAttribute('data-dot-lit', hover === 'fill' && state.hovered >= 0 && state.hovered === state.active);
+		};
+
+		/* ---------- 绘制 ---------- */
+		const render = () => {
+			const width = Math.max(0, state.x1 - state.x0);
+			const scale = state.press * state.pop;
+			const target = rects[glideIndex()];
+			const squash = target ? 1 - clamp((width / Math.max(target.width, 1) - 1) * 0.3, 0, 0.14) : 1;
+
+			if (glide) {
+				glide.style.width = `${width}px`;
+				glide.style.transform = `translate3d(${state.x0}px, 0, 0) scale(${scale}, ${scale * squash})`;
+				glide.style.opacity = `${state.alpha}`;
+			}
+			if (ink) {
+				const half = (width * scale) / 2;
+				const center = (state.x0 + state.x1) / 2;
+				const inset = (trackHeight * (1 - scale * squash)) / 2;
+				ink.style.clipPath = `inset(${inset}px ${trackWidth - center - half}px ${inset}px ${center - half}px round ${trackHeight / 2}px)`;
+				ink.style.opacity = `${state.alpha}`;
+			}
+			if (dot) {
+				const pull = clamp(Math.abs(state.dotV) / 700, 0, 2.2);
+				dot.style.transform = `translate3d(${state.dotX}px, 0, 0) scaleX(${1 + pull})`;
+				dot.style.opacity = `${state.dotAlpha}`;
+			}
+		};
+
+		/* ---------- 每帧 ---------- */
+		const tick = (now: number) => {
+			raf = 0;
+			if (!alive) return;
+			const still = reduce();
+			const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
+			last = now;
+			const zeta = 1 - 0.55 * bounce;
+			const base = 520;
+			let busy = false;
+
+			const target = rects[glideIndex()];
+			if (target) {
+				const t0 = target.left;
+				const t1 = target.left + target.width;
+				if (state.alpha < 0.02) {
+					state.x0 = t0;
+					state.x1 = t1;
+					state.v0 = 0;
+					state.v1 = 0;
+					state.pop = 0.9;
+				}
+				if (still) {
+					state.x0 = t0;
+					state.x1 = t1;
+					state.v0 = 0;
+					state.v1 = 0;
+				} else {
+					const direction = Math.sign((t0 + t1) / 2 - (state.x0 + state.x1) / 2);
+					const lead = base * (1 + 0.9 * stretchAmount);
+					const trail = base * (1 - 0.5 * stretchAmount);
+					const k0 = direction < 0 ? lead : direction > 0 ? trail : base;
+					const k1 = direction > 0 ? lead : direction < 0 ? trail : base;
+					const steps = Math.ceil(dt / (1 / 240));
+					const h = dt / steps;
+					for (let i = 0; i < steps; i++) {
+						state.v0 += (-k0 * (state.x0 - t0) - 2 * zeta * Math.sqrt(k0) * state.v0) * h;
+						state.x0 += state.v0 * h;
+						state.v1 += (-k1 * (state.x1 - t1) - 2 * zeta * Math.sqrt(k1) * state.v1) * h;
+						state.x1 += state.v1 * h;
+					}
+				}
+				state.alpha += (1 - state.alpha) * (still ? 1 : 1 - Math.exp(-dt / 0.06));
+				busy =
+					Math.abs(state.x0 - t0) > 0.05 ||
+					Math.abs(state.x1 - t1) > 0.05 ||
+					Math.abs(state.v0) > 0.5 ||
+					Math.abs(state.v1) > 0.5 ||
+					state.alpha < 0.999;
+			} else {
+				state.alpha += (0 - state.alpha) * (still ? 1 : 1 - Math.exp(-dt / 0.07));
+				if (state.alpha > 0.002) busy = true;
+				else state.alpha = 0;
+			}
+
+			state.pop += (1 - state.pop) * (still ? 1 : 1 - Math.exp(-dt / 0.09));
+			if (Math.abs(1 - state.pop) > 0.001) busy = true;
+
+			const pressTarget = state.pressing ? 0.95 : 1;
+			if (still) {
+				state.press = pressTarget;
+				state.pressV = 0;
+			} else {
+				state.pressV += (-700 * (state.press - pressTarget) - 30 * state.pressV) * dt;
+				state.press += state.pressV * dt;
+			}
+			if (Math.abs(state.press - pressTarget) > 0.0005 || Math.abs(state.pressV) > 0.01) busy = true;
+
+			const dotTarget = indicatorKind === 'dot' ? rects[state.active] : null;
+			if (dotTarget) {
+				const center = dotTarget.left + dotTarget.width / 2;
+				if (state.dotAlpha < 0.02) {
+					state.dotX = center;
+					state.dotV = 0;
+				}
+				if (still) {
+					state.dotX = center;
+					state.dotV = 0;
+				} else {
+					const k = 360;
+					const steps = Math.ceil(dt / (1 / 240));
+					const h = dt / steps;
+					for (let i = 0; i < steps; i++) {
+						state.dotV += (-k * (state.dotX - center) - 2 * (1 - 0.5 * bounce) * Math.sqrt(k) * state.dotV) * h;
+						state.dotX += state.dotV * h;
+					}
+				}
+				state.dotAlpha += (1 - state.dotAlpha) * (still ? 1 : 1 - Math.exp(-dt / 0.1));
+				if (Math.abs(state.dotX - center) > 0.05 || Math.abs(state.dotV) > 0.5 || state.dotAlpha < 0.999) busy = true;
+			} else {
+				state.dotAlpha += (0 - state.dotAlpha) * (still ? 1 : 1 - Math.exp(-dt / 0.1));
+				if (state.dotAlpha > 0.002) busy = true;
+				else state.dotAlpha = 0;
+			}
+
+			render();
+			if (busy) raf = requestAnimationFrame(tick);
+		};
+
+		const wake = () => {
+			if (!raf && alive) {
+				last = 0;
+				raf = requestAnimationFrame(tick);
+			}
+		};
+
+		/* ---------- 交互 ---------- */
+		const enter = (index: number, event: PointerEvent) => {
+			if (event.pointerType === 'touch') return;
+			state.hovered = index;
+			state.keyboard = false;
+			syncLit();
+			wake();
+		};
+		const leave = () => {
+			if (state.keyboard) return;
+			state.hovered = -1;
+			syncLit();
+			wake();
+		};
+
+		slots.forEach((slot, index) => {
+			slot.addEventListener('pointerenter', (e) => enter(index, e));
+			slot.addEventListener('pointerdown', () => {
+				state.pressing = true;
+				wake();
+			});
+			const link = slot.querySelector<HTMLElement>('[data-pn-item]');
+			link?.addEventListener('focus', () => {
+				const visible = link.matches(':focus-visible');
+				state.keyboard = visible;
+				if (visible) state.hovered = index;
+				syncLit();
+				wake();
+			});
+			link?.addEventListener('blur', () => {
+				if (!state.keyboard) return;
+				state.keyboard = false;
+				state.hovered = -1;
+				syncLit();
+				wake();
+			});
+			link?.addEventListener('click', () => {
+				markCurrent(index);
+				wake();
+			});
+		});
+		track.addEventListener('pointerleave', leave);
+
+		const release = () => {
+			if (!state.pressing) return;
+			state.pressing = false;
+			wake();
+		};
+		window.addEventListener('pointerup', release);
+		window.addEventListener('pointercancel', release);
+
+		/* 首页滚动时由 scroll-spy 广播当前板块，导航跟着移动小点 */
+		const onSpy = (event: Event) => {
+			const href = (event as CustomEvent).detail?.href;
+			// 首页顶端不属于任何一项，清掉高亮
+			if (!href) {
+				markCurrent(-1);
+				wake();
+				return;
+			}
+			const index = links.findIndex((a) => a.dataset.href === href);
+			if (index < 0) return;
+			markCurrent(index);
+			wake();
+		};
+		window.addEventListener('scroll-spy', onSpy);
+
+		/* logo 悬停转一圈 */
+		const logoLink = root.querySelector<HTMLElement>('[data-pn-logo-link]');
+		logoLink?.addEventListener('pointerenter', (e) => {
+			if (e.pointerType === 'touch' || !mark || reduce() || mark.getAnimations().length) return;
+			mark.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], {
+				duration: 900,
+				easing: 'cubic-bezier(0.65, 0, 0.25, 1)',
+			});
+		});
+
+		/* ---------- 折叠 ---------- */
+		const evaluateCollapse = () => {
+			const mode = root.dataset.collapse ?? 'auto';
+			if (mode === 'always') {
+				root.setAttribute('data-collapsed', '');
+				return;
+			}
+			if (mode === 'never') {
+				root.removeAttribute('data-collapsed');
+				return;
+			}
+			const parent = root.parentElement;
+			if (!parent || !measureList) return;
+			const styles = getComputedStyle(parent);
+			const available =
+				parent.clientWidth - (parseFloat(styles.paddingLeft) || 0) - (parseFloat(styles.paddingRight) || 0);
+			const listWidth = measureList.offsetWidth ?? 0;
+			const read = (name: string) => parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0;
+			const h = read('--pn-h');
+			const pad = read('--pn-pad');
+			const gap = read('--pn-gap');
+			const inner = read('--pn-inner');
+			const need = joined
+				? pad * 2 + (hasLogo ? inner + 2 : 0) + listWidth
+				: (hasLogo ? h + gap : 0) + listWidth + pad * 2;
+			const next = need > available + 0.5;
+			root.toggleAttribute('data-collapsed', next);
+			if (!next) measure();
+		};
+
+		/* ---------- 面板 ---------- */
+		let open = false;
+		const setPanel = (next: boolean, instant = false) => {
+			open = next;
+			root.toggleAttribute('data-open', next);
+			toggle.setAttribute('aria-expanded', String(next));
+			toggle.setAttribute('aria-label', next ? '收起菜单' : '展开菜单');
+			const height = panel.offsetHeight;
+			const width = panel.offsetWidth;
+			const header = joined ? root.offsetHeight : (toggle.offsetHeight ?? 44);
+			const start = joined
+				? `inset(0px 0px ${Math.max(0, height - header)}px 0px round ${header / 2}px)`
+				: `inset(0px 0px ${Math.max(0, height - header)}px ${Math.max(0, width - header)}px round ${header / 2}px)`;
+			const end = 'inset(0px 0px 0px 0px round 22px)';
+			if (next) {
+				panel.hidden = false;
+				if (instant || reduce()) return;
+				panel.animate([{ clipPath: start }, { clipPath: end }], { duration: 560, easing: EASE });
+				panel.querySelectorAll('li').forEach((row, index) => {
+					row.animate(
+						[
+							{ opacity: 0, transform: 'translateY(-8px)' },
+							{ opacity: 1, transform: 'translateY(0)' },
+						],
+						{ duration: 420, delay: 90 + index * 40, easing: EASE, fill: 'backwards' },
+					);
+				});
+				return;
+			}
+			if (instant || reduce() || !panel.offsetHeight) {
+				panel.hidden = true;
+				return;
+			}
+			const morph = panel.animate([{ clipPath: end }, { clipPath: start }], {
+				duration: 380,
+				easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+				fill: 'forwards',
+			});
+			morph.onfinish = () => {
+				panel.hidden = true;
+			};
+		};
+
+		toggle.addEventListener('click', () => setPanel(!open));
+		const onDocDown = (event: PointerEvent) => {
+			if (!open) return;
+			const target = event.target;
+			if (target instanceof Node && root.contains(target)) return;
+			setPanel(false);
+		};
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key !== 'Escape' || !open) return;
+			setPanel(false);
+			toggle.focus();
+		};
+		document.addEventListener('pointerdown', onDocDown);
+		document.addEventListener('keydown', onKey);
+
+		/* ---------- 进场 ---------- */
+		const playIntro = () => {
+			if (!root.hasAttribute('data-intro') || reduce()) return;
+			root.removeAttribute('data-intro');
+			if (logo) {
+				logo.animate([{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'scale(1)' }], {
+					duration: 700,
+					easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+					fill: 'backwards',
+				});
+			}
+			const el = joined ? root : bar;
+			const width = el.offsetWidth;
+			const height = el.offsetHeight;
+			el.animate(
+				[
+					{ clipPath: `inset(0px ${Math.max(0, width - height)}px 0px 0px round ${height / 2}px)` },
+					{ clipPath: `inset(0px 0px 0px 0px round ${height / 2}px)` },
+				],
+				{ duration: 760, delay: 90, easing: EASE, fill: 'backwards' },
+			);
+			slots.forEach((slot, index) => {
+				slot.animate(
+					[
+						{ opacity: 0, transform: 'translateX(-10px)' },
+						{ opacity: 1, transform: 'translateX(0)' },
+					],
+					{ duration: 560, delay: 200 + index * 50, easing: EASE, fill: 'backwards' },
+				);
+			});
+		};
+
+		/* ---------- 启动 ---------- */
+		resolveActive();
+		evaluateCollapse();
+		measure();
+		syncLit();
+		render();
+		wake();
+		playIntro();
+
+		const ro = new ResizeObserver(() => {
+			evaluateCollapse();
+			measure();
+			render();
+			wake();
+		});
+		ro.observe(root);
+		if (root.parentElement) ro.observe(root.parentElement);
+		document.fonts?.ready.then(() => {
+			evaluateCollapse();
+			measure();
+			render();
+			wake();
+		});
+
+		return {
+			refresh: (active?: number) => {
+				if (typeof active === 'number') markCurrent(active);
+				else resolveActive();
+				evaluateCollapse();
+				measure();
+				render();
+				wake();
+			},
+			destroy: () => {
+				alive = false;
+				cancelAnimationFrame(raf);
+				ro.disconnect();
+				document.removeEventListener('pointerdown', onDocDown);
+				document.removeEventListener('keydown', onKey);
+				window.removeEventListener('pointerup', release);
+				window.removeEventListener('pointercancel', release);
+				window.removeEventListener('scroll-spy', onSpy);
+			},
+		};
+	}
+
+	function mount() {
+		if (mountedToken === pageToken) return;
+		mountedToken = pageToken;
+		for (const item of instances.splice(0)) item.destroy();
+		document.querySelectorAll<HTMLElement>('[data-pn]:not([data-pn-ready])').forEach((root) => {
+			root.dataset.pnReady = '1';
+			const instance = setup(root);
+			if (instance) instances.push(instance);
+		});
+	}
+
+	/* View Transitions 换页后 header 是持久化的，这里手动同步当前页 */
+	function syncActive() {
+		for (const item of instances) item.refresh();
+	}
+
+	if (!bound) {
+		bound = true;
+		document.addEventListener('astro:before-swap', () => {
+			pageToken += 1;
+		});
+		document.addEventListener('astro:page-load', () => {
+			mount();
+			syncActive();
+		});
+	}
+	mount();
+</script>

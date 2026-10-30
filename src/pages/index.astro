@@ -442,14 +442,14 @@ if (photos.length > 0) {
 				ticking = false;
 				const q = window.scrollY / Math.max(1, window.innerHeight);
 
-				// Statement: rise + reveal
-				// rise: s = clamp((q - 0.69) / 0.74) → translateY(.205 * (1-s)^2 * vh)
-				const s = clamp((q - 0.69) / 0.74, 0, 1);
+				// Statement: rise + reveal（压缩到约 1 屏内完成，避免滚动过长）
+				// rise: s = clamp((q - 0.6) / 0.7) → translateY(.205 * (1-s)^2 * vh)
+				const s = clamp((q - 0.6) / 0.7, 0, 1);
 				const riseY = 0.205 * Math.pow(1 - s, 2) * window.innerHeight;
 				if (stmtEl) stmtEl.style.transform = `translateY(${riseY.toFixed(1)}px)`;
 
-				// reveal: p = clamp((q - 0.56) / 2.03)
-				const stmtP = clamp((q - 0.56) / 2.03, 0, 1);
+				// reveal: p = clamp((q - 0.5) / 1.0)
+				const stmtP = clamp((q - 0.5) / 1.0, 0, 1);
 				paint(stmtChars, stmtP, 0.16, ink(), accent(), ghost());
 
 				// 导航 CTA 弹入（statement 40% 时）
@@ -752,7 +752,7 @@ if (photos.length > 0) {
 	/* ═══════════ Act 2: Statement ═══════════ */
 	.statement {
 		position: relative;
-		height: 306vh;
+		height: 200vh;
 		margin-top: -31vh;
 		pointer-events: none;
 	}

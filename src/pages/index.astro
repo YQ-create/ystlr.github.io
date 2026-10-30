@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import AeroShards from '../components/AeroShards.astro';
+import ShapeWaves from '../components/ShapeWaves.astro';
 import SplitText from '../components/SplitText.astro';
 import SpecularButton from '../components/SpecularButton.astro';
 import CountUp from '../components/CountUp.astro';
@@ -66,24 +66,23 @@ const discoverPreview = discoverData.collections
 		<!-- ============ 首页 Hero ============ -->
 		<section class="hero" id="home" data-section="home">
 			<div class="hero-waves" aria-hidden="true">
-				<AeroShards
-					shardColor="#6b5b95"
-					accentColor="#ffb86c"
-					material="glass"
-					placement="full"
-					count={1200}
-					depthOfField={0.75}
-					glow={0.42}
-					grain={0.06}
-					vignette={0.3}
+				<ShapeWaves
+					shapes="mixed"
+					cellSize={12}
+					dotSize={0.72}
+					speed={0.8}
+					scale={1.1}
+					contrast={1.15}
+					brightness={0.42}
+					flow={0.6}
+					direction={24}
+					fade={0.28}
+					interactive={true}
+					splashRadius={60}
+					splashStrength={0.5}
+					glow={0.45}
 					intro={true}
-					mouseInteraction={true}
-					mouseStrength={0.6}
-					parallax={0.5}
-					markers="plus"
-					pulseOnClick={true}
-					holdToGather={true}
-					dpr={1.5}
+					introDuration={1.8}
 				/>
 			</div>
 

@@ -2,6 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
+import LogoLoop from '../components/LogoLoop.astro';
+import { STACK } from '../data/stack';
 import { getCollection } from 'astro:content';
 import { AUTHOR_NAME, PROFILE, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
@@ -156,6 +158,16 @@ const topics = PROFILE.topics;
 				</ul>
 			</section>
 		)}
+		<section class="wrap about-stack" data-reveal>
+			<header class="about-stack__head">
+				<div>
+					<span class="sec-head__index">STACK / 09</span>
+					<h2>用什么搭的</h2>
+				</div>
+				<p class="about-stack__hint">没有后台服务器，没有数据库，全靠这些拼起来。</p>
+			</header>
+			<LogoLoop items={STACK} speed={44} logoHeight={24} gap={40} muted={0.72} scaleOnHover />
+		</section>
 	</main>
 </BaseLayout>
 
@@ -495,6 +507,42 @@ const topics = PROFILE.topics;
 	@media (max-width: 860px) {
 		.recent-list {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	/* 技术栈：一条持续滚动的 logo 带 */
+	.about-stack {
+		margin-top: clamp(2.4rem, 5vw, 3.6rem);
+		padding-top: clamp(1.6rem, 3vw, 2.2rem);
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.about-stack__head {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.9rem;
+	}
+	.about-stack__head h2 {
+		margin: 0.28em 0 0;
+		font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+	}
+	.about-stack__hint {
+		margin: 0;
+		max-width: 30ch;
+		text-align: right;
+		font-size: 0.8rem;
+		line-height: 1.6;
+		color: rgb(var(--muted-light));
+	}
+	@media (max-width: 680px) {
+		.about-stack__head {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.5rem;
+		}
+		.about-stack__hint {
+			text-align: left;
 		}
 	}
 </style>

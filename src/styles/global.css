@@ -702,66 +702,113 @@ select:focus {
 	gap: 0.6em;
 }
 
-/* ============ 滚动进场（Motion.astro 添加 .is-in） ============ */
-/* 初始隐藏只在 <html class="js"> 时生效：BaseHead 的首屏脚本会立刻打上这个类。
-   这样禁用 JS / 脚本加载失败时内容仍然可见，而不是整站空白。 */
-:root.js [data-reveal] {
-	opacity: 0;
-	transform: translate3d(0, 26px, 0);
-	filter: blur(5px);
-	transition:
-		opacity 0.75s var(--ease-out),
-		transform 0.75s var(--ease-out),
-		filter 0.75s var(--ease-out);
-	transition-delay: var(--reveal-delay, 0ms);
-	will-change: opacity, transform;
-}
-:root.js [data-reveal='left'] {
-	transform: translate3d(-30px, 0, 0);
-}
-:root.js [data-reveal='right'] {
-	transform: translate3d(30px, 0, 0);
-}
-:root.js [data-reveal='scale'] {
-	transform: scale(0.94);
-}
-@property --reveal-wipe {
+/* ============ AnimatedContent：全站滚动进场引擎 ============ */
+/* 对齐 React Bits 的 AnimatedContent，但不依赖 gsap：用 CSS transition + IntersectionObserver。
+   初始隐藏只在 <html class="js"> 时生效（BaseHead 首屏脚本立刻打上），
+   这样禁用 JS / 脚本失败时内容仍然可见，不会整站空白。
+
+   [data-ac]                         元素自身进场（属性由 Motion.astro 自动补）
+     data-ac-distance   px           位移距离，默认 26
+     data-ac-direction  vertical|horizontal，默认 vertical
+     data-ac-reverse                 反向（来自上方 / 左侧）
+     data-ac-scale                   起始缩放，默认 1
+     data-ac-blur       px           起始模糊，默认 5
+     data-ac-rotate     deg          起始旋转，默认 0
+     data-ac-delay      ms           延迟
+     data-ac-duration   s            时长，默认 0.8
+     data-ac-wipe       up|down|left|right|center   擦除式揭示
+     data-ac-threshold  0~1          触发阈值，默认 0.1
+
+   [data-ac-stagger="0.08"]          子元素依次进场（间隔秒）
+     data-ac-stagger-from start|end|center|edges|random
+*/
+@property --ac-wipe {
 	syntax: '<percentage>';
 	inherits: false;
-	initial-value: -30%;
+	initial-value: 0%;
 }
 
-/* 用 mask 做「擦除式」揭示：clip-path 会把元素自身裁成 0 高，
-   导致 IntersectionObserver 永远认为它没有进入视口（进场动画与图片懒加载都会卡死）。
-   mask 只影响绘制，不改几何，所以观察器能正常触发。 */
-:root.js [data-reveal='mask'] {
+:root.js :where([data-ac], [data-ac-child]) {
+	--ac-sx: 0;
+	--ac-sy: 1;
+	--ac-dist: 26px;
+	--ac-scale: 1;
+	--ac-blur: 5px;
+	--ac-rotate: 0deg;
+	--ac-dur: 0.8s;
+	--ac-delay: 0ms;
+	--ac-ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+	opacity: 0;
+	transform: translate3d(calc(var(--ac-dist) * var(--ac-sx)), calc(var(--ac-dist) * var(--ac-sy)), 0)
+		scale(var(--ac-scale)) rotate(var(--ac-rotate));
+	filter: blur(var(--ac-blur));
+	transition:
+		opacity var(--ac-dur) var(--ac-ease) var(--ac-delay),
+		transform var(--ac-dur) var(--ac-ease) var(--ac-delay),
+		filter var(--ac-dur) var(--ac-ease) var(--ac-delay);
+	will-change: opacity, transform;
+}
+
+/* 方向：默认垂直、来自下方；horizontal 走 X 轴；reverse 取反 */
+:root.js [data-ac][data-ac-direction='horizontal'] {
+	--ac-sx: 1;
+	--ac-sy: 0;
+}
+:root.js [data-ac][data-ac-reverse] {
+	--ac-sx: 0;
+	--ac-sy: -1;
+}
+:root.js [data-ac][data-ac-direction='horizontal'][data-ac-reverse] {
+	--ac-sx: -1;
+	--ac-sy: 0;
+}
+
+/* 擦除：mask 只影响绘制、不改几何，所以 IO 仍能正常判定进入视口
+   （clip-path 会把元素裁成 0 高，导致观察器永远认为它没进视口）。 */
+:root.js [data-ac][data-ac-wipe] {
 	opacity: 1;
 	transform: none;
 	filter: none;
-	clip-path: none;
-	--reveal-wipe: -30%;
-	-webkit-mask-image: linear-gradient(
-		to bottom,
-		#000 var(--reveal-wipe),
-		transparent calc(var(--reveal-wipe) + 26%)
-	);
-	mask-image: linear-gradient(
-		to bottom,
-		#000 var(--reveal-wipe),
-		transparent calc(var(--reveal-wipe) + 26%)
-	);
-	transition: --reveal-wipe 1.05s var(--ease-out);
+	--ac-wipe: 0%;
+	-webkit-mask-image: var(--ac-mask);
+	mask-image: var(--ac-mask);
+	transition: --ac-wipe var(--ac-wipe-dur, 1s) var(--ac-ease) var(--ac-delay);
 }
-:root.js [data-reveal='mask'].is-in {
-	--reveal-wipe: 130%;
+:root.js [data-ac][data-ac-wipe='up'] {
+	--ac-mask: linear-gradient(to top, #000 calc(var(--ac-wipe) * 140% - 40%), transparent calc(var(--ac-wipe) * 140%));
 }
-:root.js [data-reveal].is-in {
-	opacity: 1;
-	transform: none;
-	filter: blur(0);
-	clip-path: inset(0 0 0 0);
+:root.js [data-ac][data-ac-wipe='down'] {
+	--ac-mask: linear-gradient(to bottom, #000 calc(var(--ac-wipe) * 140% - 40%), transparent calc(var(--ac-wipe) * 140%));
+}
+:root.js [data-ac][data-ac-wipe='left'] {
+	--ac-mask: linear-gradient(to left, #000 calc(var(--ac-wipe) * 140% - 40%), transparent calc(var(--ac-wipe) * 140%));
+}
+:root.js [data-ac][data-ac-wipe='right'] {
+	--ac-mask: linear-gradient(to right, #000 calc(var(--ac-wipe) * 140% - 40%), transparent calc(var(--ac-wipe) * 140%));
+}
+:root.js [data-ac][data-ac-wipe='center'] {
+	--ac-mask: radial-gradient(
+		farthest-corner at 50% 50%,
+		#000 calc(var(--ac-wipe) * 140% - 40%),
+		transparent calc(var(--ac-wipe) * 140%)
+	);
 }
 
+/* 落位 */
+:root.js :where([data-ac], [data-ac-child]).is-in {
+	opacity: 1;
+	transform: none;
+	filter: none;
+}
+:root.js [data-ac][data-ac-wipe].is-in {
+	--ac-wipe: 100%;
+}
+/* 动画收尾后撤掉 will-change，避免上百个元素常驻合成层 */
+:root.js :where([data-ac], [data-ac-child]).ac-done {
+	will-change: auto;
+}
+
+/* 顶部阅读进度条（Motion.astro 写入 --progress） */
 /* 顶部阅读进度条（Motion.astro 写入 --progress） */
 .scroll-progress {
 	position: fixed;

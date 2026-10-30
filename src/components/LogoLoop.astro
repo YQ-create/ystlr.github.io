@@ -1,0 +1,478 @@
+---
+// LogoLoop：横向无限循环的 logo / 关键词带
+// 对齐 React Bits 的 LogoLoop，但用原生 rAF + transform 实现，无 React、无 gsap。
+// 特性：匀速循环、两端渐隐、hover 暂停并可提亮、可拖拽 + 惯性、滚动加速、进场错峰。
+export interface LogoItem {
+	/** 主名，显示为大字 */
+	label: string;
+	/** 前置符号（1~2 个字符），充当文字版 logo */
+	glyph?: string;
+	/** 副标题，例如用途说明 */
+	hint?: string;
+	href?: string;
+}
+
+interface Props {
+	items: LogoItem[];
+	/** 速度，px/秒 */
+	speed?: number;
+	direction?: 'left' | 'right';
+	/** 文字 logo 的字号 */
+	logoHeight?: number;
+	gap?: number;
+	pauseOnHover?: boolean;
+	fadeOut?: boolean;
+	fadeOutWidth?: number;
+	scaleOnHover?: boolean;
+	/** 0~1，静止时的灰度与压暗程度 */
+	muted?: number;
+	draggable?: boolean;
+	/** 页面滚动时叠加的加速倍率 */
+	scrollBoost?: number;
+	intro?: boolean;
+	ariaLabel?: string;
+	class?: string;
+}
+
+const {
+	items,
+	speed = 46,
+	direction = 'left',
+	logoHeight = 26,
+	gap = 44,
+	pauseOnHover = true,
+	fadeOut = true,
+	fadeOutWidth = 0.1,
+	scaleOnHover = true,
+	muted = 0.7,
+	draggable = true,
+	scrollBoost = 26,
+	intro = true,
+	ariaLabel = '站点用到的工具与平台',
+	class: className = '',
+} = Astro.props;
+
+const span = Math.min(0.5, Math.max(0, fadeOutWidth)) * 100;
+const maskStyle = fadeOut
+	? `-webkit-mask-image:linear-gradient(to right,transparent 0%,#000 ${span}%,#000 ${100 - span}%,transparent 100%);mask-image:linear-gradient(to right,transparent 0%,#000 ${span}%,#000 ${100 - span}%,transparent 100%)`
+	: '';
+---
+
+<div
+	class:list={['ll', scaleOnHover && 'll--scale', className]}
+	role="region"
+	aria-label={ariaLabel}
+	style={`--ll-gap:${gap}px;--ll-size:${logoHeight}px;--ll-gray:${Math.min(1, muted * 1.4).toFixed(2)};--ll-dim:${(1 - muted * 0.62).toFixed(2)};${maskStyle}`}
+	data-ll
+	data-speed={speed}
+	data-dir={direction === 'right' ? -1 : 1}
+	data-pause={pauseOnHover ? '' : undefined}
+	data-drag={draggable ? '' : undefined}
+	data-boost={scrollBoost}
+	data-intro={intro ? '' : undefined}
+>
+	<div class="ll__track" data-ll-track>
+		<ul class="ll__list" data-ll-list role="list">
+			{items.map((item) => (
+				<li class="ll__item">
+					{item.href ? (
+						<a class="ll__content" href={item.href} target="_blank" rel="noreferrer noopener" draggable="false">
+							{item.glyph && <span class="ll__glyph" aria-hidden="true">{item.glyph}</span>}
+							<span class="ll__name">{item.label}</span>
+							{item.hint && <span class="ll__hint">{item.hint}</span>}
+						</a>
+					) : (
+						<span class="ll__content">
+							{item.glyph && <span class="ll__glyph" aria-hidden="true">{item.glyph}</span>}
+							<span class="ll__name">{item.label}</span>
+							{item.hint && <span class="ll__hint">{item.hint}</span>}
+						</span>
+					)}
+				</li>
+			))}
+		</ul>
+	</div>
+</div>
+
+<style>
+	.ll {
+		position: relative;
+		overflow: hidden;
+		padding: 0.9rem 0;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.ll[data-drag] {
+		cursor: grab;
+	}
+	.ll[data-dragging],
+	.ll[data-dragging] * {
+		cursor: grabbing;
+	}
+	.ll__track {
+		display: flex;
+		width: max-content;
+		will-change: transform;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+	.ll__list {
+		display: flex;
+		align-items: center;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.ll__item {
+		flex: 0 0 auto;
+		margin-right: var(--ll-gap, 44px);
+		font-size: var(--ll-size, 26px);
+		line-height: 1;
+	}
+	.ll__content {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.42em;
+		color: rgb(var(--ink));
+		text-decoration: none;
+		border-radius: 4px;
+		filter: grayscale(var(--ll-gray, 0.98));
+		opacity: var(--ll-dim, 0.62);
+		transition:
+			opacity 0.35s ease,
+			filter 0.35s ease,
+			color 0.35s ease,
+			transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.ll__glyph {
+		font-size: 0.92em;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		color: rgb(var(--muted-light));
+		transition: color 0.35s ease;
+	}
+	.ll__name {
+		font-size: 1em;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		white-space: nowrap;
+	}
+	.ll__hint {
+		font-size: max(11px, 0.42em);
+		font-weight: 500;
+		letter-spacing: 0.04em;
+		color: rgb(var(--muted-light));
+		white-space: nowrap;
+		transition: color 0.35s ease;
+	}
+	.ll__item:hover .ll__content,
+	.ll__item:focus-within .ll__content {
+		opacity: 1;
+		filter: none;
+		color: rgb(var(--accent));
+	}
+	.ll__item:hover .ll__glyph,
+	.ll__item:focus-within .ll__glyph {
+		color: rgb(var(--accent));
+	}
+	.ll__item:hover .ll__hint,
+	.ll__item:focus-within .ll__hint {
+		color: rgb(var(--muted));
+	}
+	.ll__content:focus-visible {
+		outline: 2px solid rgb(var(--accent));
+		outline-offset: 3px;
+	}
+	:global(.ll--scale) .ll__item:hover .ll__content,
+	:global(.ll--scale) .ll__item:focus-within .ll__content {
+		transform: scale(1.08);
+	}
+
+	/* 进场：每份列表依次点亮 */
+	.ll[data-intro] .ll__item {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	.ll[data-intro].ll-ready .ll__item {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity 0.7s cubic-bezier(0.22, 0.7, 0.2, 1),
+			transform 0.7s cubic-bezier(0.22, 0.7, 0.2, 1);
+		transition-delay: calc(var(--ll-i, 0) * 45ms);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ll__content,
+		.ll__glyph,
+		.ll__hint {
+			transition: none;
+		}
+		.ll[data-intro] .ll__item {
+			opacity: 1;
+			transform: none;
+		}
+	}
+</style>
+
+<script>
+	type Loop = {
+		root: HTMLElement;
+		track: HTMLElement;
+		period: number;
+		offset: number;
+		speed: number;
+		dir: number;
+		visible: boolean;
+		hovered: boolean;
+		raf: number;
+		last: number;
+		drag: { id: number; x: number; start: number; samples: [number, number][] } | null;
+		vel: number;
+		introDone: boolean;
+	};
+
+	const loops: Loop[] = [];
+	let bound = false;
+	let pageToken = 0;
+	let mountedToken = -1;
+
+	const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	/** 按容器宽度补足副本，保证任意时刻都有内容铺满 */
+	function fill(loop: Loop) {
+		const list = loop.track.firstElementChild as HTMLElement | null;
+		if (!list) return;
+		const track = loop.track;
+		const base = list.offsetWidth;
+		if (base <= 0) return;
+
+		// 先清理多余副本，只留第一份
+		while (track.children.length > 1) track.lastElementChild?.remove();
+
+		const need = Math.ceil((loop.root.clientWidth + base) / base) + 1;
+		for (let i = 1; i < need; i++) {
+			const clone = list.cloneNode(true) as HTMLElement;
+			clone.setAttribute('aria-hidden', 'true');
+			clone.querySelectorAll('a').forEach((a) => a.setAttribute('tabindex', '-1'));
+			track.appendChild(clone);
+		}
+		loop.period = base;
+	}
+
+	function measure(loop: Loop) {
+		fill(loop);
+		if (loop.offset >= loop.period) loop.offset %= loop.period;
+	}
+
+	function frame(loop: Loop) {
+		loop.raf = 0;
+		if (!loop.visible) return;
+
+		const now = performance.now();
+		const dt = loop.last ? Math.min(0.1, (now - loop.last) / 1000) : 0;
+		loop.last = now;
+
+		if (reduceMotion()) {
+			loop.track.style.transform = `translate3d(0,0,0)`;
+			return;
+		}
+
+		const paused = loop.hovered && loop.root.hasAttribute('data-pause');
+		let v = paused ? 0 : loop.speed * loop.dir;
+
+		if (Math.abs(loop.vel) > 1) {
+			// 拖拽后的惯性
+			loop.vel *= Math.exp(-dt / 0.35);
+			v += loop.vel;
+		} else {
+			loop.vel = 0;
+		}
+
+		if (!loop.drag) loop.offset += v * dt;
+
+		if (loop.period > 0) {
+			loop.offset = ((loop.offset % loop.period) + loop.period) % loop.period;
+		}
+		loop.track.style.transform = `translate3d(${(-loop.offset).toFixed(2)}px,0,0)`;
+
+		const busy = Math.abs(v) > 0.5 || loop.drag !== null || Math.abs(loop.vel) > 1;
+		if (busy) loop.raf = requestAnimationFrame(() => frame(loop));
+	}
+
+	function wake(loop: Loop) {
+		if (loop.raf || !loop.visible) return;
+		loop.last = 0;
+		loop.raf = requestAnimationFrame(() => frame(loop));
+	}
+
+	function setup(root: HTMLElement): Loop | null {
+		const track = root.querySelector<HTMLElement>('[data-ll-track]');
+		if (!track) return null;
+
+		const loop: Loop = {
+			root,
+			track,
+			period: 0,
+			offset: 0,
+			speed: Number(root.dataset.speed) || 46,
+			dir: Number(root.dataset.dir) || 1,
+			visible: false,
+			hovered: false,
+			raf: 0,
+			last: 0,
+			drag: null,
+			vel: 0,
+			introDone: false,
+		};
+
+		measure(loop);
+
+		// 进场错峰：给第一份的每个 item 一个序号
+		const first = track.firstElementChild;
+		first?.querySelectorAll<HTMLElement>('.ll__item').forEach((li, i) => {
+			li.style.setProperty('--ll-i', String(i));
+		});
+		requestAnimationFrame(() => root.classList.add('ll-ready'));
+
+		root.addEventListener('pointerenter', () => {
+			loop.hovered = true;
+			wake(loop);
+		});
+		root.addEventListener('pointerleave', () => {
+			loop.hovered = false;
+			wake(loop);
+		});
+
+		if (root.hasAttribute('data-drag')) {
+			root.addEventListener('pointerdown', (e) => {
+				if (e.pointerType === 'mouse' && e.button !== 0) return;
+				loop.drag = { id: e.pointerId, x: e.clientX, start: loop.offset, samples: [] };
+				loop.vel = 0;
+				try {
+					root.setPointerCapture(e.pointerId);
+				} catch {}
+			});
+			root.addEventListener('pointermove', (e) => {
+				const d = loop.drag;
+				if (!d || e.pointerId !== d.id) return;
+				const dx = e.clientX - d.x;
+				if (Math.abs(dx) > 4) root.setAttribute('data-dragging', '');
+				loop.offset = d.start - dx;
+				if (loop.period > 0) loop.offset = ((loop.offset % loop.period) + loop.period) % loop.period;
+				const now = performance.now();
+				d.samples.push([now, e.clientX]);
+				while (d.samples.length > 2 && now - d.samples[0][0] > 100) d.samples.shift();
+				loop.track.style.transform = `translate3d(${(-loop.offset).toFixed(2)}px,0,0)`;
+				e.preventDefault();
+			});
+			const end = (e: PointerEvent) => {
+				const d = loop.drag;
+				if (!d || e.pointerId !== d.id) return;
+				loop.drag = null;
+				root.removeAttribute('data-dragging');
+				try {
+					root.releasePointerCapture(e.pointerId);
+				} catch {}
+				const s = d.samples;
+				if (s.length > 1) {
+					const [t0, x0] = s[0];
+					const [t1, x1] = s[s.length - 1];
+					if (t1 > t0) loop.vel = Math.max(-1600, Math.min(1600, (-(x1 - x0) / (t1 - t0)) * 1000));
+				}
+				wake(loop);
+			};
+			root.addEventListener('pointerup', end);
+			root.addEventListener('pointercancel', end);
+			root.addEventListener('lostpointercapture', end);
+			// 拖完之后别把点击也当成跳转
+			root.addEventListener(
+				'click',
+				(e) => {
+					if (Math.abs(loop.vel) > 120) {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				},
+				true,
+			);
+		}
+
+		// 页面滚动时给一点额外速度
+		const boost = Number(root.dataset.boost) || 0;
+		if (boost > 0) {
+			let lastY = window.scrollY;
+			let lastT = performance.now();
+			window.addEventListener(
+				'scroll',
+				() => {
+					const now = performance.now();
+					const y = window.scrollY;
+					const dy = y - lastY;
+					if (now - lastT > 0 && Math.abs(dy) > 0) {
+						loop.vel += Math.max(-900, Math.min(900, (dy / (now - lastT)) * 1000 * (boost / 100)));
+					}
+					lastY = y;
+					lastT = now;
+					wake(loop);
+				},
+				{ passive: true },
+			);
+		}
+
+		if (typeof ResizeObserver !== 'undefined') {
+			const ro = new ResizeObserver(() => {
+				measure(loop);
+			});
+			ro.observe(root);
+			ro.observe(track.firstElementChild ?? track);
+		}
+
+		if (typeof IntersectionObserver !== 'undefined') {
+			const io = new IntersectionObserver(
+				(entries) => {
+					loop.visible = entries[entries.length - 1].isIntersecting;
+					if (loop.visible) wake(loop);
+					else if (loop.raf) {
+						cancelAnimationFrame(loop.raf);
+						loop.raf = 0;
+					}
+				},
+				{ threshold: 0.01 },
+			);
+			io.observe(root);
+		} else {
+			loop.visible = true;
+			wake(loop);
+		}
+
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) wake(loop);
+		});
+
+		return loop;
+	}
+
+	function mount() {
+		if (mountedToken === pageToken) return;
+		mountedToken = pageToken;
+
+		for (const loop of loops.splice(0)) {
+			if (loop.raf) cancelAnimationFrame(loop.raf);
+		}
+
+		document.querySelectorAll<HTMLElement>('[data-ll]:not([data-ll-ready])').forEach((root) => {
+			root.dataset.llReady = '1';
+			const loop = setup(root);
+			if (loop) loops.push(loop);
+		});
+	}
+
+	if (!bound) {
+		bound = true;
+		document.addEventListener('astro:before-swap', () => {
+			pageToken += 1;
+		});
+		document.addEventListener('astro:page-load', mount);
+	}
+	mount();
+</script>

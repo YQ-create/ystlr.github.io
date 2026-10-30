@@ -118,7 +118,9 @@ const ogImage = new URL(image.src, Astro.url);
 <!-- 没有 JS 时把「滚动进场」的初始隐藏关掉，内容照常可见 -->
 <noscript>
 	<style>
-		[data-reveal] {
+		[data-reveal],
+		[data-ac],
+		[data-ac-child] {
 			opacity: 1 !important;
 			transform: none !important;
 			filter: none !important;

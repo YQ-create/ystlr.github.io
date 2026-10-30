@@ -50,7 +50,11 @@ const stats = [
 
 const latest = posts[0]?.data.pubDate;
 
+import LogoLoop from '../components/LogoLoop.astro';
 import discoverData from '../data/discover.json';
+
+import { STACK as stack } from '../data/stack';
+
 const discoverPreview = discoverData.collections
 	.flatMap((g) => g.links)
 	.slice(0, 6);
@@ -60,14 +64,6 @@ let splitImgSrc = '';
 if (photos.length > 0) {
 	const img = await getImage({ src: photos[0].data.image as ImageMetadata, width: 1400, format: 'webp' });
 	splitImgSrc = img.src;
-}
-
-// Hero 右侧「展品」：最新一张照片，按 4:3 出图并带上真实宽高（避免 CLS）
-const heroPhoto = photos[0] ?? null;
-let heroImg = { src: '', width: 900, height: 675 };
-if (heroPhoto) {
-	const img = await getImage({ src: heroPhoto.data.image as ImageMetadata, width: 900, height: 675, fit: 'cover', format: 'webp' });
-	heroImg = { src: img.src, width: img.attributes.width, height: img.attributes.height };
 }
 
 // 首页底部的站内索引（参考站 Explore 条的 01—05 编号）
@@ -103,33 +99,33 @@ const explore = [
 		<section class="hero" id="home" data-section="home">
 			<span class="hero-mark" aria-hidden="true">YSTLR</span>
 
-			<div class="hero-meta fade-up" style="--d:0.05s">
+			<div class="hero-meta" data-ac data-ac-distance="16" data-ac-blur="4" data-ac-delay="80">
 				<span class="eyebrow">Personal archive · 个人档案</span>
 				<span class="eyebrow">ystlr / est. {firstDate ? firstDate.getFullYear() : 2024}</span>
 			</div>
 
 			<div class="hero-stage">
-				<div class="hero-copy">
-					<p class="hero-led fade-up" style="--d:0.12s">
+				<div class="hero-copy" data-ac-stagger="0.075" data-ac-stagger-from="start" data-ac-distance="42" data-ac-blur="10" data-ac-scale="0.985" data-ac-duration="1" data-ac-delay="140">
+					<p class="hero-led">
 						<span class="led" aria-hidden="true"></span>
 						{HERO.role}
 					</p>
 
-					<h1 class="hero-title display" data-hero-letters>
+					<h1 class="hero-title display" data-hero-letters style="--ac-blur:0px;--ac-dist:0px">
 						在这里<br>记录日常
 					</h1>
 
-					<p class="hero-sub fade-up" style="--d:0.55s" data-hero-sub>{HERO.subtitle}</p>
+					<p class="hero-sub" data-hero-sub>{HERO.subtitle}</p>
 
-					<p class="hero-trust fade-up" style="--d:0.66s">{HERO.tagline2}。</p>
+					<p class="hero-trust">{HERO.tagline2}。</p>
 
-					<ul class="hero-stats fade-up" style="--d:0.76s">
+					<ul class="hero-stats">
 						<li><b>{posts.length}</b><span>篇文章</span></li>
 						<li><b>{photos.length}</b><span>张照片</span></li>
 						<li><b>{knowledge.length}</b><span>条知识</span></li>
 					</ul>
 
-					<div class="hero-actions fade-up" style="--d:0.86s">
+					<div class="hero-actions">
 						<a class="btn-solid" href="/blog">
 							<span>开始阅读</span>
 							<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
@@ -144,38 +140,14 @@ const explore = [
 						</a>
 					</div>
 
-					<p class="hero-note fade-up" style="--d:0.94s">
+					<p class="hero-note">
 						记录始于 {firstDate ? `${firstDate.getFullYear()}.${String(firstDate.getMonth() + 1).padStart(2, '0')}` : '2024'} · 已运行 {days} 天
 					</p>
 				</div>
 
-				<figure class="hero-object fade-up" style="--d:0.4s">
-					{heroImg.src ? (
-						<img
-							src={heroImg.src}
-							width={heroImg.width}
-							height={heroImg.height}
-							alt={heroPhoto?.data.title ?? '最新的一张照片'}
-							loading="eager"
-							decoding="async"
-							fetchpriority="high"
-						/>
-					) : (
-						<div class="hero-object__empty" aria-hidden="true"></div>
-					)}
-					<figcaption>
-						<span class="eyebrow">latest frame</span>
-						<span class="hero-object__title">{heroPhoto?.data.title ?? '照片墙'}</span>
-						<span class="hero-object__date">
-							{heroPhoto
-								? `${heroPhoto.data.date.getFullYear()}.${String(heroPhoto.data.date.getMonth() + 1).padStart(2, '0')}`
-								: '——'}
-						</span>
-					</figcaption>
-				</figure>
 			</div>
 
-			<nav class="explore fade-up" style="--d:1.02s" aria-label="站内索引">
+			<nav class="explore" data-ac data-ac-distance="24" data-ac-delay="520" aria-label="站内索引">
 				<span class="eyebrow">Explore the site</span>
 				<ul>
 					{explore.map((item) => (
@@ -468,6 +440,14 @@ const explore = [
 						<li><span>留言</span>文章页底部评论区</li>
 					</ul>
 				</div>
+
+				<div class="about-stack" data-ac data-ac-distance="18" data-ac-blur="6" data-ac-delay="80">
+					<div class="about-stack__head">
+						<span class="eyebrow">tools &amp; stack</span>
+						<span class="about-stack__hint">这块地方，是这些东西拼起来的</span>
+					</div>
+					<LogoLoop items={stack} speed={44} logoHeight={24} gap={40} muted={0.72} scaleOnHover />
+				</div>
 			</div>
 		</section>
 	</main>
@@ -624,9 +604,6 @@ const explore = [
 		};
 		document.addEventListener('theme-change', syncColors);
 		document.addEventListener('accent-change', syncColors);
-
-		// ---- fade-up 入场 ----
-		requestAnimationFrame(() => document.body.classList.add('ready'));
 	}
 
 	document.addEventListener('astro:page-load', init);
@@ -661,22 +638,6 @@ const explore = [
 		max-width: var(--w-wide);
 		margin: 0 auto;
 		padding: 0 var(--gutter);
-	}
-
-	/* ═══════════ fade-up 入场 ═══════════ */
-	.fade-up {
-		opacity: 0;
-		transform: translateY(14px);
-	}
-	:global(body.ready) .fade-up {
-		animation: fu 0.9s var(--ease, cubic-bezier(0.22, 0.7, 0.2, 1)) forwards;
-		animation-delay: var(--d, 0s);
-	}
-	@keyframes fu {
-		to {
-			opacity: 1;
-			transform: none;
-		}
 	}
 
 	/* ═══════════ 逐字揭示字符 ═══════════ */
@@ -730,9 +691,8 @@ const explore = [
 		position: relative;
 		z-index: 1;
 		display: grid;
-		grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
-		gap: clamp(2rem, 5vw, 4.5rem);
-		align-items: center;
+		grid-template-columns: minmax(0, 1fr);
+		align-content: center;
 		width: 100%;
 		max-width: var(--w-wide);
 		margin: 0 auto;
@@ -832,45 +792,6 @@ const explore = [
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* 右侧「展品」：最新一张照片 + 编号说明 */
-	.hero-object {
-		display: grid;
-		gap: 0.85rem;
-		margin: 0;
-	}
-	.hero-object img {
-		width: 100%;
-		height: auto;
-		aspect-ratio: 4 / 3;
-		object-fit: cover;
-		border: 1px solid rgb(var(--line-soft));
-		border-radius: 14px;
-		background: rgb(var(--paper));
-	}
-	.hero-object__empty {
-		aspect-ratio: 4 / 3;
-		border: 1px solid rgb(var(--line-soft));
-		border-radius: 14px;
-		background:
-			radial-gradient(120% 100% at 28% 18%, rgba(var(--accent), 0.16), transparent 62%),
-			rgb(var(--paper));
-	}
-	.hero-object figcaption {
-		display: flex;
-		align-items: baseline;
-		gap: 0.8rem;
-	}
-	.hero-object__title {
-		font-size: 0.9rem;
-		color: rgb(var(--ink-soft));
-	}
-	.hero-object__date {
-		margin-left: auto;
-		font-size: 0.72rem;
-		letter-spacing: 0.1em;
-		color: rgb(var(--muted-light));
-		font-variant-numeric: tabular-nums;
-	}
 
 	/* 底部站内索引：01—05，每格一条发丝线 */
 	.explore {
@@ -1652,9 +1573,32 @@ const explore = [
 		color: rgb(var(--muted-light));
 	}
 
+	/* 关于区底部：logo 循环带 */
+	.about-stack {
+		margin-top: clamp(1.8rem, 4vw, 2.8rem);
+		padding-top: clamp(1.1rem, 2.4vw, 1.6rem);
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.about-stack__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.5rem;
+	}
+	.about-stack__hint {
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted-light));
+	}
+
 	@media (max-width: 860px) {
 		.about-card {
 			grid-template-columns: minmax(0, 1fr);
+		}
+		.about-stack__head {
+			flex-direction: column;
+			gap: 0.3rem;
 		}
 		.about-facts li:first-child {
 			padding-top: 0.72rem;
@@ -1670,11 +1614,7 @@ const explore = [
 	}
 	@media (max-width: 980px) {
 		.hero-stage {
-			grid-template-columns: minmax(0, 1fr);
 			gap: 2.2rem;
-		}
-		.hero-object {
-			max-width: 440px;
 		}
 		.hero-mark {
 			top: 26%;
@@ -1731,9 +1671,6 @@ const explore = [
 		}
 		.hero-title {
 			font-size: clamp(2.35rem, 11.5vw, 3rem);
-		}
-		.hero-object {
-			display: none;
 		}
 		.hero-stats li {
 			padding: 0 0.85rem;

@@ -51,6 +51,7 @@ const stats = [
 const latest = posts[0]?.data.pubDate;
 
 import CursorGrid from '../components/CursorGrid.astro';
+import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import discoverData from '../data/discover.json';
 
@@ -127,12 +128,23 @@ const explore = [
 					</ul>
 
 					<div class="hero-actions">
-						<a class="btn-solid" href="/blog">
+						<StarBorder
+							as="a"
+							href="/blog"
+							class="hero-cta"
+							color="--accent"
+							duration={4.2}
+							trailLength={0.3}
+							glow={0.85}
+							sparkle
+							radius={8}
+							thickness={1}
+						>
 							<span>开始阅读</span>
 							<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
 								<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
 							</svg>
-						</a>
+						</StarBorder>
 						<a class="hero-quiet" href="/gallery">
 							看看照片
 							<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
@@ -777,6 +789,13 @@ const explore = [
 		align-items: center;
 		gap: 1.7rem;
 		margin-top: 2.1rem;
+	}
+	/* 主 CTA 换成星轨按钮：尺寸沿用原来的实心按钮，只把星轨颜色交给 accent */
+	:global(.hero-cta) {
+		gap: 1.6rem;
+		padding: 0.95rem 1.15rem 0.95rem 1.35rem;
+		font-size: 0.9rem;
+		line-height: 1;
 	}
 	.hero-quiet {
 		display: inline-flex;

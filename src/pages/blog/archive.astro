@@ -1,0 +1,225 @@
+---
+// 年月归档：按年份分组、月内按日期倒序列出全部已发布文章。
+// 静态生成，纯链接，无脚本；给「全部文章」页做一个可长期长大的索引。
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { getCollection } from 'astro:content';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+
+const posts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const charCount = (body?: string) =>
+	(body ?? '')
+		.replace(/```[\s\S]*?```/g, '')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+		.replace(/\[[^\]]*\]\([^)]*\)/g, '')
+		.replace(/[#>*_`~\-|\s]/g, '').length;
+
+// 年 → 月 → 文章
+const byYear = new Map<number, Map<number, typeof posts>>();
+for (const post of posts) {
+	const d = post.data.pubDate;
+	const y = d.getFullYear();
+	const m = d.getMonth() + 1;
+	if (!byYear.has(y)) byYear.set(y, new Map());
+	const months = byYear.get(y)!;
+	if (!months.has(m)) months.set(m, []);
+	months.get(m)!.push(post);
+}
+const years = [...byYear.entries()].sort((a, b) => b[0] - a[0]);
+const totalWords = posts.reduce((sum, p) => sum + charCount(p.body), 0);
+const first = posts.at(-1)?.data.pubDate;
+const last = posts[0]?.data.pubDate;
+---
+
+<BaseLayout title={`归档 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main class="archive">
+		<header class="archive-head">
+			<span class="eyebrow">Archive / 02</span>
+			<h1>归档</h1>
+			<p class="archive-desc">
+				按年月排好全部记录。
+				{first && last && (
+					<span>
+						{first.getFullYear() === last.getFullYear()
+							? `${first.getFullYear()}`
+							: `${first.getFullYear()} — ${last.getFullYear()}`}
+						· {posts.length} 篇 · {totalWords.toLocaleString('zh-CN')} 字
+					</span>
+				)}
+			</p>
+			<a class="archive-back" href="/blog">← 回到文章列表</a>
+		</header>
+
+		{years.length === 0 ? (
+			<p class="archive-empty">还没有文章。</p>
+		) : (
+			years.map(([year, months]) => {
+				const count = [...months.values()].reduce((n, list) => n + list.length, 0);
+				return (
+					<section class="year" aria-label={`${year} 年`}>
+						<header class="year-head">
+							<h2>{year}</h2>
+							<span class="eyebrow">{count} notes</span>
+						</header>
+						{[...months.entries()]
+							.sort((a, b) => b[0] - a[0])
+							.map(([month, list]) => (
+								<div class="month">
+									<p class="month-label">{String(month).padStart(2, '0')} 月</p>
+									<ul class="month-list">
+										{list.map((post) => (
+											<li>
+												<a href={`/blog/${post.id}/`}>
+													<time datetime={post.data.pubDate.toISOString()}>
+														<FormattedDate date={post.data.pubDate} />
+													</time>
+													<span class="month-title">{post.data.title}</span>
+													<span class="month-words">{charCount(post.body).toLocaleString('zh-CN')} 字</span>
+												</a>
+											</li>
+										))}
+									</ul>
+								</div>
+							))}
+					</section>
+				);
+			})
+		)}
+	</main>
+</BaseLayout>
+
+<style>
+	.archive {
+		width: min(100% - 2 * var(--gutter), var(--w-wide));
+		margin: 0 auto;
+		padding: clamp(5.5rem, 11vh, 8rem) 0 clamp(3rem, 7vw, 5rem);
+	}
+	.archive-head {
+		padding-bottom: 1.6rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.archive-head h1 {
+		margin: 0.9rem 0 0;
+		font-size: clamp(2.6rem, 6vw, 4.6rem);
+		font-weight: 700;
+		line-height: 0.95;
+		letter-spacing: -0.04em;
+	}
+	.archive-desc {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.2rem;
+		align-items: baseline;
+		margin: 1rem 0 0;
+		font-size: 0.94rem;
+		color: rgb(var(--muted));
+	}
+	.archive-desc span {
+		font-size: 0.76rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.archive-back {
+		display: inline-block;
+		margin-top: 1.4rem;
+		font-size: 0.82rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.archive-back:hover {
+		color: rgb(var(--ink));
+	}
+	.archive-empty {
+		margin: 2rem 0;
+		color: rgb(var(--muted));
+	}
+
+	.year {
+		margin-top: clamp(2.4rem, 5vw, 3.6rem);
+	}
+	.year-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding-bottom: 0.8rem;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.year-head h2 {
+		margin: 0;
+		font-size: clamp(1.6rem, 3vw, 2.2rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.month {
+		display: grid;
+		grid-template-columns: 88px minmax(0, 1fr);
+		gap: 0 1.4rem;
+		padding: 1.1rem 0;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.month-label {
+		margin: 0.15rem 0 0;
+		font-size: 0.74rem;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.month-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		gap: 0.15rem;
+	}
+	.month-list a {
+		display: grid;
+		grid-template-columns: 96px minmax(0, 1fr) auto;
+		align-items: baseline;
+		gap: 1rem;
+		padding: 0.45rem 0.6rem 0.45rem 0;
+		border-radius: 8px;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
+	}
+	.month-list a:hover {
+		color: rgb(var(--ink));
+		background: rgba(var(--ink), 0.04);
+	}
+	.month-list time {
+		font-size: 0.74rem;
+		letter-spacing: 0.04em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.month-title {
+		font-size: 0.98rem;
+	}
+	.month-words {
+		font-size: 0.72rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+
+	@media (max-width: 720px) {
+		.month {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 0.5rem;
+		}
+		.month-list a {
+			grid-template-columns: 78px minmax(0, 1fr);
+		}
+		.month-words {
+			display: none;
+		}
+	}
+</style>

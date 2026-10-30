@@ -13,6 +13,10 @@ interface Props {
 	tags?: string[];
 	/** 阅读时长（分钟），由页面层估算后传入 */
 	readingMinutes?: number;
+	/** 正文字数（去 Markdown 记号后的字符数） */
+	words?: number;
+	/** 正文标题树，用于生成目录（来自 render() 的 headings） */
+	headings?: { depth: number; slug: string; text: string }[];
 	prev?: { href: string; title: string };
 	next?: { href: string; title: string };
 	/** 相关文章：优先标签交集，其次最新（排除自己与相邻文章） */
@@ -27,13 +31,20 @@ const {
 	heroImage,
 	tags = [],
 	readingMinutes,
+	words,
+	headings = [],
 	prev,
 	next,
 	related = [],
 } = Astro.props;
+
+// 目录只收 h2 / h3，且条目太少时不显示
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const showToc = toc.length >= 2;
 ---
 
 <BaseLayout title={title} description={description} image={heroImage} type="article" publishedTime={pubDate}>
+	<div class:list={['post-shell', { 'has-toc': showToc }]}>
 	<main class="post">
 		<a class="back-link" href="/blog">
 			<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
@@ -55,6 +66,12 @@ const {
 				</time>
 				{readingMinutes && <span class="dot-sep">·</span>}
 				{readingMinutes && <span>约 {readingMinutes} 分钟</span>}
+				{words ? (
+					<>
+						<span class="dot-sep">·</span>
+						<span>{words.toLocaleString('zh-CN')} 字</span>
+					</>
+				) : null}
 				{updatedDate && (
 					<>
 						<span class="dot-sep">·</span>
@@ -82,6 +99,36 @@ const {
 
 		<div class="prose">
 			<slot />
+		</div>
+
+		<div class="post-share" data-share>
+			<span class="eyebrow">Share this note</span>
+			<button class="post-share__btn" type="button" data-share-copy>
+				<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+					<path
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M6.5 9.5 9.5 6.5M6.8 4.4l1.3-1.3a2.6 2.6 0 0 1 3.7 3.7L10.5 8M5.5 8l-1.3 1.3a2.6 2.6 0 0 0 3.7 3.7L9.2 11.6"
+					></path>
+				</svg>
+				<span>复制链接</span>
+			</button>
+			<button class="post-share__btn" type="button" data-share-native hidden>
+				<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+					<path
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M8 2.5v7M5.2 5.3 8 2.5l2.8 2.8M3.2 10.2v2.3a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1v-2.3"
+					></path>
+				</svg>
+				<span>系统分享</span>
+			</button>
 		</div>
 
 		<nav class="post-nav" aria-label="相邻文章">
@@ -130,6 +177,22 @@ const {
 
 		<Giscus />
 	</main>
+
+	{showToc && (
+		<aside class="post-toc" aria-label="文章目录" data-toc>
+			<p class="post-toc__label eyebrow">On this page</p>
+			<nav>
+				<ul>
+					{toc.map((h) => (
+						<li class:list={{ 'is-sub': h.depth === 3 }}>
+							<a href={`#${h.slug}`} data-toc-link={h.slug}>{h.text}</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+		</aside>
+	)}
+	</div>
 </BaseLayout>
 
 <style>
@@ -328,4 +391,169 @@ const {
 			align-items: flex-start;
 		}
 	}
+
+	/* ═══════════ 两栏骨架：正文 + 右侧目录 ═══════════ */
+	.post-shell {
+		display: grid;
+		grid-template-columns: minmax(0, 720px);
+		justify-content: center;
+		padding: 0 var(--gutter);
+	}
+	.post-shell.has-toc {
+		grid-template-columns: minmax(0, 720px) 200px;
+		gap: 0 clamp(2rem, 5vw, 4rem);
+	}
+	.post-shell .post {
+		width: 100%;
+	}
+
+	.post-toc {
+		position: sticky;
+		top: calc(var(--head-h) + 1.6rem);
+		align-self: start;
+		padding-top: 4.2rem;
+		max-height: calc(100vh - var(--head-h) - 3rem);
+		overflow-y: auto;
+		scrollbar-width: none;
+	}
+	.post-toc::-webkit-scrollbar {
+		display: none;
+	}
+	.post-toc__label {
+		display: block;
+		margin: 0 0 0.9rem;
+		color: rgb(var(--muted-light));
+	}
+	.post-toc ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-left: 1px solid rgb(var(--line-soft));
+	}
+	.post-toc a {
+		display: block;
+		margin-left: -1px;
+		padding: 0.34rem 0 0.34rem 0.85rem;
+		border-left: 1px solid transparent;
+		font-size: 0.78rem;
+		line-height: 1.45;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out);
+	}
+	.post-toc li.is-sub a {
+		padding-left: 1.5rem;
+		font-size: 0.74rem;
+		color: rgb(var(--muted-light));
+	}
+	.post-toc a:hover {
+		color: rgb(var(--ink));
+	}
+	.post-toc a.is-active {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--accent));
+	}
+	@media (max-width: 1180px) {
+		.post-shell.has-toc {
+			grid-template-columns: minmax(0, 720px);
+		}
+		.post-toc {
+			display: none;
+		}
+	}
+
+	/* ═══════════ 分享条 ═══════════ */
+	.post-share {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin-top: 2.6rem;
+		padding-top: 1.1rem;
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.post-share .eyebrow {
+		margin-right: auto;
+	}
+	.post-share__btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.42rem 0.8rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: var(--r-pill);
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.76rem;
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out);
+	}
+	.post-share__btn:hover {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--muted));
+	}
 </style>
+
+<script>
+	// 文章目录跟随滚动高亮 + 分享
+	function initPostTools() {
+		const toc = document.querySelector<HTMLElement>('[data-toc]');
+		if (toc && !toc.dataset.ready) {
+			toc.dataset.ready = '1';
+			const links = Array.from(toc.querySelectorAll<HTMLAnchorElement>('[data-toc-link]'));
+			const byId = new Map(links.map((a) => [a.dataset.tocLink, a]));
+			const targets = links
+				.map((a) => document.getElementById(a.dataset.tocLink ?? ''))
+				.filter((el): el is HTMLElement => Boolean(el));
+			if (targets.length) {
+				const io = new IntersectionObserver(
+					(entries) => {
+						for (const entry of entries) {
+							if (!entry.isIntersecting) continue;
+							links.forEach((l) => l.classList.remove('is-active'));
+							byId.get(entry.target.id)?.classList.add('is-active');
+						}
+					},
+					{ rootMargin: '-12% 0px -72% 0px', threshold: 0 },
+				);
+				targets.forEach((t) => io.observe(t));
+			}
+		}
+
+		const copyBtn = document.querySelector<HTMLButtonElement>('[data-share-copy]');
+		if (copyBtn && !copyBtn.dataset.ready) {
+			copyBtn.dataset.ready = '1';
+			const label = copyBtn.querySelector('span');
+			copyBtn.addEventListener('click', async () => {
+				const url = location.href;
+				try {
+					await navigator.clipboard.writeText(url);
+					if (label) label.textContent = '已复制';
+					window.setTimeout(() => {
+						if (label) label.textContent = '复制链接';
+					}, 1600);
+				} catch {
+					window.prompt('复制这篇的链接：', url);
+				}
+			});
+		}
+
+		const nativeBtn = document.querySelector<HTMLButtonElement>('[data-share-native]');
+		if (nativeBtn && typeof navigator.share === 'function') {
+			nativeBtn.hidden = false;
+			if (!nativeBtn.dataset.ready) {
+				nativeBtn.dataset.ready = '1';
+				nativeBtn.addEventListener('click', () => {
+					void navigator.share({ title: document.title, url: location.href }).catch(() => {});
+				});
+			}
+		}
+	}
+
+	initPostTools();
+	document.addEventListener('astro:page-load', initPostTools);
+</script>

@@ -1,4 +1,7 @@
 ---
+// 知识库详情：左侧目录树（按分类分组的全部条目）+ 正文。
+// 目录树支持前端即时筛选（只过滤已渲染的链接，不需要额外请求）。
+// 正文上方的锚点列表来自 render() 的 headings，点击直达对应小节。
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
@@ -8,76 +11,224 @@ export async function getStaticPaths() {
 	const notes = (await getCollection('knowledge'))
 		.filter((n) => !n.data.draft)
 		.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-	return notes.map((note) => ({ params: { slug: note.id }, props: { note } }));
+
+	// 目录树数据对每页都一样：分类 → 条目
+	const tree = [...new Set(notes.map((n) => n.data.category))].map((category) => ({
+		category,
+		items: notes
+			.filter((n) => n.data.category === category)
+			.map((n) => ({ id: n.id, title: n.data.title })),
+	}));
+
+	return notes.map((note) => ({ params: { slug: note.id }, props: { note, tree } }));
 }
 
-type Props = { note: CollectionEntry<'knowledge'> };
-const { note } = Astro.props;
-const { Content } = await render(note);
+type Props = {
+	note: CollectionEntry<'knowledge'>;
+	tree: { category: string; items: { id: string; title: string }[] }[];
+};
+const { note, tree } = Astro.props;
+const { Content, headings } = await render(note);
+
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const total = tree.reduce((n, g) => n + g.items.length, 0);
 ---
 
 <BaseLayout title={`${note.data.title} · 知识库 · ${SITE_TITLE}`} description={note.data.description ?? SITE_DESCRIPTION}>
-	<main class="kb-post">
-		<header class="kb-post__head">
-			<a class="kb-back" href="/knowledge">← 知识库</a>
-			<span class="kb-post__category">{note.data.category}</span>
-			<h1>{note.data.title}</h1>
-			{note.data.description && <p class="kb-post__desc">{note.data.description}</p>}
-			<div class="kb-post__meta">
-				<time datetime={note.data.pubDate.toISOString()}>
-					<FormattedDate date={note.data.pubDate} />
-				</time>
-				{note.data.tags.length > 0 && (
-					<span class="kb-post__tags">
-						{note.data.tags.map((t) => (
-							<span class="kb-post__tag">{t}</span>
-						))}
-					</span>
-				)}
+	<div class="kb-shell">
+		<aside class="kb-tree" aria-label="知识库目录">
+			<div class="kb-tree__top">
+				<a class="kb-tree__back" href="/knowledge">← 知识库</a>
+				<span class="eyebrow">{total} 条</span>
 			</div>
-		</header>
-		<article class="prose">
-			<Content />
-		</article>
-	</main>
+
+			<label class="kb-tree__search">
+				<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+					<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
+				</svg>
+				<input type="search" placeholder="筛选条目…" aria-label="筛选知识库条目" data-kb-filter autocomplete="off" />
+			</label>
+
+			<nav>
+				{tree.map((group) => (
+					<div class="kb-group" data-kb-group>
+						<p class="kb-group__name">{group.category}</p>
+						<ul>
+							{group.items.map((item) => (
+								<li>
+									<a
+										href={`/knowledge/${item.id}/`}
+										data-kb-link={item.title}
+										aria-current={item.id === note.id ? 'page' : undefined}
+									>
+										{item.title}
+									</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</nav>
+			<p class="kb-tree__empty" data-kb-empty hidden>没有匹配的条目</p>
+		</aside>
+
+		<main class="kb-post">
+			<header class="kb-post__head">
+				<span class="eyebrow">{note.data.category}</span>
+				<h1>{note.data.title}</h1>
+				{note.data.description && <p class="kb-post__desc">{note.data.description}</p>}
+				<div class="kb-post__meta">
+					<time datetime={note.data.pubDate.toISOString()}>
+						<FormattedDate date={note.data.pubDate} />
+					</time>
+					{note.data.tags.length > 0 && (
+						<span class="kb-post__tags">
+							{note.data.tags.map((t) => (
+								<span class="kb-post__tag">{t}</span>
+							))}
+						</span>
+					)}
+				</div>
+			</header>
+
+			{toc.length >= 2 && (
+				<nav class="kb-toc" aria-label="本页小节">
+					<p class="eyebrow">On this page</p>
+					<ol>
+						{toc.map((h) => (
+							<li class:list={{ 'is-sub': h.depth === 3 }}>
+								<a href={`#${h.slug}`}>{h.text}</a>
+							</li>
+						))}
+					</ol>
+				</nav>
+			)}
+
+			<article class="prose">
+				<Content />
+			</article>
+		</main>
+	</div>
 </BaseLayout>
 
 <style>
+	.kb-shell {
+		display: grid;
+		grid-template-columns: 232px minmax(0, var(--w-read));
+		gap: 0 clamp(2rem, 5vw, 4rem);
+		justify-content: center;
+		width: min(100% - 2 * var(--gutter), calc(232px + var(--w-read) + 4rem));
+		margin: 0 auto;
+		padding: 1rem 0 4rem;
+	}
+
+	/* 左侧目录树 */
+	.kb-tree {
+		position: sticky;
+		top: calc(var(--head-h) + 1.2rem);
+		align-self: start;
+		max-height: calc(100vh - var(--head-h) - 3rem);
+		overflow-y: auto;
+		padding-top: 0.4rem;
+		scrollbar-width: thin;
+	}
+	.kb-tree__top {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.6rem;
+		padding-bottom: 0.7rem;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.kb-tree__back {
+		font-size: 0.82rem;
+		color: rgb(var(--muted));
+		text-decoration: none;
+	}
+	.kb-tree__back:hover {
+		color: rgb(var(--ink));
+	}
+	.kb-tree__search {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		margin: 0.75rem 0 0.9rem;
+		padding: 0 0.6rem;
+		height: 32px;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: 8px;
+		color: rgb(var(--muted-light));
+	}
+	.kb-tree__search input {
+		flex: 1;
+		min-width: 0;
+		border: 0;
+		background: none;
+		color: rgb(var(--ink));
+		font: inherit;
+		font-size: 0.78rem;
+		outline: none;
+	}
+	.kb-tree__search input::-webkit-search-cancel-button {
+		display: none;
+	}
+	.kb-group + .kb-group {
+		margin-top: 1.1rem;
+	}
+	.kb-group__name {
+		margin: 0 0 0.4rem;
+		font-size: 0.66rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: rgb(var(--muted-light));
+	}
+	.kb-group ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-left: 1px solid rgb(var(--line-soft));
+	}
+	.kb-group a {
+		display: block;
+		margin-left: -1px;
+		padding: 0.32rem 0 0.32rem 0.75rem;
+		border-left: 1px solid transparent;
+		font-size: 0.82rem;
+		line-height: 1.5;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out);
+	}
+	.kb-group a:hover {
+		color: rgb(var(--ink));
+	}
+	.kb-group a[aria-current='page'] {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--accent));
+		font-weight: 500;
+	}
+	.kb-tree__empty {
+		margin: 1rem 0 0;
+		font-size: 0.8rem;
+		color: rgb(var(--muted-light));
+	}
+
+	/* 正文 */
 	.kb-post {
-		width: var(--w-read);
-		margin-inline: auto;
-		padding-top: 1rem;
+		min-width: 0;
 	}
 	.kb-post__head {
 		padding: 0 0 1.4rem;
-		margin-bottom: 1.6rem;
-		border-bottom: 1px solid rgba(var(--line), 1);
-	}
-	.kb-back {
-		display: inline-block;
-		font-size: 0.84rem;
-		color: rgb(var(--muted));
-		text-decoration: none;
-		margin-bottom: 1rem;
-		transition: color var(--dur-fast) var(--ease-out);
-	}
-	.kb-back:hover {
-		color: rgb(var(--accent-deep));
-	}
-	.kb-post__category {
-		display: inline-block;
-		font-size: 0.7rem;
-		letter-spacing: 0.16em;
-		color: rgb(var(--accent-deep));
-		background: rgba(var(--accent), 0.12);
-		border-radius: var(--r-pill);
-		padding: 0.15rem 0.6rem;
-		margin-bottom: 0.7rem;
+		margin-bottom: 1.4rem;
+		border-bottom: 1px solid rgb(var(--line));
 	}
 	.kb-post__head h1 {
-		margin: 0 0 0.4rem;
-		font-size: clamp(1.6rem, 4vw, 2.2rem);
-		line-height: 1.25;
+		margin: 0.7rem 0 0.5rem;
+		font-size: clamp(1.7rem, 3.8vw, 2.4rem);
+		line-height: 1.2;
+		letter-spacing: -0.025em;
 	}
 	.kb-post__desc {
 		margin: 0 0 0.8rem;
@@ -102,4 +253,83 @@ const { Content } = await render(note);
 		border-radius: var(--r-pill);
 		padding: 0.05rem 0.55rem;
 	}
+
+	/* 页内锚点 */
+	.kb-toc {
+		margin: 0 0 2rem;
+		padding: 0.9rem 1.1rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: 12px;
+		background: rgb(var(--paper));
+	}
+	.kb-toc .eyebrow {
+		display: block;
+		margin-bottom: 0.55rem;
+	}
+	.kb-toc ol {
+		margin: 0;
+		padding-left: 1.1rem;
+		display: grid;
+		gap: 0.28rem;
+	}
+	.kb-toc li.is-sub {
+		margin-left: 0.6rem;
+		list-style: circle;
+	}
+	.kb-toc a {
+		font-size: 0.86rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.kb-toc a:hover {
+		color: rgb(var(--accent));
+	}
+
+	@media (max-width: 980px) {
+		.kb-shell {
+			grid-template-columns: minmax(0, 1fr);
+			width: min(100% - 2 * var(--gutter), var(--w-read));
+		}
+		.kb-tree {
+			position: static;
+			max-height: none;
+			margin-bottom: 2rem;
+			padding-bottom: 1rem;
+			border-bottom: 1px solid rgb(var(--line-soft));
+		}
+		.kb-tree nav {
+			max-height: 220px;
+			overflow-y: auto;
+		}
+	}
 </style>
+
+<script>
+	// 左侧目录树即时筛选：匹配到的条目高亮，整组无命中的分类隐藏
+	function initKbFilter() {
+		const input = document.querySelector<HTMLInputElement>('[data-kb-filter]');
+		if (!input || input.dataset.ready === '1') return;
+		input.dataset.ready = '1';
+		const groups = Array.from(document.querySelectorAll<HTMLElement>('[data-kb-group]'));
+		const empty = document.querySelector<HTMLElement>('[data-kb-empty]');
+
+		input.addEventListener('input', () => {
+			const q = input.value.trim().toLowerCase();
+			let visible = 0;
+			for (const group of groups) {
+				let hit = 0;
+				group.querySelectorAll<HTMLAnchorElement>('[data-kb-link]').forEach((a) => {
+					const match = !q || (a.dataset.kbLink ?? '').toLowerCase().includes(q);
+					a.parentElement!.hidden = !match;
+					if (match) hit += 1;
+				});
+				group.hidden = hit === 0;
+				visible += hit;
+			}
+			if (empty) empty.hidden = visible > 0;
+		});
+	}
+
+	initKbFilter();
+	document.addEventListener('astro:page-load', initKbFilter);
+</script>

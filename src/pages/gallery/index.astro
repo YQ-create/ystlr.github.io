@@ -40,7 +40,7 @@ const chromaItems = await Promise.all(
 			accent: ACCENTS[i % ACCENTS.length],
 			lightbox: bigUrls.get(photo.id),
 			srcset,
-			sizes: '(max-width: 720px) 50vw, (max-width: 1080px) 33vw, 300px',
+			sizes: '(max-width: 720px) 50vw, (max-width: 1080px) 33vw, 400px',
 			// alt 兜底：没写标题/说明时用「照片」，避免空 alt
 			alt: title || '照片',
 		};
@@ -83,8 +83,8 @@ tags: ["生活", "风景"]
 				<ChromaGrid
 					items={chromaItems}
 					reveal="spotlight"
-					columns={4}
-					minCardWidth={180}
+					columns={3}
+					minCardWidth={260}
 					gap={14}
 					radius={220}
 					softness={0.72}

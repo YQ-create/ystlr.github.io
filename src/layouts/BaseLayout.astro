@@ -6,6 +6,7 @@ import ClickSpark from '../components/ClickSpark.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Motion from '../components/Motion.astro';
+import SiteSearch from '../components/SiteSearch.astro';
 import type { ImageMetadata } from 'astro';
 
 interface Props {
@@ -39,6 +40,7 @@ const { title, description, image, noindex, bodyClass, hero = false, type, publi
 		<slot />
 		<Footer />
 		<Motion />
+		<SiteSearch />
 		<ClickSpark size={11} radius={24} count={7} />
 	</body>
 </html>

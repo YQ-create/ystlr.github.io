@@ -35,6 +35,7 @@ const years = [...byYear.entries()].sort((a, b) => b[0] - a[0]);
 			<span class="sec-head__index">ARCHIVE / {String(posts.length).padStart(2, '0')}</span>
 			<h1>文章</h1>
 			<p>记录日常、想法与读过的东西，按时间倒序排列。</p>
+			<a class="page-head__more" href="/blog/archive">按年月归档 →</a>
 		</header>
 
 		<SubmitPost />
@@ -282,6 +283,19 @@ const years = [...byYear.entries()].sort((a, b) => b[0] - a[0]);
 	.page-head p {
 		color: rgb(var(--muted));
 		margin: 0;
+	}
+	.page-head__more {
+		display: inline-block;
+		margin-top: 0.9rem;
+		font-size: 0.8rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+		border-bottom: 1px solid rgb(var(--line));
+		padding-bottom: 2px;
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.page-head__more:hover {
+		color: rgb(var(--ink));
 	}
 
 	.toolbar {

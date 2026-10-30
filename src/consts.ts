@@ -5,6 +5,9 @@ export const SITE_DESCRIPTION = '一个记录写作、生活与日常思考的�
 export const SITE_URL = 'https://ystlr.com';
 export const AUTHOR_NAME = 'ystlr';
 
+// ICP 备案号：填了才在页脚显示（例：'京ICP备2026000000号-1'）。留空 = 不显示。
+export const ICP_NUMBER = '';
+
 // 首页 Hero 展示文案
 export const HERO = {
 	role: 'Notes on life & writing',

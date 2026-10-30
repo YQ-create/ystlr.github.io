@@ -1,0 +1,119 @@
+---
+// 隐私声明：静态站没有自建后端，这里如实列出会产生的第三方请求与数据归属。
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { AUTHOR_NAME, SITE_TITLE, SOCIAL_LINKS } from '../consts';
+
+const items = [
+	{
+		title: '本站收集什么',
+		body: '不设账号体系，不埋点，不做跨站追踪，也不下发用于统计的 Cookie。主题与配色偏好只保存在你自己浏览器的 localStorage 里，清缓存即可清除。',
+	},
+	{
+		title: '第三方会看到什么',
+		body: '页面由 GitHub Pages 托管，访问日志与 IP 由 GitHub 按其隐私政策处理；文章页评论区使用 Giscus，评论内容与身份由你的 GitHub 账号提供并存储在仓库的 Discussions 中；「发现」页的站点图标会向 Google 的 favicon 服务发起请求，请求中包含该站域名。除此之外没有其他外部请求。',
+	},
+	{
+		title: '评论与留言',
+		body: '评论需要 GitHub 账号登录，内容公开可见，可以随时在 GitHub Discussions 里自行编辑或删除。站方只做违规内容屏蔽，不会导出或另作他用。',
+	},
+	{
+		title: '你的权利',
+		body: '由于本站不存储访客个人信息，通常无需额外的数据导出或删除流程；若评论涉及你的内容需要删除，通过下面的邮箱联系即可。',
+	},
+];
+---
+
+<BaseLayout title={`隐私 · ${SITE_TITLE}`} description="本站的隐私声明：收集什么、第三方看到什么、以及如何联系。">
+	<main class="privacy">
+		<header class="privacy-head">
+			<span class="eyebrow">Privacy / 06</span>
+			<h1>隐私</h1>
+			<p>一句话：不追踪你，也不打算开始追踪。</p>
+		</header>
+
+		<ol class="privacy-list">
+			{items.map((item, i) => (
+				<li>
+					<span class="privacy-n">{String(i + 1).padStart(2, '0')}</span>
+					<div>
+						<h2>{item.title}</h2>
+						<p>{item.body}</p>
+					</div>
+				</li>
+			))}
+		</ol>
+
+		<p class="privacy-foot">
+			有疑问写信给 <a href={SOCIAL_LINKS.email}>{SOCIAL_LINKS.email.replace('mailto:', '')}</a>，或去
+			<a href="/about">关于页</a> 看看这个站点是谁在维护（{AUTHOR_NAME}）。
+		</p>
+	</main>
+</BaseLayout>
+
+<style>
+	.privacy {
+		width: min(100% - 2 * var(--gutter), 760px);
+		margin: 0 auto;
+		padding: clamp(5.2rem, 11vh, 7.5rem) 0 4rem;
+	}
+	.privacy-head {
+		padding-bottom: 1.5rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.privacy-head h1 {
+		margin: 0.8rem 0 0.6rem;
+		font-size: clamp(2.2rem, 5vw, 3.4rem);
+		font-weight: 700;
+		line-height: 1;
+		letter-spacing: -0.04em;
+	}
+	.privacy-head p {
+		margin: 0;
+		color: rgb(var(--muted));
+	}
+	.privacy-list {
+		margin: 2rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.privacy-list li {
+		display: grid;
+		grid-template-columns: 2.6rem minmax(0, 1fr);
+		gap: 0.8rem;
+		padding: 1.4rem 0;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.privacy-n {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted-light));
+		padding-top: 0.35rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.privacy-list h2 {
+		margin: 0 0 0.45rem;
+		font-size: 1.06rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+	}
+	.privacy-list p {
+		margin: 0;
+		font-size: 0.94rem;
+		line-height: 1.75;
+		color: rgb(var(--muted));
+	}
+	.privacy-foot {
+		margin: 2rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.8;
+		color: rgb(var(--muted));
+	}
+	.privacy-foot a {
+		color: rgb(var(--ink-soft));
+		text-decoration-color: rgb(var(--line));
+		text-underline-offset: 3px;
+	}
+	.privacy-foot a:hover {
+		color: rgb(var(--ink));
+	}
+</style>

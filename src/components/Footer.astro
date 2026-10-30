@@ -1,12 +1,14 @@
 ---
-import { AUTHOR_NAME, SOCIAL_LINKS, SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { AUTHOR_NAME, ICP_NUMBER, SOCIAL_LINKS, SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 const year = new Date().getFullYear();
 
 const nav = [
 	{ href: '/blog', label: '文章' },
+	{ href: '/blog/archive', label: '归档' },
 	{ href: '/gallery', label: '照片' },
 	{ href: '/discover', label: '发现' },
 	{ href: '/about', label: '关于' },
+	{ href: '/privacy', label: '隐私' },
 	{ href: '/rss.xml', label: 'RSS' },
 ];
 ---
@@ -32,10 +34,23 @@ const nav = [
 		</div>
 	</div>
 
-	<p class="foot-copy">
-		&copy; {year} {AUTHOR_NAME} · 用 Astro 构建，托管在 GitHub Pages
-		<a class="foot-manage" href="/admin/" rel="nofollow">管理</a>
-	</p>
+	<div class="foot-bottom">
+		<p class="foot-copy">
+			&copy; {year} {AUTHOR_NAME} · 用 Astro 构建，托管在 GitHub Pages
+			{ICP_NUMBER && (
+				<>
+					· <a class="foot-icp" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener nofollow">{ICP_NUMBER}</a>
+				</>
+			)}
+			<a class="foot-manage" href="/admin/" rel="nofollow">管理</a>
+		</p>
+		<button class="foot-top" type="button" data-back-top>
+			<span>回到顶部</span>
+			<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+				<path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M8 13V3M3.5 7.5 8 3l4.5 4.5"></path>
+			</svg>
+		</button>
+	</div>
 </footer>
 
 <style>
@@ -102,9 +117,44 @@ const nav = [
 		color: rgb(var(--accent));
 		text-decoration-color: rgb(var(--accent));
 	}
-	.foot-copy {
+	.foot-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
 		margin: 1.2rem 0 0;
-		text-align: center;
+	}
+	.foot-icp {
+		color: inherit;
+		text-decoration: none;
+	}
+	.foot-icp:hover {
+		color: rgb(var(--ink-soft));
+	}
+	.foot-top {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.35rem 0.7rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-pill);
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.72rem;
+		cursor: pointer;
+		white-space: nowrap;
+		transition:
+			color var(--dur-fast) var(--ease-out),
+			border-color var(--dur-fast) var(--ease-out);
+	}
+	.foot-top:hover {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--line));
+	}
+	.foot-copy {
+		margin: 0;
+		text-align: left;
 		font-size: 0.76rem;
 		letter-spacing: 0.06em;
 		color: rgb(var(--muted-light));
@@ -114,5 +164,27 @@ const nav = [
 			grid-template-columns: 1fr;
 			gap: 1.2rem;
 		}
+		.foot-bottom {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.8rem;
+		}
+		.foot-copy {
+			line-height: 1.8;
+		}
 	}
 </style>
+
+<script>
+	function initBackTop() {
+		const btn = document.querySelector<HTMLButtonElement>('[data-back-top]');
+		if (!btn || btn.dataset.ready === '1') return;
+		btn.dataset.ready = '1';
+		btn.addEventListener('click', () => {
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+		});
+	}
+	initBackTop();
+	document.addEventListener('astro:page-load', initBackTop);
+</script>

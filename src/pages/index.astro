@@ -50,6 +50,7 @@ const stats = [
 
 const latest = posts[0]?.data.pubDate;
 
+import CursorGrid from '../components/CursorGrid.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import discoverData from '../data/discover.json';
 
@@ -179,6 +180,16 @@ const explore = [
 
 		<!-- ═══════════ Act 3: 反色分栏（米白台面） ═══════════ -->
 		<section class="split" id="split">
+			<CursorGrid
+				class="split__grid"
+				cellSize={64}
+				radius={200}
+				gridOpacity={0.085}
+				spotlight={0.9}
+				fillOpacity={0.025}
+				maxOpacity={0.62}
+				edgeFade={0.3}
+			/>
 			<div class="split__inner">
 				<div class="split__copy">
 					<span class="eyebrow split__eyebrow">02 / 关于这里</span>
@@ -895,6 +906,8 @@ const explore = [
 		border-block: 1px solid rgb(var(--line-soft));
 	}
 	.split__inner {
+		position: relative;
+		z-index: 1;
 		display: grid;
 		grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
 		gap: clamp(2rem, 5vw, 4.5rem);
@@ -903,6 +916,14 @@ const explore = [
 		max-width: var(--w-wide);
 		margin: 0 auto;
 		padding: 0 var(--gutter);
+	}
+	/* 网格追光垫在内容下面，只做装饰 */
+	:global(.split__grid) {
+		z-index: 0;
+	}
+	/* 浅色主题白底压对比，网格线要更实一点 */
+	:global(html[data-theme='light']) :global(.split__grid) {
+		--cg-boost: 2.2;
 	}
 	.split__eyebrow {
 		color: rgba(var(--cream-ink), 0.5);

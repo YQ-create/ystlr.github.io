@@ -193,6 +193,10 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 		root?.classList.toggle('is-open', open);
 
 		if (open) {
+			// 固定定位：面板相对按钮定位（页头面板是 overflow:hidden，绝对定位会被裁剪）
+			const rect = toggle.getBoundingClientRect();
+			panel.style.top = `${rect.bottom + 14}px`;
+			panel.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
 			panel.hidden = false;
 			// 先渲染一帧再加类，入场过渡才会生效
 			requestAnimationFrame(() => panel.classList.add('is-open'));
@@ -414,9 +418,7 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 	}
 
 	.music-panel {
-		position: absolute;
-		top: calc(100% + 0.9rem);
-		right: 0;
+		position: fixed;
 		width: 268px;
 		padding: 1rem 1.05rem 0.9rem;
 		border-radius: var(--r-lg);
@@ -609,12 +611,10 @@ const tracks: Track[] = Array.isArray((playlist as { tracks?: Track[] }).tracks)
 
 	@media (max-width: 720px) {
 		.music-panel {
-			position: fixed;
-			top: auto;
-			bottom: calc(1rem + env(safe-area-inset-bottom));
-			right: 1rem;
-			left: 1rem;
-			width: auto;
+			top: auto !important;
+			left: 1rem !important;
+			right: 1rem !important;
+			width: auto !important;
 			transform-origin: bottom center;
 			transform: translate3d(0, 12px, 0) scale(0.98);
 		}

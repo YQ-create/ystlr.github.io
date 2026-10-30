@@ -1,0 +1,685 @@
+---
+/**
+ * CardNav —— React Bits「卡片式导航」的原生移植（无 React、无 hugeicons）。
+ * 一个居中 logo 的悬浮玻璃条：左侧汉堡按钮展开/收起，下方弹出一排卡片（每张卡片带
+ * 标题、描述与链接列表）。用弹簧 + 错峰（stagger）驱动卡片进场。
+ *
+ * 主题：不硬编码深浅色，直接用站点 CSS 变量（--glass-bg / --ink / --muted / --accent 等），
+ * 因此自动跟随浅色主题与调色盘。
+ *
+ * 使用：
+ *   <CardNav items={items} logoHref="/" logoAlt="ystlr" openOn="hover">
+ *     <Fragment slot="logo">…logo…</Fragment>
+ *     <Fragment slot="actions">…右侧按钮…</Fragment>
+ *   </CardNav>
+ */
+interface NavLink {
+	label: string;
+	href?: string;
+	ariaLabel?: string;
+	external?: boolean;
+}
+interface NavItem {
+	label: string;
+	description?: string;
+	bgColor?: string;
+	textColor?: string;
+	links?: NavLink[];
+}
+
+interface Props {
+	items?: NavItem[];
+	logoHref?: string;
+	logoAlt?: string;
+	openOn?: 'click' | 'hover';
+	cardEffect?: 'rise' | 'unfold' | 'fade';
+	stagger?: number;
+	bounce?: number;
+	speed?: number;
+	cardHeight?: number;
+	maxWidth?: number;
+	menuLabel?: boolean;
+	intro?: boolean;
+	defaultOpen?: boolean;
+	ariaLabel?: string;
+	className?: string;
+}
+
+const {
+	items = [],
+	logoHref = '/',
+	logoAlt = 'Logo',
+	openOn = 'click',
+	cardEffect = 'rise',
+	stagger = 0.12,
+	bounce = 0.2,
+	speed = 1,
+	cardHeight = 176,
+	maxWidth = 800,
+	menuLabel = true,
+	intro = true,
+	defaultOpen = false,
+	ariaLabel = '主导航',
+	className = '',
+} = Astro.props;
+
+const cfg = {
+	openOn,
+	cardEffect,
+	stagger,
+	bounce,
+	speed,
+	menuLabel,
+	intro,
+	defaultOpen,
+};
+---
+
+<div
+	class={`card-nav${className ? ` ${className}` : ''}`}
+	data-card-nav
+	data-cfg={JSON.stringify(cfg)}
+	style={`--cn-max:${maxWidth}px;--cn-card:${cardHeight}px;`}
+>
+	<nav class="card-nav__panel" data-cn-panel aria-label={ariaLabel}>
+		<div class="card-nav__bar" data-cn-bar>
+			<button
+				class="card-nav__menu"
+				type="button"
+				data-cn-menu
+				aria-expanded={defaultOpen ? 'true' : 'false'}
+				aria-controls="card-nav-content"
+			>
+				<span class="card-nav__burger" aria-hidden="true">
+					<span class="card-nav__line card-nav__line--top"></span>
+					<span class="card-nav__line card-nav__line--bottom"></span>
+				</span>
+				{menuLabel && (
+					<span class="card-nav__menu-label">
+						<span class="card-nav__word card-nav__word--open" aria-hidden="false">菜单</span>
+						<span class="card-nav__word card-nav__word--close" aria-hidden="true">关闭</span>
+					</span>
+				)}
+			</button>
+
+			<a class="card-nav__logo" href={logoHref} aria-label={logoAlt}>
+				<slot name="logo" />
+			</a>
+
+			<div class="card-nav__actions">
+				<slot name="actions" />
+			</div>
+		</div>
+
+		<div class="card-nav__content" id="card-nav-content" data-cn-content aria-hidden={defaultOpen ? 'false' : 'true'}>
+			<div class="card-nav__cards">
+				{items.map((item, index) => (
+					<div
+						class="card-nav__card"
+						data-cn-card
+						data-tinted={item.bgColor ? '' : undefined}
+						style={item.bgColor ? `background:${item.bgColor};color:${item.textColor ?? 'inherit'}` : undefined}
+					>
+						<div class="card-nav__card-head">
+							<span class="card-nav__label">{item.label}</span>
+							{item.description && <p class="card-nav__description">{item.description}</p>}
+						</div>
+						<ul class="card-nav__links">
+							{(item.links ?? []).map((link, li) => (
+								<li>
+									<a
+										class="card-nav__link"
+										href={link.href ?? '#'}
+										data-nav-item
+										data-href={link.href ?? '#'}
+										aria-label={link.ariaLabel}
+										{...(link.external
+											? { target: '_blank', rel: 'noopener noreferrer' }
+											: {})}
+									>
+										<span class="card-nav__arrow" aria-hidden="true">
+											<svg
+												class="card-nav__arrow-icon card-nav__arrow-icon--out"
+												viewBox="0 0 16 16"
+												width="14"
+												height="14"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.8"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"></path>
+											</svg>
+											<svg
+												class="card-nav__arrow-icon card-nav__arrow-icon--in"
+												viewBox="0 0 16 16"
+												width="14"
+												height="14"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.8"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"></path>
+											</svg>
+										</span>
+										{link.label}
+									</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</div>
+		</div>
+		<span class="card-nav__rim" aria-hidden="true"></span>
+	</nav>
+</div>
+
+<script>
+	// @ts-nocheck
+	(function () {
+		const NARROW = 560;
+		const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+		const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+		const easeOut = (t) => 1 - (1 - t) ** 3;
+
+		function init(root: HTMLElement) {
+			if (root.dataset.wired === '1') return;
+			root.dataset.wired = '1';
+
+			const panel = root.querySelector<HTMLElement>('[data-cn-panel]');
+			const bar = root.querySelector<HTMLElement>('[data-cn-bar]');
+			const content = root.querySelector<HTMLElement>('[data-cn-content]');
+			const menuBtn = root.querySelector<HTMLButtonElement>('[data-cn-menu]');
+			const cards = Array.from(root.querySelectorAll<HTMLElement>('[data-cn-card]'));
+			const links = Array.from(root.querySelectorAll<HTMLElement>('[data-nav-item]'));
+			if (!panel || !content || !menuBtn) return;
+
+			let cfg: any = { openOn: 'click', cardEffect: 'rise', stagger: 0.12, bounce: 0.2, speed: 1, menuLabel: true, intro: true, defaultOpen: false };
+			try {
+				const raw = root.dataset.cfg;
+				if (raw) cfg = { ...cfg, ...JSON.parse(raw) };
+			} catch {}
+
+			const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+			const hover = cfg.openOn === 'hover';
+
+			let open = !!cfg.defaultOpen;
+			let shown = open;
+			let leaveTimer = 0;
+
+			const state = { p: open ? 1 : 0, v: 0, height: content.offsetHeight, bar: 60 };
+
+			const setAttr = () => {
+				root.toggleAttribute('data-open', open);
+				root.toggleAttribute('data-shown', shown || open);
+				menuBtn.setAttribute('aria-expanded', String(open));
+				content.setAttribute('aria-hidden', String(!open));
+				for (const l of links) l.tabIndex = open ? 0 : -1;
+			};
+
+			const render = () => {
+				state.bar = parseFloat(getComputedStyle(panel).getPropertyValue('--cn-bar')) || 60;
+				panel.style.height = `${state.bar + Math.max(0, state.p) * state.height}px`;
+				const count = cards.length;
+				const lag = count > 1 ? Math.min(cfg.stagger, 0.7 / (count - 1)) : 0;
+				const span = 1 - lag * (count - 1);
+				cards.forEach((card, index) => {
+					const local = clamp((state.p - index * lag) / Math.max(span, 0.05), 0, 1);
+					const e = easeOut(local);
+					if (cfg.cardEffect === 'unfold') {
+						card.style.transform = `translateY(${(1 - e) * -10}px) rotateX(${(1 - e) * -72}deg)`;
+						card.style.opacity = `${clamp(local * 1.8, 0, 1)}`;
+						card.style.filter = '';
+					} else if (cfg.cardEffect === 'fade') {
+						card.style.transform = `translateY(${(1 - e) * 6}px)`;
+						card.style.opacity = `${e}`;
+						card.style.filter = e < 0.999 ? `blur(${(1 - e) * 6}px)` : '';
+					} else {
+						card.style.transform = `translateY(${(1 - e) * 26}px) scale(${0.97 + 0.03 * e})`;
+						card.style.opacity = `${e}`;
+						card.style.filter = '';
+					}
+				});
+			};
+
+			let raf = 0;
+			let last = 0;
+			const tick = (now: number) => {
+				raf = 0;
+				const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
+				last = now;
+				const target = open ? 1 : 0;
+				if (reduce) {
+					state.p = target;
+					state.v = 0;
+				} else {
+					const k = 160 * cfg.speed * cfg.speed;
+					const zeta = open ? 1 - 0.68 * cfg.bounce : 1;
+					const steps = Math.ceil(dt / (1 / 240));
+					const h = dt / steps;
+					for (let i = 0; i < steps; i++) {
+						state.v += (-k * (state.p - target) - 2 * zeta * Math.sqrt(k) * state.v) * h;
+						state.p += state.v * h;
+					}
+				}
+				const done = Math.abs(state.p - target) < 0.0005 && Math.abs(state.v) < 0.002;
+				if (done) {
+					state.p = target;
+					state.v = 0;
+				}
+				render();
+				if (done && target === 0) {
+					shown = false;
+					setAttr();
+				}
+				if (!done) raf = requestAnimationFrame(tick);
+			};
+
+			const wake = () => {
+				if (!raf) {
+					last = 0;
+					raf = requestAnimationFrame(tick);
+				}
+			};
+
+			const setOpen = (next: boolean) => {
+				if (next === open) return;
+				open = next;
+				if (open) shown = true;
+				setAttr();
+				wake();
+			};
+
+			// 测量内容高度（含窄屏重排后的高度）
+			const refresh = () => {
+				state.height = content.offsetHeight;
+				render();
+			};
+			const observer = new ResizeObserver(refresh);
+			observer.observe(content);
+
+			// 打开/收起入口
+			menuBtn.addEventListener('click', () => setOpen(!open));
+
+			if (hover) {
+				root.addEventListener('pointerenter', (e) => {
+					if (e.pointerType === 'touch') return;
+					window.clearTimeout(leaveTimer);
+					setOpen(true);
+				});
+				root.addEventListener('pointerleave', (e) => {
+					if (e.pointerType === 'touch') return;
+					window.clearTimeout(leaveTimer);
+					leaveTimer = window.setTimeout(() => setOpen(false), 160);
+				});
+			}
+
+			// 点外部 / Esc 收起
+			document.addEventListener('pointerdown', (e) => {
+				const target = e.target;
+				if (target instanceof Node && root.contains(target)) return;
+				setOpen(false);
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') {
+					setOpen(false);
+					menuBtn.focus();
+				}
+			});
+
+			// 链接点击后收起菜单
+			for (const l of links) {
+				l.addEventListener('click', () => setOpen(false));
+			}
+
+			// 窄屏判定
+			const measure = () => root.toggleAttribute('data-narrow', root.offsetWidth < NARROW);
+			measure();
+			const narrowObserver = new ResizeObserver(measure);
+			narrowObserver.observe(root);
+
+			// 首屏 intro：从中心展开
+			if (cfg.intro && !reduce && !open) {
+				requestAnimationFrame(() => {
+					const width = panel.offsetWidth;
+					const height = panel.offsetHeight;
+					const radius = parseFloat(getComputedStyle(panel).borderTopLeftRadius) || 18;
+					panel.animate(
+						[
+							{ clipPath: `inset(0px ${Math.max(0, (width - height) / 2)}px round ${height / 2}px)`, opacity: 0 },
+							{ clipPath: `inset(0px 0px round ${radius}px)`, opacity: 1 },
+						],
+						{ duration: 820, easing: EASE_OUT, fill: 'backwards' },
+					);
+					Array.from(bar.children).forEach((child, index) => {
+						(child as HTMLElement).animate(
+							[
+								{ opacity: 0, transform: 'translateY(8px)' },
+								{ opacity: 1, transform: 'translateY(0)' },
+							],
+							{ duration: 560, delay: 220 + index * 70, easing: EASE_OUT, fill: 'backwards' },
+						);
+					});
+				});
+			}
+
+			render();
+			setAttr();
+		}
+
+		function boot() {
+			document.querySelectorAll<HTMLElement>('[data-card-nav]').forEach(init);
+		}
+
+		document.addEventListener('astro:page-load', boot);
+		if (document.readyState !== 'loading') boot();
+		else document.addEventListener('DOMContentLoaded', boot);
+	})();
+</script>
+
+<style>
+	.card-nav {
+		position: relative;
+		width: 100%;
+		max-width: var(--cn-max, 800px);
+		height: var(--cn-bar, 60px);
+		margin: 0 auto;
+		font-size: 14px;
+		line-height: 1.4;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.card-nav__panel {
+		position: absolute;
+		top: 0;
+		right: 0;
+		left: 0;
+		z-index: 10;
+		height: var(--cn-bar, 60px);
+		border-radius: var(--cn-radius, 18px);
+		overflow: hidden;
+		background: var(--glass-bg-strong);
+		box-shadow: var(--glass-shine), var(--shadow-lg);
+		-webkit-backdrop-filter: blur(22px) saturate(1.4);
+		backdrop-filter: blur(22px) saturate(1.4);
+	}
+
+	.card-nav__rim {
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		border-radius: inherit;
+		box-shadow:
+			inset 0 0 0 1px var(--glass-brd),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		pointer-events: none;
+	}
+
+	.card-nav__bar {
+		position: relative;
+		z-index: 2;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		height: var(--cn-bar, 60px);
+		padding: 0 var(--cn-inset, 8px);
+		box-sizing: border-box;
+	}
+
+	.card-nav__menu {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		justify-self: start;
+		height: calc(var(--cn-bar, 60px) - var(--cn-inset, 8px) * 2);
+		padding: 0 14px 0 16px;
+		border: 0;
+		border-radius: calc(var(--cn-radius, 18px) - var(--cn-inset, 8px));
+		background: none;
+		color: rgb(var(--ink));
+		font-family: inherit;
+		font-size: inherit;
+		font-weight: 500;
+		cursor: pointer;
+		outline: none;
+		transition: background-color 0.2s ease;
+	}
+	.card-nav__menu:hover {
+		background: var(--chip-bg);
+	}
+	.card-nav__menu:focus-visible,
+	.card-nav__logo:focus-visible,
+	.card-nav__link:focus-visible {
+		outline: 2px solid rgb(var(--ink));
+		outline-offset: 2px;
+	}
+
+	.card-nav__burger {
+		position: relative;
+		width: 18px;
+		height: 12px;
+		flex: none;
+	}
+	.card-nav__line {
+		position: absolute;
+		left: 0;
+		width: 100%;
+		height: 1.5px;
+		border-radius: 2px;
+		background: currentColor;
+		transition:
+			transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+			top 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.card-nav__line--top {
+		top: 2.25px;
+	}
+	.card-nav__line--bottom {
+		top: 8.25px;
+	}
+	.card-nav[data-open] .card-nav__line--top {
+		top: 5.25px;
+		transform: rotate(45deg);
+	}
+	.card-nav[data-open] .card-nav__line--bottom {
+		top: 5.25px;
+		transform: rotate(-45deg);
+	}
+
+	.card-nav__menu-label {
+		position: relative;
+		display: inline-grid;
+		overflow: hidden;
+		line-height: 1;
+	}
+	.card-nav__word {
+		grid-area: 1 / 1;
+		transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.card-nav__word--close {
+		transform: translateY(110%);
+	}
+	.card-nav[data-open] .card-nav__word--open {
+		transform: translateY(-110%);
+	}
+	.card-nav[data-open] .card-nav__word--close {
+		transform: translateY(0);
+	}
+
+	.card-nav__logo {
+		display: inline-flex;
+		align-items: center;
+		justify-self: center;
+		height: var(--cn-logo, 24px);
+		color: rgb(var(--ink));
+		text-decoration: none;
+		outline: none;
+	}
+	.card-nav__logo img,
+	.card-nav__logo svg {
+		display: block;
+		height: 100%;
+		width: auto;
+	}
+
+	.card-nav__actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		justify-self: end;
+	}
+
+	.card-nav__content {
+		position: absolute;
+		top: var(--cn-bar, 60px);
+		right: 0;
+		left: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--cn-gap, 8px);
+		padding: 0 var(--cn-inset, 8px) var(--cn-inset, 8px);
+		box-sizing: border-box;
+		perspective: 900px;
+		visibility: hidden;
+	}
+	.card-nav[data-shown] .card-nav__content {
+		visibility: visible;
+	}
+
+	.card-nav__cards {
+		display: flex;
+		gap: var(--cn-gap, 8px);
+	}
+	.card-nav[data-narrow] .card-nav__cards {
+		flex-direction: column;
+	}
+
+	.card-nav__card {
+		position: relative;
+		display: flex;
+		flex: 1 1 0;
+		flex-direction: column;
+		gap: 18px;
+		min-width: 0;
+		min-height: var(--cn-card, 176px);
+		padding: 16px 16px 14px;
+		border-radius: calc(var(--cn-radius, 18px) - var(--cn-inset, 8px));
+		box-sizing: border-box;
+		background: var(--glass-bg);
+		box-shadow:
+			inset 0 0 0 1px var(--glass-brd-dim),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06),
+			0 4px 10px -4px rgba(0, 0, 0, 0.5);
+		color: rgb(var(--ink));
+		transform-origin: 50% 0;
+		will-change: transform, opacity;
+	}
+	.card-nav[data-narrow] .card-nav__card {
+		flex: none;
+		min-height: 0;
+		gap: 10px;
+		padding: 14px 14px 12px;
+	}
+	.card-nav[data-narrow] .card-nav__links {
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: 2px 16px;
+	}
+
+	.card-nav__card-head {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.card-nav__label {
+		font-size: 17px;
+		font-weight: 600;
+		letter-spacing: -0.015em;
+	}
+	.card-nav__description {
+		margin: 0;
+		color: rgb(var(--muted));
+		font-size: 13px;
+		line-height: 1.45;
+	}
+	.card-nav__card[data-tinted] .card-nav__description {
+		color: inherit;
+		opacity: 0.7;
+	}
+
+	.card-nav__links {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin: auto 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.card-nav__link {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 3px 0;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: inherit;
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 500;
+		text-decoration: none;
+		cursor: pointer;
+		outline: none;
+		opacity: 0.82;
+		transition: opacity 0.2s ease;
+	}
+	.card-nav__link:hover {
+		opacity: 1;
+		color: rgb(var(--accent-deep));
+	}
+	.card-nav__link.is-active {
+		opacity: 1;
+		color: rgb(var(--accent-deep));
+		font-weight: 600;
+	}
+
+	.card-nav__arrow {
+		position: relative;
+		display: inline-block;
+		flex: none;
+		width: 14px;
+		height: 14px;
+		overflow: hidden;
+		color: rgb(var(--accent));
+	}
+	.card-nav__arrow-icon {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.card-nav__arrow-icon--in {
+		transform: translate(-110%, 110%);
+	}
+	.card-nav__link:hover .card-nav__arrow-icon--out,
+	.card-nav__link:focus-visible .card-nav__arrow-icon--out {
+		transform: translate(110%, -110%);
+	}
+	.card-nav__link:hover .card-nav__arrow-icon--in,
+	.card-nav__link:focus-visible .card-nav__arrow-icon--in {
+		transform: translate(0, 0);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card-nav__line,
+		.card-nav__word,
+		.card-nav__arrow-icon {
+			transition: none;
+		}
+	}
+</style>

@@ -885,13 +885,14 @@ const explore = [
 		will-change: transform;
 	}
 
-	/* ═══════════ Act 3: 反色分栏（米白台面） ═══════════ */
+	/* ═══════════ Act 3: 关于这里（跟随主题的面板） ═══════════ */
 	.split {
 		position: relative;
 		z-index: 2;
 		padding: clamp(3.6rem, 8vw, 7.5rem) 0;
 		background: rgb(var(--cream));
 		color: rgb(var(--cream-ink));
+		border-block: 1px solid rgb(var(--line-soft));
 	}
 	.split__inner {
 		display: grid;

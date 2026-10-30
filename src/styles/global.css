@@ -198,10 +198,10 @@ html[data-accent='pink'][data-theme='light'] {
 	--glass-brd: rgba(255, 255, 255, 0.1);
 	--glass-brd-dim: rgba(255, 255, 255, 0.06);
 
-	/* 反色区块（米白）与它上面的墨色 */
-	--cream: 240, 236, 228;
-	--cream-ink: 18, 17, 15;
-	--cream-muted: 110, 106, 99;
+	/* 「02 / 关于这里」区块的台面与墨色：跟随主题，不再反色 */
+	--cream: 16, 16, 18;
+	--cream-ink: 241, 238, 232;
+	--cream-muted: 142, 139, 133;
 	/* 主按钮：暖白底 + 近黑字 */
 	--btn-solid: 240, 236, 228;
 	--btn-solid-ink: 14, 14, 16;
@@ -229,9 +229,9 @@ html[data-accent='pink'][data-theme='light'] {
 	--glass-brd: rgba(0, 0, 0, 0.1);
 	--glass-brd-dim: rgba(0, 0, 0, 0.06);
 
-	--cream: 24, 23, 21;
-	--cream-ink: 240, 236, 228;
-	--cream-muted: 160, 155, 146;
+	--cream: 250, 248, 243;
+	--cream-ink: 18, 17, 15;
+	--cream-muted: 110, 106, 99;
 	--btn-solid: 18, 17, 15;
 	--btn-solid-ink: 244, 241, 234;
 }

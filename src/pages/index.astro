@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Particles from '../components/Particles.astro';
 import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
@@ -64,9 +65,21 @@ if (photos.length > 0) {
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero>
-	<!-- 碗状辉光画布（固定层，全屏拉伸） -->
+	<!-- 粒子场背景（固定层，全屏） -->
 	<div class="atmo" aria-hidden="true">
-		<canvas data-bowl-glow width="96" height="60"></canvas>
+		<Particles
+			particleColors={['#ffffff', '#d8e4ff', '#fff1d6']}
+			particleCount={420}
+			particleSpread={10}
+			speed={0.1}
+			particleBaseSize={120}
+			glow={0.9}
+			twinkle={0.7}
+			moveParticlesOnHover={true}
+			hoverEffect="parallax"
+			shape="sparkle"
+			alphaParticles={true}
+		/>
 	</div>
 
 	<main class="home">
@@ -372,7 +385,6 @@ if (photos.length > 0) {
 </BaseLayout>
 
 <script>
-	import { bootBowlGlow } from '../scripts/bowl-glow';
 	import { splitChars, paint } from '../scripts/letter-reveal';
 
 	function clamp(v: number, a: number, b: number) {
@@ -389,9 +401,6 @@ if (photos.length > 0) {
 	let wired = false;
 
 	function init() {
-		// 碗状辉光
-		bootBowlGlow();
-
 		if (wired) return;
 		wired = true;
 
@@ -485,7 +494,7 @@ if (photos.length > 0) {
 </script>
 
 <style>
-	/* ═══════════ 碗状辉光固定层 ═══════════ */
+	/* ═══════════ 粒子场固定层 ═══════════ */
 	.atmo {
 		position: fixed;
 		inset: 0;
@@ -493,12 +502,9 @@ if (photos.length > 0) {
 		pointer-events: none;
 		background: rgb(var(--bg));
 	}
-	.atmo canvas {
+	.atmo :global(.particles-container) {
 		position: absolute;
 		inset: 0;
-		width: 100%;
-		height: 100%;
-		display: block;
 	}
 
 	.home {

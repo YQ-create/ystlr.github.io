@@ -1,0 +1,127 @@
+---
+/**
+ * Particles —— React Bits Particles 的原生移植封装（WebGL2，无 React）。
+ * 用法：<Particles particleColors={[...]} particleCount={420} shape="sparkle" ... />
+ * 引擎在 src/scripts/particles.ts，参数经 data-cfg JSON 传给运行时脚本。
+ */
+interface ParticlesProps {
+	particleCount?: number;
+	particleSpread?: number;
+	speed?: number;
+	particleColors?: string[];
+	moveParticlesOnHover?: boolean;
+	particleHoverFactor?: number;
+	alphaParticles?: boolean;
+	particleBaseSize?: number;
+	sizeRandomness?: number;
+	cameraDistance?: number;
+	disableRotation?: boolean;
+	pixelRatio?: number;
+	shape?: 'circle' | 'square' | 'ring' | 'sparkle';
+	glow?: number;
+	twinkle?: number;
+	depthOfField?: number;
+	connections?: boolean;
+	connectionDistance?: number;
+	hoverEffect?: 'parallax' | 'repel' | 'attract';
+	hoverRadius?: number;
+	clickBurst?: boolean;
+	drift?: 'none' | 'up' | 'down' | 'forward';
+	driftSpeed?: number;
+	variation?: number;
+	intro?: boolean;
+	opacity?: number;
+	paused?: boolean;
+	class?: string;
+}
+
+const {
+	particleCount = 200,
+	particleSpread = 10,
+	speed = 0.1,
+	particleColors = ['#ffffff'],
+	moveParticlesOnHover = true,
+	particleHoverFactor = 1,
+	alphaParticles = false,
+	particleBaseSize = 100,
+	sizeRandomness = 1,
+	cameraDistance = 20,
+	disableRotation = false,
+	pixelRatio,
+	shape = 'circle',
+	glow = 0.5,
+	twinkle = 0.3,
+	depthOfField = 0,
+	connections = false,
+	connectionDistance = 110,
+	hoverEffect = 'parallax',
+	hoverRadius = 140,
+	clickBurst = true,
+	drift = 'none',
+	driftSpeed = 1,
+	variation = 0,
+	intro = true,
+	opacity = 1,
+	paused = false,
+	class: className = '',
+} = Astro.props;
+
+const cfg = {
+	particleCount,
+	particleSpread,
+	speed,
+	particleColors,
+	moveParticlesOnHover,
+	particleHoverFactor,
+	alphaParticles,
+	particleBaseSize,
+	sizeRandomness,
+	cameraDistance,
+	disableRotation,
+	pixelRatio,
+	shape,
+	glow,
+	twinkle,
+	depthOfField,
+	connections,
+	connectionDistance,
+	hoverEffect,
+	hoverRadius,
+	clickBurst,
+	drift,
+	driftSpeed,
+	variation,
+	intro,
+	opacity,
+	paused,
+};
+---
+
+<div class={`particles-container${className ? ` ${className}` : ''}`} data-particles data-cfg={JSON.stringify(cfg)}>
+	<canvas class="particles-canvas" aria-hidden="true"></canvas>
+</div>
+
+<script>
+	import { bootParticles } from '../scripts/particles';
+
+	document.addEventListener('astro:page-load', bootParticles);
+	if (document.readyState !== 'loading') bootParticles();
+	else document.addEventListener('DOMContentLoaded', bootParticles);
+</script>
+
+<style>
+	.particles-container {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+	.particles-canvas {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>

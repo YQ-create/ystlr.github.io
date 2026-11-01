@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Particles from '../components/Particles.astro';
 import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
@@ -80,26 +79,22 @@ const explore = [
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="studio">
-	<!-- 粒子场背景（固定层，全屏） -->
-	<div class="atmo" aria-hidden="true">
-		<Particles
-			particleColors={['#ffffff', '#d8e4ff', '#fff1d6']}
-			particleCount={420}
-			particleSpread={10}
-			speed={0.1}
-			particleBaseSize={120}
-			glow={0.9}
-			twinkle={0.7}
-			moveParticlesOnHover={true}
-			hoverEffect="parallax"
-			shape="sparkle"
-			alphaParticles={true}
-		/>
-	</div>
+	<!-- 全屏底色固定层：纯色 rgb(var(--bg))，遮住 body 的暖色光晕；动态背景已下放到各区块的网格追光 -->
+	<div class="atmo" aria-hidden="true"></div>
 
 	<main class="home">
 		<!-- ═══════════ Act 1: Hero ═══════════ -->
 		<section class="hero" id="home" data-section="home">
+			<CursorGrid
+				class="hero__grid"
+				cellSize={64}
+				radius={200}
+				gridOpacity={0.085}
+				spotlight={0.9}
+				fillOpacity={0.025}
+				maxOpacity={0.62}
+				edgeFade={0.3}
+			/>
 			<span class="hero-mark" aria-hidden="true">YSTLR</span>
 
 			<div class="hero-meta" data-ac data-ac-distance="16" data-ac-blur="4" data-ac-delay="80">
@@ -619,11 +614,6 @@ const explore = [
 		pointer-events: none;
 		background: rgb(var(--bg));
 	}
-	.atmo :global(.particles-container) {
-		position: absolute;
-		inset: 0;
-	}
-
 	.home {
 		position: relative;
 		z-index: 1;
@@ -658,6 +648,10 @@ const explore = [
 		min-height: 100svh;
 		padding: calc(var(--head-h) + 3rem) var(--gutter) 1.6rem;
 		overflow: hidden;
+	}
+	/* 顶部网格追光：垫在内容下面，与 02 区块统一 */
+	:global(.hero__grid) {
+		z-index: 0;
 	}
 	/* 巨型水印字：纯背景纹理，不进无障碍树 */
 	.hero-mark {

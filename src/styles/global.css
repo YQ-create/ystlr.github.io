@@ -195,6 +195,7 @@
 	line-height: 1;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
 	color: rgb(var(--muted));
 }
 .eyebrow--ink {
@@ -307,6 +308,7 @@ body {
 		rgb(var(--bg));
 	background-attachment: fixed;
 	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 ::selection {
@@ -354,7 +356,7 @@ h6 {
 	margin: 0 0 0.5rem 0;
 	color: rgb(var(--ink));
 	line-height: 1.18;
-	font-weight: 800;
+	font-weight: 700;
 	letter-spacing: -0.015em;
 	text-wrap: balance;
 }

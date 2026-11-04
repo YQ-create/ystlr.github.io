@@ -79,22 +79,24 @@ const explore = [
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="studio">
-	<!-- 全屏底色固定层：纯色 rgb(var(--bg))，遮住 body 的暖色光晕；动态背景已下放到各区块的网格追光 -->
-	<div class="atmo" aria-hidden="true"></div>
+	<!-- 全屏固定层：纯色底 + 贯穿整页的网格追光。
+	     网格固定在视口里、内容在上面滑，hero 与下方区块的交界处不会错位。 -->
+	<div class="atmo" aria-hidden="true">
+		<CursorGrid
+			class="page__grid"
+			cellSize={64}
+			radius={200}
+			gridOpacity={0.22}
+			spotlight={0.9}
+			fillOpacity={0.025}
+			maxOpacity={0.62}
+			edgeFade={0.3}
+		/>
+	</div>
 
 	<main class="home">
 		<!-- ═══════════ Act 1: Hero ═══════════ -->
 		<section class="hero" id="home" data-section="home">
-			<CursorGrid
-				class="hero__grid"
-				cellSize={64}
-				radius={200}
-				gridOpacity={0.22}
-				spotlight={0.9}
-				fillOpacity={0.025}
-				maxOpacity={0.62}
-				edgeFade={0.3}
-			/>
 			<span class="hero-mark" aria-hidden="true">YSTLR</span>
 
 			<div class="hero-meta" data-ac data-ac-distance="16" data-ac-blur="4" data-ac-delay="80">
@@ -176,16 +178,6 @@ const explore = [
 
 		<!-- ═══════════ Act 2: 关于这里（反色分栏） ═══════════ -->
 		<section class="split" id="split">
-			<CursorGrid
-				class="split__grid"
-				cellSize={64}
-				radius={200}
-				gridOpacity={0.22}
-				spotlight={0.9}
-				fillOpacity={0.025}
-				maxOpacity={0.62}
-				edgeFade={0.3}
-			/>
 			<div class="split__inner">
 				<div class="split__copy">
 					<span class="eyebrow split__eyebrow">01 / 关于这里</span>
@@ -613,6 +605,10 @@ const explore = [
 		pointer-events: none;
 		background: rgb(var(--bg));
 	}
+	/* 整页唯一的一层网格：fixed 在视口里，滚动时内容从它上面滑过 */
+	:global(.page__grid) {
+		z-index: 0;
+	}
 	.home {
 		position: relative;
 		z-index: 1;
@@ -647,10 +643,6 @@ const explore = [
 		min-height: 100svh;
 		padding: calc(var(--head-h) + 3rem) var(--gutter) 1.6rem;
 		overflow: hidden;
-	}
-	/* 顶部网格追光：垫在内容下面，与 02 区块统一 */
-	:global(.hero__grid) {
-		z-index: 0;
 	}
 	/* 巨型水印字：纯背景纹理，不进无障碍树 */
 	.hero-mark {
@@ -851,9 +843,9 @@ const explore = [
 		position: relative;
 		z-index: 2;
 		padding: clamp(3.6rem, 8vw, 7.5rem) 0;
-		background: rgb(var(--cream));
+		/* 与 hero 共用同一层固定网格：背景透明、去掉分隔线，滚动时交界处无缝 */
+		background: transparent;
 		color: rgb(var(--cream-ink));
-		border-block: 1px solid rgb(var(--line-soft));
 	}
 	.split__inner {
 		position: relative;
@@ -866,10 +858,6 @@ const explore = [
 		max-width: var(--w-wide);
 		margin: 0 auto;
 		padding: 0 var(--gutter);
-	}
-	/* 网格追光垫在内容下面，只做装饰 */
-	:global(.split__grid) {
-		z-index: 0;
 	}
 	.split__eyebrow {
 		color: rgba(var(--cream-ink), 0.5);

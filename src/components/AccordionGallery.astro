@@ -269,6 +269,20 @@ const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
 		outline-offset: -2px;
 	}
 
+	/* 小屏：改为竖向堆叠，避免一行挤 5 个窄条、图片被裁成细缝 */
+	@media (max-width: 560px) {
+		.accordion-gallery {
+			flex-direction: column;
+			perspective: none;
+		}
+		.ag-panel {
+			transform: none !important;
+		}
+		.ag-panel__media {
+			width: 100%;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.ag-panel,
 		.ag-panel__label,

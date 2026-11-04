@@ -52,7 +52,7 @@ const latest = posts[0]?.data.pubDate;
 import CursorGrid from '../components/CursorGrid.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
-import HoloCard from '../components/HoloCard.astro';
+import AccordionGallery from '../components/AccordionGallery.astro';
 import discoverData from '../data/discover.json';
 
 import { STACK as stack } from '../data/stack';
@@ -61,12 +61,17 @@ const discoverPreview = discoverData.collections
 	.flatMap((g) => g.links)
 	.slice(0, 6);
 
-// 深色分栏配图：取最新一张照片
-let splitImgSrc = '';
-if (photos.length > 0) {
-	const img = await getImage({ src: photos[0].data.image as ImageMetadata, width: 1400, format: 'webp' });
-	splitImgSrc = img.src;
-}
+// 02 区块右侧的手风琴画廊：取最新 5 张照片
+const galleryItems = await Promise.all(
+	photos.slice(0, 5).map(async (p, i) => {
+		const img = await getImage({ src: p.data.image as ImageMetadata, width: 900, format: 'webp' });
+		return {
+			image: img.src,
+			label: p.data.title ?? p.data.caption ?? `照片 ${String(i + 1).padStart(2, '0')}`,
+			alt: p.data.caption ?? p.data.title ?? '',
+		};
+	}),
+);
 
 // 首页底部的站内索引（参考站 Explore 条的 01—05 编号）
 const explore = [
@@ -211,29 +216,31 @@ const explore = [
 						</li>
 					</ol>
 				</div>
-				<figure class="split__media">
-					{splitImgSrc ? (
-						<HoloCard
-							class="split__holo"
-							image={splitImgSrc}
-							alt="记录下的生活瞬间"
-							preset="bursts"
-							intensity={0.8}
-							scale={1}
-							edgeSparkle={0.75}
-							frame={4}
-							glare={0.5}
-							width={440}
-							ratio={0.8}
-							tiltMax={12}
-							hoverScale={1.04}
-							idle
-							shadow
+				<div class="split__media">
+					{galleryItems.length > 1 ? (
+						<AccordionGallery
+							class="split__gallery"
+							items={galleryItems}
+							height={460}
+							gap={8}
+							radius={12}
+							expandRatio={0.5}
+							defaultIndex={0}
+							accentColor="rgb(var(--accent))"
+							overlayColor="#0b0b0c"
+							textColor="#ecebe6"
+							grayscale
+							showLabels
+							parallax={0.5}
+							tilt={8}
+							trigger="hover"
 						/>
+					) : galleryItems.length === 1 ? (
+						<img class="split__single" src={galleryItems[0].image} alt={galleryItems[0].alt} loading="lazy" decoding="async" />
 					) : (
 						<div class="split-img-fallback" aria-hidden="true"></div>
 					)}
-				</figure>
+				</div>
 			</div>
 		</section>
 
@@ -935,12 +942,14 @@ const explore = [
 	}
 	.split__media {
 		margin: 0;
-		display: flex;
-		justify-content: center;
+		width: 100%;
+		min-width: 0;
 	}
-	.split__media :global(.holo-card) {
-		/* 全息卡在右栏居中，宽度由组件 --hc-w 决定、随容器收缩 */
-		margin-top: 0.25rem;
+	.split__single {
+		width: 100%;
+		aspect-ratio: 4 / 5;
+		object-fit: cover;
+		border-radius: 14px;
 	}
 	.split-img-fallback {
 		width: 100%;
@@ -1593,9 +1602,6 @@ const explore = [
 		}
 		.split__media {
 			order: -1;
-		}
-		.split__media :global(.holo-card) {
-			--hc-ratio: 0.66 !important;
 		}
 		.split-img-fallback {
 			aspect-ratio: 16 / 10;

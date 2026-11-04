@@ -176,6 +176,16 @@ const explore = [
 
 		<!-- ═══════════ Act 2: Statement（单屏宣言，一次淡入上浮） ═══════════ -->
 		<section class="statement" id="statement" aria-label="宣言">
+			<CursorGrid
+				class="statement__grid"
+				cellSize={64}
+				radius={200}
+				gridOpacity={0.22}
+				spotlight={0.9}
+				fillOpacity={0.025}
+				maxOpacity={0.62}
+				edgeFade={0.3}
+			/>
 			<span class="statement__mark" aria-hidden="true">NOTES</span>
 			<div class="pin" data-reveal>
 				<span class="eyebrow statement__eyebrow">01 / 宣言</span>
@@ -880,6 +890,10 @@ const explore = [
 		overflow: hidden;
 		padding: clamp(3rem, 8vw, 5rem) var(--gutter);
 	}
+	/* 宣言区网格追光：与 hero / 02 同一套参数，整页背景统一 */
+	:global(.statement__grid) {
+		z-index: 0;
+	}
 	.statement__mark {
 		position: absolute;
 		top: 50%;
@@ -895,6 +909,7 @@ const explore = [
 	}
 	.statement .pin {
 		position: relative;
+		z-index: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: center;

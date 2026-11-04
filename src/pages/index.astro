@@ -174,31 +174,7 @@ const explore = [
 			</nav>
 		</section>
 
-		<!-- ═══════════ Act 2: Statement（单屏宣言，一次淡入上浮） ═══════════ -->
-		<section class="statement" id="statement" aria-label="宣言">
-			<CursorGrid
-				class="statement__grid"
-				cellSize={64}
-				radius={200}
-				gridOpacity={0.22}
-				spotlight={0.9}
-				fillOpacity={0.025}
-				maxOpacity={0.62}
-				edgeFade={0.3}
-			/>
-			<span class="statement__mark" aria-hidden="true">NOTES</span>
-			<div class="pin" data-reveal>
-				<span class="eyebrow statement__eyebrow">01 / 宣言</span>
-				<p id="stmt">
-					在这里，把日常写成文字<br>
-					把读过的书、走过的路、看过的风景<br>
-					慢慢整理成属于自己的记录<br>
-					不求产量，只留真实的痕迹
-				</p>
-			</div>
-		</section>
-
-		<!-- ═══════════ Act 3: 反色分栏（米白台面） ═══════════ -->
+		<!-- ═══════════ Act 2: 关于这里（反色分栏） ═══════════ -->
 		<section class="split" id="split">
 			<CursorGrid
 				class="split__grid"
@@ -212,7 +188,7 @@ const explore = [
 			/>
 			<div class="split__inner">
 				<div class="split__copy">
-					<span class="eyebrow split__eyebrow">02 / 关于这里</span>
+					<span class="eyebrow split__eyebrow">01 / 关于这里</span>
 					<h2 id="split-h2" class="display">
 						记录生活的方式<br>像呼吸一样自然
 					</h2>
@@ -588,8 +564,10 @@ const explore = [
 			ticking = true;
 			scrollRaf = requestAnimationFrame(() => {
 				ticking = false;
-				if (!splitSection) return;
 				const y = window.scrollY;
+				// 浮动 CTA：滚过首屏 70% 后浮现（原来跟随已删除的宣言区）
+				document.body.classList.toggle('stmt-on', y > vh * 0.7);
+				if (!splitSection) return;
 				const top = splitTop - y;
 				if (top < vh && top > -splitSection.offsetHeight) {
 					const p2 = clamp((0.8 - top / vh) / 0.65, 0, 1);
@@ -617,21 +595,8 @@ const explore = [
 		});
 		onScroll();
 
-		// ---- 浮动 CTA：宣言进入视口时浮现 ----
-		const stmtSection = document.getElementById('statement');
-		if (stmtSection) {
-			const io = new IntersectionObserver(
-				([e]) => {
-					document.body.classList.toggle('stmt-on', e.isIntersecting && e.intersectionRatio > 0.3);
-				},
-				{ threshold: [0, 0.3, 0.5] },
-			);
-			io.observe(stmtSection);
-			cleanups.push(() => {
-				io.disconnect();
-				document.body.classList.remove('stmt-on');
-			});
-		}
+		// 离开首页时收起浮动 CTA
+		cleanups.push(() => document.body.classList.remove('stmt-on'));
 	}
 
 	document.addEventListener('astro:page-load', init);
@@ -881,59 +846,7 @@ const explore = [
 		font-size: 0.86rem;
 	}
 
-	/* ═══════════ Act 2: Statement（单屏宣言） ═══════════ */
-	.statement {
-		position: relative;
-		min-height: 82vh;
-		display: grid;
-		place-items: center;
-		overflow: hidden;
-		padding: clamp(3rem, 8vw, 5rem) var(--gutter);
-	}
-	/* 宣言区网格追光：与 hero / 02 同一套参数，整页背景统一 */
-	:global(.statement__grid) {
-		z-index: 0;
-	}
-	.statement__mark {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		z-index: 0;
-		transform: translate(-50%, -50%);
-		font-size: clamp(8rem, 21vw, 19rem);
-		font-weight: 700;
-		letter-spacing: -0.055em;
-		line-height: 0.8;
-		color: rgba(var(--ink), 0.03);
-		pointer-events: none;
-	}
-	.statement .pin {
-		position: relative;
-		z-index: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 1.1rem;
-	}
-	.statement__eyebrow {
-		position: relative;
-		z-index: 1;
-	}
-	#stmt {
-		position: relative;
-		z-index: 1;
-		margin: 0;
-		text-align: center;
-		font-size: clamp(1.45rem, 3.3vw, 3rem);
-		font-weight: 600;
-		line-height: 1.35;
-		letter-spacing: -0.032em;
-		color: rgb(var(--ink));
-		white-space: nowrap;
-	}
-
-	/* ═══════════ Act 3: 关于这里（跟随主题的面板） ═══════════ */
+	/* ═══════════ Act 2: 关于这里（跟随主题的面板） ═══════════ */
 	.split {
 		position: relative;
 		z-index: 2;
@@ -1686,15 +1599,6 @@ const explore = [
 		}
 		.hero-title {
 			font-size: clamp(2.5rem, 9.6vw, 4rem);
-		}
-		#stmt {
-			white-space: normal;
-			max-width: 15em;
-			font-size: clamp(1.15rem, 4.6vw, 1.6rem);
-			line-height: 1.38;
-		}
-		#stmt br {
-			display: none;
 		}
 		.split__inner {
 			grid-template-columns: minmax(0, 1fr);

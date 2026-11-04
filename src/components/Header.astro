@@ -60,81 +60,99 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		return p === '' ? '/' : p;
 	}
 
+	// window 级监听只需绑一次：View Transitions 不会重建 window
+	let scrollBound = false;
+	let scrollRaf = 0;
+	let headerShell: HTMLElement | null = null;
+
+	function onScroll() {
+		if (!headerShell || scrollRaf) return;
+		scrollRaf = requestAnimationFrame(() => {
+			scrollRaf = 0;
+			if (!headerShell) return;
+			headerShell.classList.toggle('is-scrolled', window.scrollY > 16);
+			headerShell.classList.toggle('is-top', document.body.dataset.hero === '1' && window.scrollY < 24);
+		});
+	}
+
+	// scroll-spy 的观察目标在页面内容里，换页会整体替换，必须每次 page-load 重建
+	let spyIO: IntersectionObserver | null = null;
+
 	function init() {
-		const shell = document.querySelector<HTMLElement>('.site-head');
+		headerShell = document.querySelector<HTMLElement>('.site-head');
+		const shell = headerShell;
 		if (!shell) return;
 
-		// PillNav 内部的导航项（当前页高亮由组件自己算，这里只做首页平滑滚动）
-		const links = Array.from(document.querySelectorAll<HTMLElement>('[data-pn-item]'));
-
-		// 滚动收缩
-		let raf = 0;
-		const onScroll = () => {
-			if (raf) return;
-			raf = requestAnimationFrame(() => {
-				raf = 0;
-				shell.classList.toggle('is-scrolled', window.scrollY > 16);
-				shell.classList.toggle('is-top', document.body.dataset.hero === '1' && window.scrollY < 24);
-			});
-		};
+		// 滚动收缩：只绑一次，避免换页时监听器越堆越多
+		if (!scrollBound) {
+			scrollBound = true;
+			window.addEventListener('scroll', onScroll, { passive: true });
+		}
 		onScroll();
-		window.addEventListener('scroll', onScroll, { passive: true });
 
 		// 首页 scroll-spy：视口中线落在哪个板块，就把哪个导航项点亮
 		// （PillNav 自己监听 scroll-spy 事件，这里只负责发现当前板块）
-		if (!shell.dataset.spyWired) {
-			const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
-			if (sections.length) {
-				shell.dataset.spyWired = '1';
-				const map: Record<string, string> = {
-					articles: '/blog',
-					knowledge: '/knowledge',
-					discover: '/discover',
-					about: '/about',
-				};
-				let current = '';
-				const io = new IntersectionObserver(
-					(entries) => {
-						const visible = entries
-							.filter((entry) => entry.isIntersecting)
-							.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-						if (!visible) return;
-						const name = (visible.target as HTMLElement).dataset.section ?? '';
-						if (name === current) return;
-						current = name;
-						window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: map[name] ?? '' } }));
-					},
-					{ rootMargin: '-45% 0px -45% 0px', threshold: 0 },
-				);
-				sections.forEach((section) => io.observe(section));
-			}
+		spyIO?.disconnect();
+		spyIO = null;
+		const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
+		if (sections.length) {
+			const map: Record<string, string> = {
+				articles: '/blog',
+				knowledge: '/knowledge',
+				discover: '/discover',
+				about: '/about',
+			};
+			let current = '';
+			const io = new IntersectionObserver(
+				(entries) => {
+					const visible = entries
+						.filter((entry) => entry.isIntersecting)
+						.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+					if (!visible) return;
+					const name = (visible.target as HTMLElement).dataset.section ?? '';
+					if (name === current) return;
+					current = name;
+					window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: map[name] ?? '' } }));
+				},
+				{ rootMargin: '-45% 0px -45% 0px', threshold: 0 },
+			);
+			sections.forEach((section) => io.observe(section));
+			spyIO = io;
+		} else {
+			// 非首页：清掉上一页可能残留的高亮
+			window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: '' } }));
 		}
 
 		// 首页上点导航：平滑滚到对应板块，而不是跳转页面
-		const sectionByHref: Record<string, string> = {
-			'/blog': 'articles',
-			'/knowledge': 'knowledge',
-			'/discover': 'discover',
-			'/about': 'about',
-		};
-		for (const link of links) {
-			link.addEventListener('click', (e) => {
-				const onHome = currentPath() === '/';
-				if (!onHome) return; // 非首页正常跳转
-				const href = link.dataset.href || '/';
-				const targetId = sectionByHref[href];
-				if (!targetId) return;
-				const sec = document.getElementById(targetId);
-				if (!sec) return; // 首页没有对应板块就正常跳转
-				e.preventDefault();
-				sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				history.replaceState(null, '', `/#${targetId}`);
-			});
+		// 页头通过 transition:persist 保活，导航元素不重建，只绑一次
+		if (!shell.dataset.linkWired) {
+			shell.dataset.linkWired = '1';
+			const links = Array.from(document.querySelectorAll<HTMLElement>('[data-pn-item]'));
+			const sectionByHref: Record<string, string> = {
+				'/blog': 'articles',
+				'/knowledge': 'knowledge',
+				'/discover': 'discover',
+				'/about': 'about',
+			};
+			for (const link of links) {
+				link.addEventListener('click', (e) => {
+					const onHome = currentPath() === '/';
+					if (!onHome) return; // 非首页正常跳转
+					const href = link.dataset.href || '/';
+					const targetId = sectionByHref[href];
+					if (!targetId) return;
+					const sec = document.getElementById(targetId);
+					if (!sec) return; // 首页没有对应板块就正常跳转
+					e.preventDefault();
+					sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					history.replaceState(null, '', `/#${targetId}`);
+				});
+			}
 		}
 	}
 
+	init();
 	document.addEventListener('astro:page-load', init);
-	if (document.readyState !== 'loading') init();
 </script>
 
 <style>

@@ -502,13 +502,18 @@ const explore = [
 		return raw.includes(',') ? `rgb(${raw})` : raw;
 	}
 
-	let wired = false;
+	// 首页动画的清理函数：每次 page-load 重新初始化前先跑一遍。
+	// View Transitions 会重新渲染首页，闭包里引用的旧 DOM 必须换成新节点；
+	// 但 window/document 级监听器不能叠加，所以用 cleanups 成对管理。
+	let cleanups: (() => void)[] = [];
 
 	function init() {
-		if (wired) return;
-		wired = true;
+		cleanups.forEach((fn) => fn());
+		cleanups.length = 0;
 
 		const splitSection = document.getElementById('split');
+		// 不是首页（没有这些元素）就只做清理
+		if (!splitSection && !document.querySelector('[data-hero-letters]')) return;
 
 		// ---- 颜色：一次读取（站点固定深色主题，无需再响应换肤） ----
 		const readColors = () => ({
@@ -521,6 +526,10 @@ const explore = [
 		const C = readColors();
 
 		// ---- Act 1: Hero 逐字揭示（时间驱动 1.25s） ----
+		let heroAlive = true;
+		cleanups.push(() => {
+			heroAlive = false;
+		});
 		const heroTitleEl = document.querySelector<HTMLElement>('[data-hero-letters]');
 		const heroSubEl = document.querySelector<HTMLElement>('[data-hero-sub]');
 		let heroChars: ReturnType<typeof splitChars> = [];
@@ -530,6 +539,7 @@ const explore = [
 
 		const heroStart = performance.now();
 		function tickHero(now: number) {
+			if (!heroAlive) return;
 			const p = clamp((now - heroStart) / 1250, 0, 1);
 			paint(heroChars, p, 0.35, C.ink, C.accent, C.ghost);
 			// 副标题延迟 0.3s 启动，spread 更窄
@@ -560,10 +570,11 @@ const explore = [
 
 		// ---- 滚动主循环 ----
 		let ticking = false;
+		let scrollRaf = 0;
 		function onScroll() {
 			if (ticking) return;
 			ticking = true;
-			requestAnimationFrame(() => {
+			scrollRaf = requestAnimationFrame(() => {
 				ticking = false;
 				if (!splitSection) return;
 				const y = window.scrollY;
@@ -578,13 +589,20 @@ const explore = [
 				}
 			});
 		}
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', () => {
+		const onResize = () => {
 			measure();
 			lastSplit = -1;
 			onScroll();
-		});
+		};
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onResize);
 		window.addEventListener('load', measure, { once: true });
+		cleanups.push(() => {
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onResize);
+			window.removeEventListener('load', measure);
+			if (scrollRaf) cancelAnimationFrame(scrollRaf);
+		});
 		onScroll();
 
 		// ---- 浮动 CTA：宣言进入视口时浮现 ----
@@ -597,6 +615,10 @@ const explore = [
 				{ threshold: [0, 0.3, 0.5] },
 			);
 			io.observe(stmtSection);
+			cleanups.push(() => {
+				io.disconnect();
+				document.body.classList.remove('stmt-on');
+			});
 		}
 	}
 

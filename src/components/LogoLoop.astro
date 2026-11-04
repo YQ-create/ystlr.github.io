@@ -229,6 +229,8 @@ const maskStyle = fadeOut
 		drag: { id: number; x: number; start: number; samples: [number, number][] } | null;
 		vel: number;
 		introDone: boolean;
+		/** 换页时清理 window/document 级监听器与 Observer，避免重复叠加 */
+		destroy: () => void;
 	};
 
 	const loops: Loop[] = [];
@@ -323,6 +325,7 @@ const maskStyle = fadeOut
 			drag: null,
 			vel: 0,
 			introDone: false,
+			destroy: () => {},
 		};
 
 		measure(loop);
@@ -397,26 +400,28 @@ const maskStyle = fadeOut
 			);
 		}
 
+		// window / document 级监听与 Observer 都要能清理：换页时旧实例若只取消 rAF，
+		// 这些监听器会一次次叠加，滚一下页面就要跑 N 个回调。
+		const cleanups: (() => void)[] = [];
+
 		// 页面滚动时给一点额外速度
 		const boost = Number(root.dataset.boost) || 0;
 		if (boost > 0) {
 			let lastY = window.scrollY;
 			let lastT = performance.now();
-			window.addEventListener(
-				'scroll',
-				() => {
-					const now = performance.now();
-					const y = window.scrollY;
-					const dy = y - lastY;
-					if (now - lastT > 0 && Math.abs(dy) > 0) {
-						loop.vel += Math.max(-900, Math.min(900, (dy / (now - lastT)) * 1000 * (boost / 100)));
-					}
-					lastY = y;
-					lastT = now;
-					wake(loop);
-				},
-				{ passive: true },
-			);
+			const onScroll = () => {
+				const now = performance.now();
+				const y = window.scrollY;
+				const dy = y - lastY;
+				if (now - lastT > 0 && Math.abs(dy) > 0) {
+					loop.vel += Math.max(-900, Math.min(900, (dy / (now - lastT)) * 1000 * (boost / 100)));
+				}
+				lastY = y;
+				lastT = now;
+				wake(loop);
+			};
+			window.addEventListener('scroll', onScroll, { passive: true });
+			cleanups.push(() => window.removeEventListener('scroll', onScroll));
 		}
 
 		if (typeof ResizeObserver !== 'undefined') {
@@ -425,6 +430,7 @@ const maskStyle = fadeOut
 			});
 			ro.observe(root);
 			ro.observe(track.firstElementChild ?? track);
+			cleanups.push(() => ro.disconnect());
 		}
 
 		if (typeof IntersectionObserver !== 'undefined') {
@@ -440,14 +446,21 @@ const maskStyle = fadeOut
 				{ threshold: 0.01 },
 			);
 			io.observe(root);
+			cleanups.push(() => io.disconnect());
 		} else {
 			loop.visible = true;
 			wake(loop);
 		}
 
-		document.addEventListener('visibilitychange', () => {
+		const onVisibility = () => {
 			if (!document.hidden) wake(loop);
-		});
+		};
+		document.addEventListener('visibilitychange', onVisibility);
+		cleanups.push(() => document.removeEventListener('visibilitychange', onVisibility));
+
+		loop.destroy = () => {
+			cleanups.forEach((fn) => fn());
+		};
 
 		return loop;
 	}
@@ -458,6 +471,7 @@ const maskStyle = fadeOut
 
 		for (const loop of loops.splice(0)) {
 			if (loop.raf) cancelAnimationFrame(loop.raf);
+			loop.destroy();
 		}
 
 		document.querySelectorAll<HTMLElement>('[data-ll]:not([data-ll-ready])').forEach((root) => {

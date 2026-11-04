@@ -45,6 +45,17 @@ function mixRGB(a, b, t) {
  * 词包 inline-block nowrap，空白纯文本保留，<br> 保留。
  */
 export function splitChars(el) {
+	// 已经拆过（例如 View Transitions 复用节点、或初始化被重复调用）：直接复用现有字符。
+	// 否则每个字会被再包一层 .ch，字符数翻倍、逐字动画的相位也会错位。
+	const done = el.querySelectorAll('.ch');
+	if (done.length) {
+		return Array.from(done).map((c, i) => ({
+			el: c,
+			hl: c.classList.contains('ch--hl'),
+			i,
+		}));
+	}
+
 	const chars = [];
 	let index = 0;
 

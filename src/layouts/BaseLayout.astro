@@ -47,12 +47,24 @@ const { title, description, image, noindex, bodyClass, hero = false, type, publi
 
 <script>
 	// skip-link：点击后把焦点交给第一个 <main>，键盘用户可跳过页头直接读正文。
-	document.querySelector<HTMLElement>('[data-skip-link]')?.addEventListener('click', (e) => {
+	// 用事件委托绑在 document 上（换页后新链接照样生效），并给 <main> 补上锚点 id，
+	// 这样即使 JS 未执行，href="#main-content" 也能落到正确位置。
+	const ensureMainAnchor = () => {
+		const main = document.querySelector<HTMLElement>('main');
+		if (main && !main.id) main.id = 'main-content';
+	};
+	ensureMainAnchor();
+
+	document.addEventListener('click', (e) => {
+		const link = (e.target as Element | null)?.closest('[data-skip-link]');
+		if (!link) return;
 		const main = document.querySelector<HTMLElement>('main');
 		if (!main) return;
 		e.preventDefault();
 		main.setAttribute('tabindex', '-1');
-		main.focus();
-		main.scrollIntoView();
+		main.focus({ preventScroll: true });
+		main.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	});
+
+	document.addEventListener('astro:page-load', ensureMainAnchor);
 </script>

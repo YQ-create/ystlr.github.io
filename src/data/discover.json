@@ -12,6 +12,11 @@
           "title": "图库与插画",
           "url": "https://unsplash.com",
           "description": "高质量免费摄影图片，写作配图常用。"
+        },
+        {
+          "title": "高清壁纸库",
+          "url": "https://wallhaven.cc/",
+          "description": "海量高清壁纸与插画，找视觉素材很方便。"
         }
       ]
     },
@@ -27,6 +32,11 @@
           "title": "文字记录",
           "url": "https://write.as",
           "description": "极简写作空间，专注表达本身。"
+        },
+        {
+          "title": "电子书图书馆",
+          "url": "https://zh.z-library.sk/",
+          "description": "海量中文电子书，找书与读绝版书都靠它。"
         }
       ]
     },

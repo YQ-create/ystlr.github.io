@@ -110,7 +110,7 @@ const explore = [
 					</p>
 
 					<h1 class="hero-title display" data-hero-letters style="--ac-blur:0px;--ac-dist:0px">
-						在这里<br>记录日常
+						在这里<br><span class="hl">记录日常</span>
 					</h1>
 
 					<p class="hero-sub" data-hero-sub>{HERO.subtitle}</p>
@@ -129,11 +129,13 @@ const explore = [
 							href="/blog"
 							class="hero-cta"
 							color="--accent"
+							surface="rgb(var(--accent))"
+							text="rgb(11, 11, 12)"
 							duration={4.2}
 							trailLength={0.3}
 							glow={0.85}
 							sparkle
-							radius={8}
+							radius={26}
 							thickness={1}
 						>
 							<span>开始阅读</span>
@@ -731,9 +733,13 @@ const explore = [
 	}
 	.hero-title {
 		font-size: clamp(3rem, 7.4vw, 7.4rem);
-		line-height: 0.9;
-		letter-spacing: -0.045em;
+		line-height: 0.98;
+		letter-spacing: -0.026em;
 		color: rgb(var(--ink));
+	}
+	/* 标题强调词：逐字动画结束后停在强调橙；JS 未执行时也保持橙色 */
+	:global(.ch--hl) {
+		color: rgb(var(--accent));
 	}
 	.hero-sub {
 		margin: 1.4rem 0 0;
@@ -784,27 +790,34 @@ const explore = [
 	}
 	/* 主 CTA 换成星轨按钮：尺寸沿用原来的实心按钮，只把星轨颜色交给 accent */
 	:global(.hero-cta) {
+		--sb-surface: rgb(var(--accent));
+		--sb-text: rgb(11, 11, 12);
 		gap: 1.6rem;
 		padding: 0.95rem 1.15rem 0.95rem 1.35rem;
 		font-size: 0.9rem;
+		font-weight: 500;
 		line-height: 1;
 	}
 	.hero-quiet {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding-bottom: 2px;
-		border-bottom: 1px solid transparent;
+		gap: 0.5rem;
+		height: 48px;
+		padding: 0 1.1rem;
+		border: 1px solid rgba(236, 235, 230, 0.16);
+		border-radius: 999px;
 		font-size: 0.88rem;
 		color: rgb(var(--ink-soft));
 		text-decoration: none;
 		transition:
 			color var(--dur-fast) var(--ease-out),
-			border-color var(--dur-fast) var(--ease-out);
+			border-color var(--dur-fast) var(--ease-out),
+			background-color var(--dur-fast) var(--ease-out);
 	}
 	.hero-quiet:hover {
 		color: rgb(var(--ink));
-		border-color: rgb(var(--line));
+		border-color: rgba(236, 235, 230, 0.3);
+		background: rgba(236, 235, 230, 0.04);
 	}
 	.hero-note {
 		margin: 1.4rem 0 0;

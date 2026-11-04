@@ -77,7 +77,8 @@ const ogImage = new URL(image.src, Astro.url);
 </script>
 {noindex && <meta name="robots" content="noindex" />}
 
-<Font cssVariable="--font-atkinson" preload />
+<Font cssVariable="--font-display" preload />
+<Font cssVariable="--font-sans" preload />
 
 <!-- 没有 JS 时把「滚动进场」的初始隐藏关掉，内容照常可见 -->
 <noscript>

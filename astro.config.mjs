@@ -44,5 +44,45 @@ export default defineConfig({
 				],
 			},
 		},
+		// 展示体：高对比衬线（英文/数字），中文由宋体兜底
+		{
+			provider: fontProviders.local(),
+			name: 'Bodoni Moda',
+			cssVariable: '--font-display',
+			fallbacks: [],
+			options: {
+				variants: [
+					{
+						src: ['./src/assets/fonts/bodoni-moda-400.woff2'],
+						weight: 400,
+						style: 'normal',
+						display: 'swap',
+					},
+					{
+						src: ['./src/assets/fonts/bodoni-moda-400-italic.woff2'],
+						weight: 400,
+						style: 'italic',
+						display: 'swap',
+					},
+				],
+			},
+		},
+		// 正文字体：Hanken Grotesk（variable，一个文件覆盖 400–600）
+		{
+			provider: fontProviders.local(),
+			name: 'Hanken Grotesk',
+			cssVariable: '--font-sans',
+			fallbacks: [],
+			options: {
+				variants: [
+					{
+						src: ['./src/assets/fonts/hanken-grotesk-var.woff2'],
+						weight: '400 600',
+						style: 'normal',
+						display: 'swap',
+					},
+				],
+			},
+		},
 	],
 });

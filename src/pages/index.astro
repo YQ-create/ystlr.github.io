@@ -566,36 +566,58 @@ const explore = [
 
 		let vh = window.innerHeight;
 		let splitTop = 0;
+		let splitHeight = 0;
 		const measure = () => {
 			vh = window.innerHeight;
-			if (splitSection) splitTop = splitSection.getBoundingClientRect().top + window.scrollY;
+			if (!splitSection) return;
+			const rect = splitSection.getBoundingClientRect();
+			splitTop = rect.top + window.scrollY;
+			splitHeight = rect.height;
 		};
 		measure();
 
 		let lastSplit = -1;
-		paint(splitCharsArr, 0, 0.35, C.creamInk, C.accent, C.creamGhost);
+		paint(splitCharsArr, 0, 0.35, C.creamInk, C.accent, C.creamGhost, { blur: false });
 		lastSplit = 0;
 
 		// ---- 滚动主循环 ----
+		// 两条纪律，缺一条滚轮都会发涩：
+		// ① 布局只在 measure() 里读。回调里先改 body 的 class、再读 offsetHeight，
+		//    等于每帧强制一次同步回流；
+		// ② 只在值真的变化时才写 DOM，别拿「每帧都写一遍同样的值」当保险。
 		let ticking = false;
 		let scrollRaf = 0;
+		let ctaOn = false;
+		let factsOn = null;
 		function onScroll() {
 			if (ticking) return;
 			ticking = true;
 			scrollRaf = requestAnimationFrame(() => {
 				ticking = false;
 				const y = window.scrollY;
-				// 浮动 CTA：滚过首屏 70% 后浮现（原来跟随已删除的宣言区）
-				document.body.classList.toggle('stmt-on', y > vh * 0.7);
-				if (!splitSection) return;
-				const top = splitTop - y;
-				if (top < vh && top > -splitSection.offsetHeight) {
-					const p2 = clamp((0.8 - top / vh) / 0.65, 0, 1);
-					if (p2 !== lastSplit) {
-						paint(splitCharsArr, p2, 0.35, C.creamInk, C.accent, C.creamGhost);
-						lastSplit = p2;
+
+				if (splitSection) {
+					const top = splitTop - y;
+					if (top < vh && top > -splitHeight) {
+						// 量化到 1/40：整段揭示最多写 40 次 DOM，而不是每个滚动帧都写
+						const p2 = Math.round(clamp((0.8 - top / vh) / 0.65, 0, 1) * 40) / 40;
+						if (p2 !== lastSplit) {
+							paint(splitCharsArr, p2, 0.35, C.creamInk, C.accent, C.creamGhost, { blur: false });
+							lastSplit = p2;
+						}
+						const wantFacts = p2 > 0.86;
+						if (factsOn !== wantFacts) {
+							factsOn = wantFacts;
+							if (splitRow) splitRow.toggleAttribute('data-on', wantFacts);
+						}
 					}
-					if (splitRow) splitRow.toggleAttribute('data-on', p2 > 0.86);
+				}
+
+				// 浮动 CTA：滚过首屏 70% 后浮现（原来跟随已删除的宣言区）
+				const wantCta = y > vh * 0.7;
+				if (wantCta !== ctaOn) {
+					ctaOn = wantCta;
+					document.body.classList.toggle('stmt-on', wantCta);
 				}
 			});
 		}
@@ -662,7 +684,8 @@ const explore = [
 	}
 	:global(.ch) {
 		display: inline-block;
-		will-change: opacity, filter, color;
+		/* 不要给每个字加 will-change：filter / color 都不是可直接合成的属性，
+		   写了等于给几十个字符各建一个常驻合成层，滚动时白白多合成几十层。 */
 	}
 
 	/* ═══════════ Studio 版式：三幕骨架 ═══════════ */

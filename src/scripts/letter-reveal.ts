@@ -106,10 +106,15 @@ export function splitChars(el) {
 /**
  * 逐字绘制。p∈[0,1] 总进度，spread 为每字相位差，
  * final/accent/ghost 为三阶段颜色（.hl 字符 final 用 accent 色）。
+ *
+ * opts.blur = false 时不写 filter：滚动驱动的逐字揭示每帧都会重绘，
+ * 每个字各挂一个 blur() 会各开一层离屏表面，是滚动手感变卡的主要来源之一。
+ * 一次性播放的开场动画（hero）仍然保留模糊，观感更完整。
  */
-export function paint(chars, p, spread, final, accent, ghost) {
+export function paint(chars, p, spread, final, accent, ghost, opts = {}) {
 	const n = chars.length;
 	if (!n) return;
+	const withBlur = opts.blur !== false;
 	const f = parseRGB(final);
 	const a = parseRGB(accent);
 	const g = parseRGB(ghost);
@@ -140,6 +145,6 @@ export function paint(chars, p, spread, final, accent, ghost) {
 		}
 		el.style.opacity = opacity.toFixed(3);
 		el.style.color = color;
-		el.style.filter = blur > 0.01 ? `blur(${blur.toFixed(2)}px)` : '';
+		if (withBlur) el.style.filter = blur > 0.01 ? `blur(${blur.toFixed(2)}px)` : '';
 	}
 }

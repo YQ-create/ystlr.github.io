@@ -37,6 +37,10 @@ interface Props {
 	intro?: boolean;
 	lightMode?: boolean;
 	dpr?: number;
+	/** 环境漂移时的最大帧率，默认 30。交互中会自动回到满帧。 */
+	fps?: number;
+	/** 页面滚动期间的帧率上限，默认 15。 */
+	scrollFps?: number;
 	class?: string;
 }
 
@@ -70,6 +74,8 @@ const {
 	intro = true,
 	lightMode = false,
 	dpr,
+	fps = 30,
+	scrollFps = 15,
 	class: className = '',
 } = Astro.props;
 
@@ -103,6 +109,8 @@ const cfg = {
 	intro,
 	lightMode,
 	dpr,
+	fps,
+	scrollFps,
 };
 ---
 
@@ -827,9 +835,18 @@ void main() {
 			intro: cfg.intro !== false,
 			lightMode: cfg.lightMode === true,
 			dpr: cfg.dpr,
+			// 背景只是缓慢漂移，没必要跟着显示器 60/120Hz 空转。
+			// 交互时（鼠标抬地形、点击脉冲、开场）会自动回到满帧，手感不受影响。
+			fps: clamp(cfg.fps ?? 30, 5, 120),
+			// 滚动期间再降一档：这时画面整体在移动，漂移快慢根本看不出来，
+			// 把 GPU 让给合成器，滚轮才跟手。
+			scrollFps: clamp(cfg.scrollFps ?? 15, 4, 60),
 		};
 
-		const ratio = Math.min(settings.dpr || window.devicePixelRatio || 1, 2);
+		// 背景是虚焦的等高线，2 倍像素密度收益很小、代价却是 78% 更多的像素（2² vs 1.5²），
+		// 默认封到 1.5；需要极致清晰可以显式传 dpr。
+		const maxRatio = 1.5;
+		const ratio = Math.min(settings.dpr || window.devicePixelRatio || 1, maxRatio);
 		const gl = canvas.getContext('webgl2', {
 			alpha: true,
 			premultipliedAlpha: true,
@@ -979,6 +996,10 @@ void main() {
 		let last = 0;
 		let visible = true;
 		let quiet = 0;
+		// 滚动中标记：滚轮期间把背景帧率再压一档
+		let scrollUntil = 0;
+		// 指针移动中标记：只有这时才需要满帧（视差、抬地形、拾取都在跟手）
+		let pointerUntil = 0;
 
 		const camera = () => {
 			const pitch = Math.min((state.tilt * Math.PI) / 180 + state.pitch, Math.PI / 2 - 1e-4);
@@ -1353,7 +1374,7 @@ void main() {
 			sizedDpr = s.dpr;
 			view.width = Math.max(1, root.clientWidth);
 			view.height = Math.max(1, root.clientHeight);
-			view.ratio = Math.min(s.dpr || window.devicePixelRatio || 1, 2);
+			view.ratio = Math.min(s.dpr || window.devicePixelRatio || 1, maxRatio);
 			canvas.width = Math.max(1, Math.round(view.width * view.ratio));
 			canvas.height = Math.max(1, Math.round(view.height * view.ratio));
 			render();
@@ -1365,6 +1386,17 @@ void main() {
 			if (!visible || document.hidden) return;
 			const s = settings;
 			if (s.dpr !== sizedDpr) resize();
+
+			// 帧率闸门。背景是慢速漂移，满帧换不来观感，只会和滚动抢 GPU；
+			// 指针真的在动（抬地形 / 视差回弹）、开场、脉冲时立刻回到满帧保证跟手。
+			// 注意别用 presence 判断——鼠标只要停在页面上它就是 1，闸门会形同虚设。
+			const interacting = state.intro < 1 || now < pointerUntil || pulses.length > 0 || !!state.burst;
+			const rate = interacting ? 60 : now < scrollUntil ? Math.min(s.fps, s.scrollFps) : s.fps;
+			if (last && now - last < 1000 / rate - 1.5) {
+				raf = requestAnimationFrame(frame);
+				return;
+			}
+
 			const dt = last ? clamp((now - last) / 1000, 0, 1 / 20) : 1 / 60;
 			last = now;
 
@@ -1494,6 +1526,7 @@ void main() {
 			if (inside) {
 				pointer.x = x;
 				pointer.y = y;
+				pointerUntil = performance.now() + 260;
 			}
 			if (inside || was) wake();
 		};
@@ -1534,6 +1567,12 @@ void main() {
 
 		const onVisibility = () => wake();
 
+		// 滚动期间把背景降到 scrollFps（见 frame 里的帧率闸门）
+		const onScrollRate = () => {
+			scrollUntil = performance.now() + 180;
+			wake();
+		};
+
 		const resizeObserver = new ResizeObserver(resize);
 		resizeObserver.observe(root);
 		const intersection = new IntersectionObserver((entries) => {
@@ -1545,6 +1584,7 @@ void main() {
 		window.addEventListener('pointerdown', onPointerDown, { passive: true });
 		window.addEventListener('pointerup', onPointerUp, { passive: true });
 		window.addEventListener('pointercancel', onPointerUp, { passive: true });
+		window.addEventListener('scroll', onScrollRate, { passive: true });
 		document.documentElement.addEventListener('pointerleave', onPointerLeave);
 		document.addEventListener('visibilitychange', onVisibility);
 		resize();
@@ -1558,6 +1598,7 @@ void main() {
 				window.removeEventListener('pointerdown', onPointerDown);
 				window.removeEventListener('pointerup', onPointerUp);
 				window.removeEventListener('pointercancel', onPointerUp);
+				window.removeEventListener('scroll', onScrollRate);
 				document.documentElement.removeEventListener('pointerleave', onPointerLeave);
 				document.removeEventListener('visibilitychange', onVisibility);
 				canvas.removeEventListener('webglcontextlost', onContextLost);

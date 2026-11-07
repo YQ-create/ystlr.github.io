@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ChromaGrid from '../../components/ChromaGrid.astro';
+import GradualBlur from '../../components/GradualBlur.astro';
 import { getCollection } from 'astro:content';
 import { getImage } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
@@ -103,6 +104,37 @@ tags: ["生活", "风景"]
 			</div>
 		)}
 	</main>
+
+	<!-- 视口边缘的渐进模糊：照片从上下柔和进出，而不是硬生生被裁断。
+	     z-index 30 低于导航(120)与灯箱(100)，所以不会糊住导航、也不会影响放大看照片。
+	     两层都用 autoHide：顶部初始透明（标题清晰），滚动后才淡入；
+	     底部在接近页面末尾时淡出，保证最后一张照片看得完整。 -->
+	<GradualBlur
+		class="gallery-fade gallery-fade--top"
+		target="page"
+		position="top"
+		height="6.5rem"
+		strength={1.5}
+		layers={5}
+		curve="bezier"
+		exponential
+		tint="rgba(11, 11, 12, 0.52)"
+		autoHide
+		zIndex={30}
+	/>
+	<GradualBlur
+		class="gallery-fade gallery-fade--bottom"
+		target="page"
+		position="bottom"
+		height="12rem"
+		strength={1.9}
+		layers={6}
+		curve="bezier"
+		exponential
+		tint="rgba(11, 11, 12, 0.62)"
+		autoHide
+		zIndex={30}
+	/>
 
 	<!-- 灯箱 -->
 	<div class="lightbox" data-lightbox-root role="dialog" aria-modal="true" aria-label="照片查看" hidden>
@@ -374,6 +406,18 @@ tags: ["生活", "风景"]
 	}
 	.lightbox-close:hover {
 		background: rgba(255, 255, 255, 0.22);
+	}
+
+	/* 小屏只保留底部渐隐：顶部空间要留给大标题和汉堡导航，
+	   不然标题正好落在窄带里会被糊成一片白雾。
+	   高度写在组件 inline style 上，这里需要 !important 才能覆盖。 */
+	@media (max-width: 720px) {
+		:global(.gallery-fade--top) {
+			display: none !important;
+		}
+		:global(.gallery-fade--bottom) {
+			height: 8rem !important;
+		}
 	}
 </style>
 

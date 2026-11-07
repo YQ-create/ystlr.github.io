@@ -101,7 +101,10 @@ npm run preview
 | `SiteSearch.astro` | 站内搜索浮层（⌘K / Ctrl+K） | — |
 | `MusicPlayer.astro` | 顶部播放器，`transition:persist` 保活、切页不中断 | 曲目在 `src/data/playlist.json` |
 | `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
+| `GradualBlur.astro` | 视口/容器边缘的渐进模糊（多层 `backdrop-filter` + 分段 mask + 渐变 tint），照片墙上下渐隐 | `position`、`target`、`height`、`strength`、`layers`、`curve`、`tint`、`autoHide`、`zIndex` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
+
+`GradualBlur` 用在 `/gallery` 的上下边缘：`zIndex={30}` 必须低于页头(120)与灯箱(100)，否则会糊住导航和放大后的照片；`autoHide` 让顶部初始透明（标题清晰）、底部滚到末尾时淡出。小屏直接 `display:none` 关掉顶部层，不然大标题正好落进窄带会被糊成白雾。**层数控制在 5–6 层**——每层 `backdrop-filter` 都要读回一次背景，叠太多会拖累滚动（实测 11 层与全关相比帧间隔一致，再往上就要小心了）。
 
 `Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。目前只有 `letter-reveal.ts` 走这条路（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）。
 

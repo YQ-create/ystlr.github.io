@@ -1,20 +1,19 @@
 ---
 /**
- * SubmitPost — 访客投稿入口。
+ * SubmitPost — 访客投稿入口（纯静态、零密钥）。
  *
  * /blog 顶部一个「投稿」按钮，点开弹窗表单，填标题/正文/标签/署名后，
- * 用一只专用 GitHub 机器人的 PAT（只有「该仓库 Issues 写入」权限、没有代码权限）
- * 调用 POST /repos/{owner}/{repo}/issues 创建一个带「投稿」label 的 issue。
- * 管理员在 GitHub Issues 里审核，通过后把内容转成 src/content/blog/*.md 发布。
+ * 组装 GitHub「新建 Issue」页的预填链接并在新标签页打开。访客确认内容后
+ * 用自己的 GitHub 账号点 Submit new issue，管理员在 Issues 里审核发布。
  *
- * 为什么用 Issue 而不是直接写文件：站点是纯静态的，没有后端；GitHub 官方
- * API 无法匿名创建 Issue，而让访客用自己的账号门槛太高。专用机器人的 token
- * 只具备 issue 写入这一项能力，最坏情况是被用来灌 issue，可随时撤销。
+ * 为什么不在前端直接调 API：站点是纯静态的，没有服务端；GitHub 不允许匿名
+ * 创建 Issue，而把机器人 PAT 内联进客户端 JS 等于公开泄露密钥（任何人都能
+ * 从构建产物里读走，拿去无限灌 Issue）。预填链接是纯静态站的正确解法。
  */
-import { SUBMIT_REPO, SUBMIT_TOKEN } from '../consts';
+import { SUBMIT_ENABLED, SUBMIT_REPO } from '../consts';
 
-// 没有配置 token 时整个组件不渲染，页面也不出现投稿按钮
-const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(SUBMIT_REPO.repo);
+// 默认关闭；打开只需把 consts.ts 的 SUBMIT_ENABLED 改成 true，无需任何密钥
+const enabled = SUBMIT_ENABLED && Boolean(SUBMIT_REPO.owner) && Boolean(SUBMIT_REPO.repo);
 ---
 
 {enabled && (
@@ -38,7 +37,9 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 				<header class="submit-head">
 					<div>
 						<h2>投稿</h2>
-						<p class="submit-note">写好发给我，审核通过后会作为一篇文章发布。也可以附上你的联系方式方便沟通。</p>
+						<p class="submit-note">
+							写好发给我，审核通过后会作为一篇文章发布。点提交会打开 GitHub 的提交页，用你自己的账号确认一次即可。
+						</p>
 					</div>
 					<button class="submit-x" type="button" data-submit-close aria-label="关闭">×</button>
 				</header>
@@ -67,7 +68,7 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 				<p class="submit-status" data-submit-status data-kind="idle" hidden></p>
 
 				<div class="submit-actions">
-					<button class="btn" type="submit" data-submit-send>提交投稿</button>
+					<button class="btn" type="submit" data-submit-send>去 GitHub 提交</button>
 					<button class="btn btn--ghost" type="button" data-submit-close>取消</button>
 				</div>
 			</form>
@@ -300,36 +301,10 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 </style>
 
 <script>
-	import { SUBMIT_REPO, SUBMIT_TOKEN } from '../consts';
+	import { SUBMIT_REPO } from '../consts';
 
-	interface Settings {
-		owner: string;
-		repo: string;
-		token: string;
-		label: string;
-	}
-
-	const settings: Settings = {
-		owner: SUBMIT_REPO.owner,
-		repo: SUBMIT_REPO.repo,
-		token: SUBMIT_TOKEN,
-		label: '投稿',
-	};
-
-	class SubmitError extends Error {
-		status: number;
-		constructor(status: number, message: string) {
-			super(message);
-			this.name = 'SubmitError';
-			this.status = status;
-		}
-	}
-
-	function describeError(error: unknown): string {
-		if (error instanceof SubmitError) return error.message;
-		if (error instanceof Error) return error.message || error.name;
-		return String(error);
-	}
+	// 模块级：Astro <script> 只执行一次，用它保证 document 级监听不随导航累积
+	let keydownWired = false;
 
 	function parseTags(raw: string): string[] {
 		const seen = new Set<string>();
@@ -349,51 +324,13 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 		return lines.join('\n');
 	}
 
-	async function createIssue(title: string, body: string, labels: string[]): Promise<{ number: number; html_url: string }> {
-		const res = await fetch(`https://api.github.com/repos/${settings.owner}/${settings.repo}/issues`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${settings.token}`,
-				Accept: 'application/vnd.github+json',
-				'X-GitHub-Api-Version': '2022-11-28',
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ title, body, labels }),
-		});
-
-		if (!res.ok) {
-			let detail = '';
-			try {
-				const data = (await res.json()) as { message?: unknown };
-				if (data && typeof data.message === 'string') detail = data.message;
-			} catch {
-				/* 响应不是 JSON 时忽略 */
-			}
-			let hint: string;
-			switch (res.status) {
-				case 401:
-					hint = '投稿服务暂不可用（凭证失效），请稍后再试，或直接发邮件给我。';
-					break;
-				case 403:
-					hint = '投稿服务暂不可用（权限或限流），请稍后再试。';
-					break;
-				case 404:
-					hint = '投稿服务暂不可用（仓库未找到），请直接发邮件给我。';
-					break;
-				case 422:
-					hint = '投稿内容无法提交（可能标题或正文缺失），请检查后重试。';
-					break;
-				default:
-					hint = `投稿失败（HTTP ${res.status}），请稍后再试。`;
-			}
-			throw new SubmitError(res.status, detail ? `${hint}（${detail}）` : hint);
-		}
-
-		const data = (await res.json()) as { number?: number; html_url?: string };
-		if (typeof data.number !== 'number') {
-			throw new SubmitError(0, '投稿已提交但没拿到回执，请确认后联系我。');
-		}
-		return { number: data.number, html_url: data.html_url ?? '' };
+	/** 组装 GitHub「新建 Issue」预填链接。全程不碰任何密钥。 */
+	function buildIssueUrl(title: string, body: string, tags: string[], author: string): string {
+		const url = new URL(`https://github.com/${SUBMIT_REPO.owner}/${SUBMIT_REPO.repo}/issues/new`);
+		url.searchParams.set('title', `[投稿] ${title}`);
+		url.searchParams.set('body', buildBody({ title, body, tags, author }));
+		url.searchParams.set('labels', '投稿');
+		return url.toString();
 	}
 
 	function boot() {
@@ -404,7 +341,6 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 		const dialog = root.querySelector<HTMLElement>('[data-submit-dialog]');
 		const form = root.querySelector<HTMLFormElement>('[data-submit-form]');
 		const status = root.querySelector<HTMLElement>('[data-submit-status]');
-		const sendBtn = root.querySelector<HTMLButtonElement>('[data-submit-send]');
 		const openBtn = root.querySelector<HTMLButtonElement>('[data-submit-open]');
 		if (!dialog || !form || !openBtn) return;
 
@@ -418,21 +354,6 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 			status.dataset.kind = kind;
 			status.textContent = text;
 			status.hidden = !text;
-		}
-
-		function setBusy(busy: boolean, label?: string) {
-			if (!sendBtn) return;
-			if (busy) {
-				if (!sendBtn.dataset.label) sendBtn.dataset.label = sendBtn.textContent ?? '';
-				sendBtn.disabled = true;
-				if (label) sendBtn.textContent = label;
-			} else {
-				sendBtn.disabled = false;
-				if (sendBtn.dataset.label) {
-					sendBtn.textContent = sendBtn.dataset.label;
-					delete sendBtn.dataset.label;
-				}
-			}
 		}
 
 		function open() {
@@ -456,11 +377,24 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 
 		openBtn!.addEventListener('click', open);
 		root.querySelectorAll<HTMLElement>('[data-submit-close]').forEach((el) => el.addEventListener('click', close));
-		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape' && !dialog!.hidden) close();
-		});
+		// 只绑一次：View Transitions 下 /blog 每次回来都会生成新的 [data-submit-root]，
+		// 若在 boot 里重复绑 document keydown，监听器会随导航次数累积。
+		if (!keydownWired) {
+			keydownWired = true;
+			document.addEventListener('keydown', (e) => {
+				if (e.key !== 'Escape') return;
+				const current = document.querySelector<HTMLElement>('[data-submit-dialog]');
+				if (!current || current.hidden) return;
+				current.classList.remove('is-open');
+				document.documentElement.style.removeProperty('overflow');
+				document.body.style.removeProperty('overflow');
+				window.setTimeout(() => {
+					current.hidden = true;
+				}, 220);
+			});
+		}
 
-		form!.addEventListener('submit', async (e) => {
+		form!.addEventListener('submit', (e) => {
 			e.preventDefault();
 			const title = titleInput?.value.trim() ?? '';
 			const body = bodyInput?.value.trim() ?? '';
@@ -478,17 +412,25 @@ const enabled = Boolean(SUBMIT_TOKEN) && Boolean(SUBMIT_REPO.owner) && Boolean(S
 				return;
 			}
 
-			setBusy(true, '提交中…');
-			setStatus('busy', '正在提交投稿…');
-			try {
-				const issue = await createIssue(title, buildBody({ title, body, tags, author }), [settings.label]);
-				setBusy(false);
-				setStatus('ok', `投稿成功！已创建 #${issue.number}，审核通过后会作为文章发布，感谢你的分享。`);
-				window.setTimeout(() => close(), 2400);
-			} catch (error) {
-				setBusy(false);
-				setStatus('err', describeError(error));
+			const url = buildIssueUrl(title, body, tags, author);
+			// 正文走 query string，GitHub 对超长 URL 会截断，超过阈值就别误导用户
+			if (url.length > 7500) {
+				setStatus('err', '正文太长了，预填链接放不下。请精简后重试，或直接发邮件给我。');
+				return;
 			}
+
+			// 用临时 <a> 触发导航：处在用户手势内不会被拦，且自带 noopener/noreferrer
+			const link = document.createElement('a');
+			link.href = url;
+			link.target = '_blank';
+			link.rel = 'noopener noreferrer';
+			link.hidden = true;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+
+			setStatus('ok', '已在新标签页打开 GitHub 提交页，确认内容后点「Submit new issue」即可。');
+			window.setTimeout(() => close(), 3200);
 		});
 
 		// View Transitions 切页后重新绑定（组件在 /blog 里，离开再回来时 DOM 是新的）

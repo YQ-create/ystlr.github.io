@@ -63,20 +63,18 @@ npm run preview
 
 ## 文章投稿与审核
 
-访客在 `/blog` 顶部点「投稿」，填写标题、正文（支持 Markdown）、标签和署名，提交后会以「投稿」label 创建一条 GitHub Issue。你在 GitHub 仓库的 Issues 里审核，通过后把内容转成 `src/content/blog/*.md`（用 `/admin` 或本地 `npm run photo` 之外的常规发文流程）即可发布。
+访客在 `/blog` 顶部点「投稿」，填写标题、正文（支持 Markdown）、标签和署名；提交时会**打开 GitHub 的「新建 Issue」页并预填好内容**，访客用自己的 GitHub 账号确认一次即可。你在 Issues 里审核，通过后把内容转成 `src/content/blog/*.md` 发布。
 
-投稿走的是 GitHub Issue API，创建 Issue 必须认证、匿名访客无法直接提交，所以需要一个**专用机器人 PAT**（只有「这个仓库的 Issues 写入」权限，没有代码权限，最坏情况是被用来灌 issue，可随时撤销）：
+**纯静态站不要在前端放任何密钥。** 早期版本设计成「前端直接拿机器人 PAT 调 GitHub API」，但 PAT 会随构建产物发给所有访客，等于公开泄露。现在改成预填链接，零密钥、零后端：
 
-1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → 新建；
-2. Repository access 只选 `YQ-create/ystlr.github.io`；
-3. Permissions → Repository permissions → **Issues = Read and write**，其余全部 No access；
-4. 把生成的 `github_pat_…` 填进 `src/consts.ts` 的 `SUBMIT_TOKEN`（留空则整站不显示投稿按钮）。
-
-Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投稿」脚注；标题用投稿标题，label 是 `投稿`。审核时直接看 Issues 列表即可，GitHub 也会给你发邮件通知。
+- 开关在 `src/consts.ts` 的 `SUBMIT_ENABLED`，默认 `false`（不显示投稿按钮）；改成 `true` 即可启用，无需配置任何 token。
+- Issue 正文自动带上标签、署名和一条「来自 ystlr.com 的投稿」脚注，标题加 `[投稿]` 前缀，label 预填 `投稿`。
+- 预填内容走 query string，正文过长（URL > 7500 字符）会提示精简或改用邮件。
+- 若将来要「点一下就自动建 Issue」，必须走 Serverless 代理 / GitHub Actions，把密钥放在服务端环境变量，绝不能写进客户端代码。
 
 ## 视觉与动效
 
-整站是一套「暖色纸面 + 玻璃卡片」的设计：背景是三层极淡的径向光晕，卡片用半透明底色 + `backdrop-filter` 做磨砂，主色是赭石棕（`--accent`）。所有动效都由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
+整站是「近黑台面 + 亮橙强调」的编辑感设计：底色 `#0b0b0c`，强调色 `#ff6a2b`，展示字体 `Bodoni Moda`（衬线，中文由宋体兜底）、正文 `Hanken Grotesk`，三套字体都本地化在 `src/assets/fonts/`。首页背景是 `Topography.astro` 的 WebGL2 地形等高线（fixed 在视口，滚动时内容从上面滑过）。常规入场动效由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
 
 | 写什么 | 效果 |
 | --- | --- |
@@ -86,32 +84,30 @@ Issue 的正文会自动带上标签、署名和一条「来自 ystlr.com 的投
 | `data-tilt="8"` | 卡片随指针轻微 3D 倾斜 |
 | `data-count-up` | 数字从 `data-from` 滚到 `data-to`（由 `CountUp.astro` 输出，逻辑在 Motion.astro） |
 
-视觉组件：
+视觉组件（全部为原生实现，不引入 React / GSAP；`src/components/` 下没有未被引用的组件）：
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
-| `AcidSquares.astro` | 首页 Hero 的方格地面（WebGL2，透视凸块 + 波纹 + 指针按压） | `color`/`accentColor`/`secondaryColor`（可传 `--token`）、`tileSize`、`gap`、`roundness`、`bulge`、`rotation`、`gloss`、`speed`、`lighting`、`grain`、`fade`、`opacity`、`detail` |
-| `TechText.astro` | canvas 线框字（虚线线框 + 尺寸标注 + 入场动画；目前未被页面引用，留着备用） | `text`、`color`/`accentColor`（可传 `--token`）、`align`、`strokeWidth`、`lineStyle`、`reveal`、`labels`、`selection`、`sweep`、`intro`、`draggable` |
-| `SpecularButton.astro` | 边缘带流光的玻璃按钮（WebGL2） | `href`、`size`、`lineColor`、`intensity`、`shineSize`、`autoAnimate`、`followMouse` |
-| `DepthCarousel.astro` | 3D 纵深照片轮播（首页、照片墙） | `items`、`depth`、`spread`、`tilt`、`tiltDirection`、`visibleCards`、`falloff`、`blur`、`autoplay`、`loop` |
+| `Topography.astro` | 整页地形等高线背景（WebGL2 噪声高度场 + Bloom + 指针抬升），首页 `.atmo` 固定层 | `color`、`lineCount`、`elevation`、`tilt`、`fog`、`glow`、`brightness`、`fps` / `scrollFps`、`dpr` |
+| `AccordionGallery.astro` | 首页「01 / 关于这里」的手风琴照片画廊（hover 展开、其余灰度收窄） | `items`、`height`、`gap`、`radius`、`expandRatio`、`orientation`、`trigger`、`grayscale` |
+| `PillNav.astro` | 页头胶囊导航（当前页高亮 + scroll-spy） | 见组件 Props |
+| `StarBorder.astro` | 主按钮的描边光效容器 | `surface`、`text`、`color`、`radius` |
+| `LogoLoop.astro` | 首页 / 关于页的横向徽标跑马灯 | `items`、`speed`、`boost`、`pauseOnHover` |
+| `SpotlightCard.astro` | 指针跟随的聚光卡片 | 见组件 Props |
+| `ChromaGrid.astro` | 照片墙的彩色网格卡片 | `items` |
+| `CountUp.astro` | 滚动数字 | `to`、`from`、`duration`、`decimals`、`prefix`、`suffix` |
+| `ClickSpark.astro` | 点击处迸出火花 | `color`（默认跟随 `--accent`）、`size`、`radius`、`count` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
-| `GlassSurface.astro` | 液态玻璃表面（页头胶囊、卡片底） | `width`/`height`/`borderRadius`、`shape`、`backdrop`、`distortionScale`、`displace`、`backgroundOpacity`、`blur` |
-| `CountUp.astro` | 滚动数字（React Bits `CountUp` 原生移植） | `to`、`from`、`duration`、`delay`、`decimals`、`separator`、`prefix`、`suffix` |
-| `ClickSpark.astro` | 点击处迸出火花（React Bits `ClickSpark` 原生移植） | `color`（默认跟随 `--accent`）、`size`、`radius`、`count`、`duration` |
-| `FadeContent.astro` | 滚动进场包装器（照片墙照片用；React Bits `FadeContent` 原生移植） | `effect`（fade/focus/develop/dissolve/mist/pixel）、`blur`、`duration`、`stagger`、`trigger`（scroll/mount）、`scrub`、`exit`、`disappearAfter` |
-| `SplitText.astro` | 逐字/逐词拆分进场（首页主标题 + 副标题用；React Bits `SplitText` 原生移植） | `text`、`splitType`、`effect`（rise/fade/blur/flip/pop/skew/wave）、`delay`、`mask`、`trigger`（view/load/hover/click）、`loop`、`hoverEffect` |
+| `SiteSearch.astro` | 站内搜索浮层（⌘K / Ctrl+K） | — |
+| `MusicPlayer.astro` | 顶部播放器，`transition:persist` 保活、切页不中断 | 曲目在 `src/data/playlist.json` |
+| `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
+| `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
-`AcidSquares`、`TechText`、`FadeContent`、`SplitText` 都是 React Bits 同名组件的原生移植（不引入 React）。`AcidSquares`/`TechText` 的渲染逻辑放在 `src/scripts/acid-squares.ts` 与 `src/scripts/tech-text.ts`；`FadeContent`/`SplitText` 依赖 GSAP（`gsap` + `ScrollTrigger` + `SplitText` 插件，纯 JS，不含 React），逻辑放在 `src/scripts/fade-content.ts` 与 `src/scripts/split-text.ts`。Astro 对 `<script>` 内大段模板字符串和 shader 的解析容易出问题（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 时漏一个反引号会报 `Unterminated string`），交给 vite 按模块编译最稳。组件本身只负责输出标记和挂载。
+`Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。目前只有 `letter-reveal.ts` 走这条路（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）。
 
-`AcidSquares`/`TechText` 的配色支持 `--token` 形式（如 `color="--bg-deep"`），运行时用 `getComputedStyle` 解析成 `rgb()`；也支持直接传十六进制（首页现在用的是 Neon 酸性霓虹预设：底 `#120f17`、粉 `#ff4fb8`、蓝 `#3b6bff`）。
+**背景性能约定（改动前先读）**：`Topography` 默认 30fps、滚动期间 15fps，指针移动 / 开场 / 点击脉冲时回到 60fps，`dpr` 上限 1.5；它 fixed 在视口里，滚动时只有内容在动、背景不重画整页。这是滚轮顺滑的关键，别改回「每个区块各挂一个背景实例」。滚动回调里也不要「先改 class 再读 `offsetHeight`」——那会每帧强制同步回流。
 
-`TechText` 的 `sweep` 默认是 `true`（指针不在时自动巡航扫描），用作标题时建议关掉——否则标题会长期有一个字处于线框态，影响可读性。
-
-`FadeContent` 的 `dissolve`/`mist`/`pixel` 三种效果会用 SVG `feTurbulence` 建噪点遮罩，每个目标一个 `<svg>`，照片多时别整页铺满这几种，用 `fade`/`focus`（不建遮罩）更轻量。`SplitText` 初始由 `.split-parent` 的 `visibility:hidden` 兜底，脚本就绪后必须用 inline `visible` 覆盖（设 `''` 会被样式表规则盖回去）。
-
-`SpecularButton` 把 React Bits 的 `SpecularButton` 用原生 WebGL2 重写了一遍（不引入 React）：圆角矩形的周长被映射到 0–1 的参数空间，光斑是这个参数上的一个余弦瓣，鼠标靠近时瓣会滑到离指针最近的边缘点；`autoAnimate` 会让这道光自己绕一周。传 `href` 渲染成 `<a>`，否则是 `<button>`；浏览器不支持 WebGL2 时自动退化成普通玻璃按钮。
-
-页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。
+页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。**所有在 `astro:page-load` 里执行的初始化都要自带幂等保护**，并在 `cleanups` 里成对移除监听器 / Observer / rAF，否则导航次数一多就会累积泄漏。
 
 > 改组件时的两个坑：
 > 1. Astro 会把体积小的 `<script>` 直接内联在组件**原位**（不是提到 `<head>`），所以组件里别写「只该跑一次」的脚本——同一页用 3 次就会内联 3 份。`CountUp` 因此只输出 `[data-count-up]` 标记，滚动逻辑统一放在 `Motion.astro`。

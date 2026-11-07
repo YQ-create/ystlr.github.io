@@ -1,6 +1,7 @@
 /*
-  全局设计系统 · 暖纸 × 玻璃（glassmorphism）× 克制的动效。
+  全局设计系统 · 近黑台面 × 亮橙强调 × 克制的动效（studio 版式）。
   - 颜色以 RGB 三元组存放，组件内用 rgb(var(--token)) 引用；
+  - `:root` 与 `body.studio` 的深色值保持一致，避免首屏闪旧底色；
   - 玻璃质感统一由 .glass / .glass-soft 提供，不要各自写 backdrop-filter；
   - 动效统一由 [data-reveal] / [data-tilt] / [data-glow] 驱动（见 Motion.astro）。
 */
@@ -16,9 +17,11 @@
 	--sage: 150, 154, 160;
 	--rose: 255, 130, 100;
 
-	/* 纸面层次（固定深色） */
-	--bg: 24, 21, 18;
-	--bg-deep: 17, 15, 13;
+	/* 纸面层次（固定深色）：与下方 body.studio 的近黑台面保持一致。
+	   html 用 --bg 而不是 --bg-deep，这样内联防白闪色、html、body 三者同色，
+	   页面加载时不会出现底色渐变或闪一下旧暖棕。 */
+	--bg: 11, 11, 12;
+	--bg-deep: 6, 6, 7;
 	--paper: 36, 32, 28;
 	--surface: 44, 39, 34;
 	--line: 66, 58, 49;
@@ -274,8 +277,8 @@ html {
 	color-scheme: dark;
 	scroll-behavior: smooth;
 	-webkit-text-size-adjust: 100%;
-	background-color: rgb(var(--bg-deep));
-	transition: background-color var(--dur) var(--ease-out);
+	/* 与 BaseHead 内联的防白闪色、body.studio 的 --bg 三者同色 */
+	background-color: rgb(var(--bg));
 }
 
 html[data-theme='light'] {

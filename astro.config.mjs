@@ -22,28 +22,6 @@ export default defineConfig({
 		}),
 	],
 	fonts: [
-		{
-			provider: fontProviders.local(),
-			name: 'Atkinson',
-			cssVariable: '--font-atkinson',
-			fallbacks: ['sans-serif'],
-			options: {
-				variants: [
-					{
-						src: ['./src/assets/fonts/atkinson-regular.woff'],
-						weight: 400,
-						style: 'normal',
-						display: 'swap',
-					},
-					{
-						src: ['./src/assets/fonts/atkinson-bold.woff'],
-						weight: 700,
-						style: 'normal',
-						display: 'swap',
-					},
-				],
-			},
-		},
 		// 展示体：高对比衬线（英文/数字），中文由宋体兜底
 		{
 			provider: fontProviders.local(),

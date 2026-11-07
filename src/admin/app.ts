@@ -114,15 +114,35 @@ function escapeHtml(text: string): string {
 	return text
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+/**
+ * 预览框用 innerHTML 渲染，链接/图片的 URL 必须过协议白名单：
+ * 否则 [点我](javascript:…) 这类输入会在点击时执行脚本，而这个页面
+ * 的 sessionStorage 里存着 GitHub PAT，一旦被读走就是真实的凭据泄露。
+ * 只允许 http(s)、mailto、站内相对路径与锚点，其余一律降级成 '#'。
+ */
+function safeUrl(raw: string): string {
+	const url = raw.trim();
+	return /^(https?:\/\/|mailto:|\/|#|\.\/|\.\.\/)/i.test(url) ? url : '#';
 }
 
 function inlineMarkdown(text: string): string {
 	// 顺序敏感：先处理行内码（吃掉内部的 * _ 等），再处理图片/链接，最后加粗斜体
 	return escapeHtml(text)
 		.replace(/`([^`]+)`/g, '<code>$1</code>')
-		.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />')
-		.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+		.replace(
+			/!\[([^\]]*)\]\(([^)\s]+)\)/g,
+			(_m, alt: string, url: string) => `<img src="${safeUrl(url)}" alt="${alt}" loading="lazy" />`,
+		)
+		.replace(
+			/\[([^\]]+)\]\(([^)\s]+)\)/g,
+			(_m, label: string, url: string) =>
+				`<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`,
+		)
 		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 		.replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<em>$2</em>')
 		.replace(/~~([^~]+)~~/g, '<del>$1</del>');

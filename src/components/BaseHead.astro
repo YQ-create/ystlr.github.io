@@ -34,7 +34,7 @@ const ogImage = new URL(image.src, Astro.url);
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="theme-color" content="#0a0a0b" />
+<meta name="theme-color" content="#0b0b0c" />
 <meta name="color-scheme" content="dark" />
 <!-- GitHub Pages 无法下发 CSP 响应头，用 meta 兜一层（静态站需内联脚本，故允许 unsafe-inline） -->
 <meta
@@ -51,10 +51,12 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
-<!-- 首屏防白闪：CSS 加载前先把深色背景铺上（站点固定深色主题，无浅色切换） -->
+<!-- 首屏防白闪：CSS 加载前先把深色背景铺上。
+     颜色必须与 global.css 里 body.studio 的 --bg (11,11,12) 完全一致，
+     否则 CSS 生效的一瞬会看到旧底色闪一下。 -->
 <style is:inline>
 	html {
-		background-color: #181512;
+		background-color: #0b0b0c;
 		color-scheme: dark;
 	}
 </style>

@@ -101,27 +101,31 @@ tags: ["生活", "风景"]
 					frame={true}
 					theme="dark"
 				/>
+				<!-- 贴着照片网格顶边的轻雾：不依赖滚动位置，首屏第一眼就能看到改版效果。
+				     放在容器内部而不是视口边缘，是因为 fixed 在视口底/顶的渐隐带，
+				     在高窗口或照片较少时会整条落在空白区，等于没有效果。
+				     强度刻意压低，照片仍可辨认；z-index 10 高于网格卡片(最高 2)。 -->
+				<GradualBlur
+					class="gallery-frame-fade"
+					target="parent"
+					position="top"
+					height="9rem"
+					strength={1.3}
+					layers={5}
+					curve="bezier"
+					exponential
+					tint="rgba(11, 11, 12, 0.38)"
+					zIndex={10}
+				/>
 			</div>
 		)}
 	</main>
 
-	<!-- 视口边缘的渐进模糊：照片从上下柔和进出，而不是硬生生被裁断。
-	     z-index 30 低于导航(120)与灯箱(100)，所以不会糊住导航、也不会影响放大看照片。
-	     两层都用 autoHide：顶部初始透明（标题清晰），滚动后才淡入；
-	     底部在接近页面末尾时淡出，保证最后一张照片看得完整。 -->
-	<GradualBlur
-		class="gallery-fade gallery-fade--top"
-		target="page"
-		position="top"
-		height="6.5rem"
-		strength={1.5}
-		layers={5}
-		curve="bezier"
-		exponential
-		tint="rgba(11, 11, 12, 0.52)"
-		autoHide
-		zIndex={30}
-	/>
+	<!-- 视口底边的滚动渐隐：往下滚时照片柔和沉入背景。
+	     z-index 30 低于导航(120)与灯箱(100)，不会糊住导航、也不影响放大看照片。
+	     autoHide 让它在接近页面末尾时淡出，保证最后一张照片与页脚完整可见。
+	     顶部不再挂视口固定层：它初始为了不糊标题是全透明的，滚动后又只会糊到
+	     已经划上去的照片，实际观感很弱，改由网格内部那条「贴内容的轻雾」负责。 -->
 	<GradualBlur
 		class="gallery-fade gallery-fade--bottom"
 		target="page"
@@ -266,6 +270,7 @@ tags: ["生活", "风景"]
 		margin-inline: auto;
 	}
 	.gallery-chroma {
+		position: relative;
 		margin: 0 0 clamp(2rem, 4vw, 3.2rem);
 	}
 
@@ -408,12 +413,11 @@ tags: ["生活", "风景"]
 		background: rgba(255, 255, 255, 0.22);
 	}
 
-	/* 小屏只保留底部渐隐：顶部空间要留给大标题和汉堡导航，
-	   不然标题正好落在窄带里会被糊成一片白雾。
-	   高度写在组件 inline style 上，这里需要 !important 才能覆盖。 */
+	/* 小屏把网格顶边轻雾收矮，底部视口渐隐也收窄，别吃掉太多可视区域。
+	   高度写在组件 inline style 上，需要 !important 才能覆盖。 */
 	@media (max-width: 720px) {
-		:global(.gallery-fade--top) {
-			display: none !important;
+		:global(.gallery-frame-fade) {
+			height: 6rem !important;
 		}
 		:global(.gallery-fade--bottom) {
 			height: 8rem !important;

@@ -104,7 +104,11 @@ npm run preview
 | `GradualBlur.astro` | 视口/容器边缘的渐进模糊（多层 `backdrop-filter` + 分段 mask + 渐变 tint），照片墙上下渐隐 | `position`、`target`、`height`、`strength`、`layers`、`curve`、`tint`、`autoHide`、`zIndex` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
-`GradualBlur` 用在 `/gallery` 的上下边缘：`zIndex={30}` 必须低于页头(120)与灯箱(100)，否则会糊住导航和放大后的照片；`autoHide` 让顶部初始透明（标题清晰）、底部滚到末尾时淡出。小屏直接 `display:none` 关掉顶部层，不然大标题正好落进窄带会被糊成白雾。**层数控制在 5–6 层**——每层 `backdrop-filter` 都要读回一次背景，叠太多会拖累滚动（实测 11 层与全关相比帧间隔一致，再往上就要小心了）。
+`GradualBlur` 在 `/gallery` 用两处，别再合成一条「视口顶部固定带」：
+- **网格内顶边轻雾**（`target="parent"`，放在 `.gallery-chroma` 里，`zIndex={10}`）：贴着第一排照片，不依赖滚动位置，首屏一眼可见。容器要有 `position: relative`。
+- **视口底边滚动渐隐**（`target="page"`，`zIndex={30}` 必须低于页头 120 / 灯箱 100）：`autoHide` 让它在接近页面末尾时淡出，最后一张照片与页脚完整可见。
+- 之前试过再加一条 `target="page"` 的视口顶边带：它初始为了不糊标题是全透明的，滚动后又只糊到已划上去的照片，且窗口一高、照片一少，底部带就整条落在空白区——**等于看不到变化**，已弃用。
+- 小屏把网格内轻雾收矮到 6rem、视口底部带收到 8rem（高度在组件 inline style 上，覆盖要 `!important`）。**每层 `backdrop-filter` 都要读回一次背景，单条控制在 5–6 层**，叠太多会拖累滚动。
 
 `Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。目前只有 `letter-reveal.ts` 走这条路（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）。
 

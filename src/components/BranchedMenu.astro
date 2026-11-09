@@ -1,0 +1,610 @@
+---
+/**
+ * BranchedMenu — 带分叉连线的可折叠树形导航（React Bits 同名组件的原生移植）。
+ *
+ * 无 React、无图标库依赖。核心视觉：
+ * - 每个分组一条 SVG 树干 + 每条目一条圆角分叉（灰色 base 常显）；
+ * - 活动条目叠一条强调色 reach，靠 stroke-dashoffset 动画「画」出来；
+ * - 左侧竖条 marker 跟随活动分组的标题滑动。
+ *
+ * 与 React 版的差异（按本站约定）：
+ * - DOM / SVG path 全在服务端算好，客户端只负责折叠、选中、marker 定位；
+ * - 参数经 data-cfg(JSON) 传入；setup(root) 返回 destroy，配合 astro:page-load
+ *   + pageToken 重建，View Transitions 往返不累积监听；
+ * - 支持 href（真实条目，<a> 跳转）与无 href（预览模式，<button> 只高亮）；
+ * - 颜色走站点 token（--ink / --accent / --line），不硬编码；
+ * - 窄屏（≤980px）自动收成横滑胶囊，head 点击改为锚点跳转而不是折叠；
+ * - 显式处理 [hidden] 在 display:flex 元素上失效的坑。
+ */
+export interface BranchedChild {
+	value: string;
+	label: string;
+	/** 有则渲染成 <a> 并可跳转；无则是预览/占位，点击只高亮 */
+	href?: string;
+	/** 供页面标签筛选使用 */
+	tags?: string;
+}
+export interface BranchedGroup {
+	label: string;
+	value: string;
+	/** 分类锚点 id，同时用于页面滚动高亮 */
+	anchor?: string;
+	/** 左侧编号，如 01 */
+	num?: string;
+	/** 条目数，供页面筛选时更新 */
+	count?: string;
+	children: BranchedChild[];
+}
+
+interface Props {
+	items: BranchedGroup[];
+	/** 默认展开的分组下标，可传数组 */
+	defaultOpen?: number | number[];
+	/** 初始活动条目 value */
+	activeValue?: string;
+	/** 预览模式：不渲染跳转箭头、item 只高亮（由无 href 自动判断） */
+	preview?: boolean;
+	/** 窄屏也保持完整树形（默认窄屏会退化成横滑胶囊），空状态预览用 */
+	forceTree?: boolean;
+	class?: string;
+	ariaLabel?: string;
+	// 几何参数
+	rowHeight?: number;
+	indent?: number;
+	trunk?: number;
+	radius?: number;
+	lineWidth?: number;
+	fontSize?: number;
+	drawDuration?: number;
+	foldDuration?: number;
+}
+
+const {
+	items,
+	defaultOpen = 0,
+	activeValue = '',
+	preview = false,
+	forceTree = false,
+	class: className = '',
+	ariaLabel = '分叉导航',
+	rowHeight = 32,
+	indent = 46,
+	trunk = 12,
+	radius = 9,
+	lineWidth = 1.8,
+	fontSize = 13,
+	drawDuration = 400,
+	foldDuration = 300,
+} = Astro.props;
+
+const PAD = 6;
+const MARK = 16;
+const r = Math.min(radius, rowHeight / 2 - 2);
+const endX = indent - 8;
+const rowY = (k: number) => PAD + k * rowHeight + rowHeight / 2;
+const branch = (k: number) =>
+	`M ${trunk} ${rowY(k) - r} A ${r} ${r} 0 0 0 ${trunk + r} ${rowY(k)} H ${endX}`;
+const reach = (k: number) =>
+	`M ${trunk} 0 V ${rowY(k) - r} A ${r} ${r} 0 0 0 ${trunk + r} ${rowY(k)} H ${endX}`;
+const length = (k: number) => rowY(k) - r + (Math.PI * r) / 2 + (endX - trunk - r);
+const bodyH = (n: number) => PAD * 2 + n * rowHeight;
+
+const openSet = new Set(Array.isArray(defaultOpen) ? defaultOpen : defaultOpen >= 0 ? [defaultOpen] : []);
+// 活动值缺省时取第一个展开分组的首条目
+const firstActive =
+	activeValue ||
+	items.find((_, i) => openSet.has(i))?.children?.[0]?.value ||
+	items[0]?.children?.[0]?.value ||
+	'';
+
+const cfg = {
+	activeValue: firstActive,
+	preview,
+	mark: MARK,
+};
+---
+
+<nav
+	class:list={['branched-menu', className]}
+	data-branched
+	data-cfg={JSON.stringify(cfg)}
+	data-bm-force-tree={forceTree ? '' : undefined}
+	aria-label={ariaLabel}
+	style={[
+		`--bm-font:${fontSize}px`,
+		`--bm-row:${rowHeight}px`,
+		`--bm-indent:${indent}px`,
+		`--bm-line-w:${lineWidth}px`,
+		`--bm-draw:${drawDuration}ms`,
+		`--bm-fold:${foldDuration}ms`,
+		`--bm-pad:${PAD}px`,
+	].join(';')}
+>
+	<span class="branched-menu__marker" data-bm-marker aria-hidden="true"></span>
+
+	{
+		items.map((group, i) => {
+			const kids = group.children;
+			const h = bodyH(kids.length);
+			const isOpen = openSet.has(i);
+			return (
+				<div
+					class="branched-menu__section"
+					data-bm-section
+					data-kb-group={group.anchor ?? group.value}
+					data-bm-index={i}
+					data-open={isOpen ? '' : undefined}
+				>
+					<button
+						type="button"
+						class="branched-menu__head"
+						data-bm-head
+						data-kb-anchor={group.anchor ?? group.value}
+						data-kb-gcount-holder
+						aria-expanded={isOpen ? 'true' : 'false'}
+					>
+						{group.num && <span class="branched-menu__n">{group.num}</span>}
+						<span class="branched-menu__name">{group.label}</span>
+						<span class="branched-menu__count" data-kb-gcount>
+							{group.count ?? String(kids.length).padStart(2, '0')}
+						</span>
+						<span class="branched-menu__chev" aria-hidden="true">
+							<svg viewBox="0 0 12 12" width="11" height="11">
+								<path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</span>
+					</button>
+
+					<div class="branched-menu__body">
+						<div class="branched-menu__fold">
+							<div class="branched-menu__tree" style={`height:${h}px`}>
+								<svg class="branched-menu__lines" width={indent} height={h} aria-hidden="true">
+									<path class="branched-menu__base" d={`M ${trunk} 0 V ${rowY(Math.max(0, kids.length - 1)) - r}`} />
+									{kids.map((_, k) => <path class="branched-menu__base" d={branch(k)} />)}
+									{kids.map((kid, k) => (
+										<path
+											class="branched-menu__reach"
+											data-bm-reach={kid.value}
+											d={reach(k)}
+											style={`stroke-dasharray:${length(k).toFixed(2)};stroke-dashoffset:${kid.value === firstActive ? 0 : length(k).toFixed(2)}`}
+										/>
+									))}
+								</svg>
+
+								{kids.map((kid) => {
+									const on = kid.value === firstActive;
+									const common = {
+										class: 'branched-menu__item',
+										'data-kb-link': '',
+										'data-bm-item': kid.value,
+										'data-tags': kid.tags ?? '',
+										'data-active': on ? '' : undefined,
+										'aria-current': on ? 'true' : undefined,
+									} as const;
+									return kid.href ? (
+										<a {...common} href={kid.href} data-bm-href={kid.href}>
+											<span class="branched-menu__label">{kid.label}</span>
+										</a>
+									) : (
+										<button {...common} type="button" tabindex={isOpen ? 0 : -1}>
+											<span class="branched-menu__label">{kid.label}</span>
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+				</div>
+			);
+		})
+	}
+</nav>
+
+<style>
+	.branched-menu {
+		--bm-ink: rgb(var(--ink));
+		--bm-accent: rgb(var(--accent));
+		/* --line(42,42,46) 在近黑底上几乎看不见，分叉线用 ink 的 30% 提亮一档 */
+		--bm-line: rgba(var(--ink), 0.3);
+		--bm-line-soft: rgba(var(--ink), 0.16);
+		--bm-muted: color-mix(in srgb, rgb(var(--ink)) 52%, transparent);
+		--bm-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+		width: 100%;
+		padding-left: 14px;
+		color: var(--bm-ink);
+		font-family: inherit;
+		font-size: var(--bm-font);
+		line-height: 1.2;
+	}
+
+	/* 主干：从上到下渐隐的一条竖线 */
+	.branched-menu::before {
+		content: '';
+		position: absolute;
+		top: 8px;
+		bottom: 0;
+		left: 0;
+		width: 2px;
+		border-radius: 1px;
+		background: linear-gradient(to bottom, var(--bm-line) 0%, var(--bm-line) 62%, transparent 100%);
+	}
+
+	.branched-menu__marker {
+		position: absolute;
+		top: -1px;
+		left: 0;
+		z-index: 1;
+		width: 2px;
+		height: 16px;
+		border-radius: 1px;
+		background: var(--bm-accent);
+		opacity: 0;
+		transition:
+			top 220ms var(--bm-ease-out),
+			opacity 150ms ease;
+		pointer-events: none;
+	}
+	.branched-menu__marker[data-on] {
+		opacity: 1;
+	}
+
+	.branched-menu__section {
+		display: flex;
+		flex-direction: column;
+	}
+	/* 关键：display:flex 会盖掉 UA 的 [hidden]{display:none}，必须显式兜住 */
+	.branched-menu__section[hidden],
+	.branched-menu__item[hidden] {
+		display: none !important;
+	}
+
+	.branched-menu__head {
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+		width: 100%;
+		margin: 0;
+		padding: 0.35rem 0 0.4rem;
+		border: 0;
+		border-bottom: 1px solid var(--bm-line-soft);
+		background: none;
+		color: var(--bm-muted);
+		font: inherit;
+		font-size: calc(var(--bm-font) + 1px);
+		font-weight: 600;
+		text-align: left;
+		cursor: pointer;
+		outline: none;
+		-webkit-tap-highlight-color: transparent;
+		transition: color 200ms ease;
+	}
+	.branched-menu__section[data-open] .branched-menu__head,
+	.branched-menu__head.is-active,
+	.branched-menu__head:hover {
+		color: var(--bm-ink);
+	}
+	.branched-menu__head:focus-visible,
+	.branched-menu__item:focus-visible {
+		outline: 2px solid var(--bm-accent);
+		outline-offset: 2px;
+		border-radius: 3px;
+	}
+	.branched-menu__n {
+		flex: none;
+		font-size: 0.64rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.branched-menu__name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.branched-menu__count {
+		flex: none;
+		font-size: 0.64rem;
+		font-weight: 500;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.branched-menu__head.is-active .branched-menu__n,
+	.branched-menu__head.is-active .branched-menu__count {
+		color: var(--bm-accent);
+	}
+	.branched-menu__chev {
+		flex: none;
+		display: inline-flex;
+		color: rgb(var(--muted-light));
+		transition: transform var(--bm-fold) var(--bm-ease-out);
+	}
+	.branched-menu__section[data-open] .branched-menu__chev {
+		transform: rotate(180deg);
+	}
+
+	/* 折叠：grid-template-rows 0fr → 1fr，无需测量高度 */
+	.branched-menu__body {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows var(--bm-fold) var(--bm-ease-out);
+	}
+	.branched-menu__section[data-open] .branched-menu__body {
+		grid-template-rows: 1fr;
+	}
+	.branched-menu__fold {
+		min-height: 0;
+		overflow: hidden;
+	}
+	.branched-menu__tree {
+		position: relative;
+		box-sizing: border-box;
+	}
+	.branched-menu__lines {
+		position: absolute;
+		top: 0;
+		left: 0;
+		overflow: visible;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 200ms ease;
+	}
+	.branched-menu__section[data-open] .branched-menu__lines {
+		opacity: 1;
+		transition: opacity 250ms ease 100ms;
+	}
+	.branched-menu__base,
+	.branched-menu__reach {
+		fill: none;
+		stroke-width: var(--bm-line-w);
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.branched-menu__base {
+		stroke: var(--bm-line);
+	}
+	.branched-menu__reach {
+		stroke: var(--bm-accent);
+		stroke-width: calc(var(--bm-line-w) + 0.4px);
+		filter: drop-shadow(0 0 3px rgba(var(--accent), 0.5));
+		transition: stroke-dashoffset var(--bm-draw) var(--bm-ease-out);
+	}
+
+	.branched-menu__item {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		width: 100%;
+		height: var(--bm-row);
+		margin: 0;
+		padding: 0 0.3rem 0 var(--bm-indent);
+		border: 0;
+		background: none;
+		color: var(--bm-muted);
+		font: inherit;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		outline: none;
+		box-sizing: border-box;
+		-webkit-tap-highlight-color: transparent;
+		transition: color 200ms ease;
+	}
+	.branched-menu__item:hover {
+		color: var(--bm-ink);
+	}
+	.branched-menu__item[data-active] {
+		color: var(--bm-accent);
+		font-weight: 500;
+	}
+	.branched-menu__label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* 窄屏：退化成一条横滑分类胶囊，展开树隐藏、head 点击改为锚点跳转 */
+	@media (max-width: 980px) {
+		.branched-menu:not([data-bm-force-tree]) {
+			flex: 1;
+			min-width: 0;
+			flex-direction: row;
+			gap: 0.2rem;
+			width: 100%;
+			padding-left: 0;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+		.branched-menu:not([data-bm-force-tree])::-webkit-scrollbar {
+			display: none;
+		}
+		.branched-menu:not([data-bm-force-tree])::before,
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__marker,
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__body,
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__chev,
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__n {
+			display: none;
+		}
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__section {
+			display: contents;
+		}
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__head {
+			flex: none;
+			width: auto;
+			gap: 0.3rem;
+			padding: 0.4rem 0.7rem;
+			border: 0;
+			border-radius: 999px;
+			font-size: 0.78rem;
+			white-space: nowrap;
+		}
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__name {
+			flex: none;
+		}
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__head.is-active {
+			color: rgb(var(--btn-solid-ink));
+			background: rgb(var(--btn-solid));
+		}
+		.branched-menu:not([data-bm-force-tree]) .branched-menu__head.is-active .branched-menu__count {
+			color: rgb(var(--btn-solid-ink));
+			opacity: 0.6;
+		}
+		/* 预览：窄屏也保持完整树，否则空状态下什么都看不到 */
+		.branched-menu[data-bm-force-tree] {
+			width: fit-content;
+			max-width: 100%;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.branched-menu__marker {
+			transition: opacity 150ms ease;
+		}
+		.branched-menu__body,
+		.branched-menu__reach,
+		.branched-menu__chev {
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	// @ts-nocheck
+	const instances = [];
+	let bound = false;
+	let pageToken = 0;
+	let mountedToken = -1;
+
+	function setup(root) {
+		let cfg = {};
+		try {
+			cfg = JSON.parse(root.dataset.cfg || '{}');
+		} catch {
+			cfg = {};
+		}
+
+		const marker = root.querySelector('[data-bm-marker]');
+		const heads = Array.from(root.querySelectorAll('[data-bm-head]'));
+		const sections = Array.from(root.querySelectorAll('[data-bm-section]'));
+		const items = Array.from(root.querySelectorAll('[data-bm-item]'));
+		const reaches = new Map(
+			Array.from(root.querySelectorAll('[data-bm-reach]')).map((el) => [el.dataset.bmReach, el]),
+		);
+		const cleanups = [];
+		let active = cfg.activeValue || '';
+
+		/** 把 marker 移到活动条目所属分组的标题处 */
+		const placeMarker = () => {
+			if (!marker) return;
+			const el = items.find((it) => it.dataset.bmItem === active);
+			const section = el?.closest('[data-bm-section]');
+			const head = section?.querySelector('[data-bm-head]');
+			const shown = Boolean(head && section?.hasAttribute('data-open'));
+			if (shown) marker.style.top = `${head.offsetTop + (head.offsetHeight - (cfg.mark || 16)) / 2}px`;
+			marker.toggleAttribute('data-on', shown);
+		};
+
+		const setActive = (value, glide = true) => {
+			active = value;
+			items.forEach((it) => {
+				const on = it.dataset.bmItem === value;
+				it.toggleAttribute('data-active', on);
+				if (on) it.setAttribute('aria-current', 'true');
+				else it.removeAttribute('aria-current');
+			});
+			reaches.forEach((path, key) => {
+				const len = parseFloat(getComputedStyle(path).strokeDasharray) || 0;
+				path.style.transition = glide ? '' : 'none';
+				path.style.strokeDashoffset = key === value ? '0' : String(len);
+				if (!glide) {
+					void path.getBoundingClientRect();
+					path.style.transition = '';
+				}
+			});
+			placeMarker();
+		};
+
+		// 分组标题：宽屏折叠/展开；窄屏直接跳到对应分类锚点
+		heads.forEach((head, i) => {
+			const onClick = () => {
+				const narrow = window.matchMedia('(max-width: 980px)').matches;
+				const anchor = head.dataset.kbAnchor;
+				if (narrow) {
+					if (anchor) document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					return;
+				}
+				const section = sections[i];
+				if (!section) return;
+				const open = !section.hasAttribute('data-open');
+				section.toggleAttribute('data-open', open);
+				head.setAttribute('aria-expanded', String(open));
+				section.querySelectorAll('[data-bm-item]').forEach((it) => {
+					if (it.tagName === 'BUTTON') it.tabIndex = open ? 0 : -1;
+				});
+				placeMarker();
+				root.dispatchEvent(new CustomEvent('bm:toggle', { bubbles: true, detail: { index: i, open, anchor } }));
+			};
+			head.addEventListener('click', onClick);
+			cleanups.push(() => head.removeEventListener('click', onClick));
+		});
+
+		// 条目：真实链接正常跳转（先本地高亮），预览项只高亮
+		items.forEach((it) => {
+			const onClick = () => setActive(it.dataset.bmItem || '');
+			it.addEventListener('click', onClick);
+			cleanups.push(() => it.removeEventListener('click', onClick));
+		});
+
+		// 页面滚动高亮通过事件驱动：detail 为分类锚点时点亮该组首个可见条目
+		const onExternalActive = (e) => {
+			const anchor = e.detail?.anchor;
+			const value = e.detail?.value;
+			if (value) {
+				setActive(value);
+				return;
+			}
+			if (!anchor) return;
+			const section = sections.find((s) => s.querySelector('[data-bm-head]')?.dataset.kbAnchor === anchor);
+			const first = Array.from(section?.querySelectorAll('[data-bm-item]') || []).find((it) => !it.hidden);
+			if (first) setActive(first.dataset.bmItem || '');
+		};
+		root.addEventListener('bm:set-active', onExternalActive);
+		cleanups.push(() => root.removeEventListener('bm:set-active', onExternalActive));
+
+		// 尺寸变化（字体加载、筛选显隐、折叠）后重算 marker
+		const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => placeMarker()) : null;
+		if (ro) {
+			ro.observe(root);
+			cleanups.push(() => ro.disconnect());
+		}
+
+		setActive(active, false);
+		return { destroy() { for (const fn of cleanups) fn(); } };
+	}
+
+	function mount() {
+		if (mountedToken === pageToken) return;
+		mountedToken = pageToken;
+		for (const item of instances.splice(0)) item.destroy();
+		document.querySelectorAll('[data-branched]:not([data-branched-ready])').forEach((root) => {
+			root.dataset.branchedReady = '1';
+			const instance = setup(root);
+			if (instance) instances.push(instance);
+		});
+	}
+
+	if (!bound) {
+		bound = true;
+		document.addEventListener('astro:before-swap', () => { pageToken += 1; });
+		document.addEventListener('astro:page-load', mount);
+	}
+	mount();
+</script>

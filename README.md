@@ -102,7 +102,10 @@ npm run preview
 | `MusicPlayer.astro` | 顶部播放器，`transition:persist` 保活、切页不中断 | 曲目在 `src/data/playlist.json` |
 | `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
 | `GradualBlur.astro` | 视口/容器边缘的渐进模糊（多层 `backdrop-filter` + 分段 mask + 渐变 tint），照片墙上下渐隐 | `position`、`target`、`height`、`strength`、`layers`、`curve`、`tint`、`autoHide`、`zIndex` |
+| `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
+
+`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。**知识库目前 0 条笔记**，空状态会渲染一份明确标注的「导航样式预览」（`preview` + `forceTree`），它不写入 content 集合、不生成假详情页；一旦有笔记自动切换为真实目录。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
 
 `GradualBlur` 在 `/gallery` 用两处，别再合成一条「视口顶部固定带」：
 - **网格内顶边轻雾**（`target="parent"`，放在 `.gallery-chroma` 里，`zIndex={10}`）：贴着第一排照片，不依赖滚动位置，首屏一眼可见。容器要有 `position: relative`。

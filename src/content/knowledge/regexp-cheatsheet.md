@@ -101,4 +101,4 @@ const patterns = {
 
 ## 参考
 
-依据 [菜鸟教程 · 正则表达式教程](https://www.runoob.com/regexp/regexp-tutorial.html) 的章节脉络（语法、修饰符、元字符、匹配规则、位置匹配、分组和引用、分支、断言）整理。本文为要点归纳与自写示例，交互式验证可用站内[在线测试工具](https://www.runoob.com/regexp/regexp-test.html)。
+依据 [菜鸟教程 · 正则表达式教程](https://www.runoob.com/regexp/regexp-tutorial.html) 的章节脉络（语法、修饰符、元字符、匹配规则、位置匹配、分组和引用、分支、断言）整理。本文为要点归纳与自写示例，逐条语法可看 [菜鸟教程 · 正则表达式语法](https://www.runoob.com/regexp/regexp-syntax.html)，更多示例见 [MDN · 正则表达式](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Guide/Regular_expressions)。

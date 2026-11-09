@@ -52,7 +52,7 @@ npm run preview
 
 | 页面 | 路由 | 说明 |
 | --- | --- | --- |
-| 首页 | `/` | Hero（底部是缓慢左移的照片带）、精选文章、照片墙速览 |
+| 首页 | `/` | Hero、滚动展开画面、3D 照片环廊、关于这里、精选文章、知识库 / 发现 / 关于入口 |
 | 文章 | `/blog` | 文章列表，支持关键词搜索与标签筛选，顶部有「投稿」入口 |
 | 照片墙 | `/gallery` | 照片按年、月分组的瀑布网格 |
 | 发现 | `/discover` | 收藏书签与推荐站点卡片，数据来自 `src/data/discover.json` |
@@ -105,9 +105,12 @@ npm run preview
 | `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
 | `AppearancePanel.astro` | 页头雾面调色盘：深浅色 / 强调色 / 雾面与透明色 / 四种背景模式 / 底图库 | 逻辑在 `src/scripts/appearance.ts` |
 | `ScrollExpand.astro` | 首页滚动展开区块：`clip-path: inset() round` 把居中圆角小图展开到满屏 | `src`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`mediaZoom`、`scrollDistance`、`holdDistance`、`smoothing` |
+| `CircularCarousel.astro` | 首页 3D 照片环廊：照片切成 8 条贴在圆柱面上，漂移自转 / 惯性拖拽 / 景深渐隐 / 数字卷轴字幕 | `items`、`preset`、`intro`、`cardWidth`、`gap`、`autoplay`、`speed`、`captions`、`depthFade`、`innerShade`（逻辑在 `src/scripts/circular-carousel.ts`） |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
-`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 19 条笔记（4 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
+**照片环廊的数据与几何**：条目全部来自 `src/content/gallery`（`getImage` 转 900px webp），不引用组件自带的 Unsplash 示例图；早期照片记录没有标题/图注，字幕用「帧 NN + 拍摄年月」兜底，纯数字标题也被过滤。圆柱切片的位移、倾角、半径与包围盒缩放都在**构建期**算好写进 DOM，运行时只有一个 rAF 循环，每帧只写 7 个卡片的 transform 与 `--cc-depth`，不碰 112 个 tile。窄屏（容器 < 700px）放宽水平余量，让环两侧自然溢出裁切，避免整圈被缩成一排缩略图。交互：指针拖拽 / 横向滚轮 / 方向键 / Home·End / 点卡片聚焦；`cc:change` 与 `cc:item-click` 供外部联动。
+
+`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 39 条笔记（6 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
 
 **滚动高亮的判定**：观察带是页头下方 96px 到视口 38% 高处。每次回调都基于所有可见分区的实时 `getBoundingClientRect()` 取重叠面积最大者 —— 不能只从本次 `entries` 里按 `intersectionRatio` 挑，否则某个分区「进入」时会顶掉仍占着观察带的分区（分类变多后很直观：滚到「Web 原理」却高亮「数据与存储」）。页面较短时跳到最后一组会被滚动上限钳制、观察器不再回调，所以额外有一个**只在滚到底时**才重算的 passive scroll 兜底（正常滚动不读布局），并用 `AbortController` 在 `astro:before-swap` 清理。`isAtBottom()` 必须要求页面确实可滚动（`maxScroll > 0`），否则内容还没撑开时会被误判成「已到底」。
 
@@ -132,6 +135,7 @@ npm run preview
 - **底图 objectURL**：每张本地图一个 URL 长期缓存，只在替换/删除时 `revokeObjectURL`。别用单个变量复用，否则渲染缩略图时会把正在当底图用的 URL 回收掉。
 - 面板 DOM 由 JS 动态创建的节点（底图列表）**没有 Astro 的 scope 属性**，那一组样式必须写 `:global()`，否则一条都不命中。
 - `ScrollExpand` 用窗口滚动 + sticky track，`astro:before-swap` 销毁、`astro:page-load` 重建；`prefers-reduced-motion` 下跳过平滑插值。
+- `CircularCarousel` 的 rAF 只在环廊进入视口、页面可见且没有 hover 暂停时跑（`IntersectionObserver` + `visibilitychange` + `pauseOnHover`），`drift` 自转常驻但不代表页面滚到哪里都在算。`prefers-reduced-motion` 下关掉开场、视差、拉伸与自动播放，只保留静态一圈与键盘/拖拽切换。所有监听器共用一个 `AbortController`，`astro:before-swap` 统一销毁；`initCircularCarousel()` 自带 `bound` 幂等锁，同页多实例也只注册一次事件。
 
 ## 知识库笔记
 
@@ -150,7 +154,7 @@ npm run preview
 - 之前试过再加一条 `target="page"` 的视口顶边带：它初始为了不糊标题是全透明的，滚动后又只糊到已划上去的照片，且窗口一高、照片一少，底部带就整条落在空白区——**等于看不到变化**，已弃用。
 - 小屏把网格内轻雾收矮到 6rem、视口底部带收到 8rem（高度在组件 inline style 上，覆盖要 `!important`）。**每层 `backdrop-filter` 都要读回一次背景，单条控制在 5–6 层**，叠太多会拖累滚动。
 
-`Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。目前只有 `letter-reveal.ts` 走这条路（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）。
+`Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。`src/scripts/` 现有 `letter-reveal.ts`（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）、`appearance.ts`、`gradient-ascii.ts`、`circular-carousel.ts`（照片环廊运行时，约 500 行，同样走模块编译而不是塞进组件 `<script>`）。
 
 **背景性能约定（改动前先读）**：`Topography` 默认 30fps、滚动期间 15fps，指针移动 / 开场 / 点击脉冲时回到 60fps，`dpr` 上限 1.5；它 fixed 在视口里，滚动时只有内容在动、背景不重画整页。这是滚轮顺滑的关键，别改回「每个区块各挂一个背景实例」。滚动回调里也不要「先改 class 再读 `offsetHeight`」——那会每帧强制同步回流。
 

@@ -54,6 +54,7 @@ import ScrollExpand from '../components/ScrollExpand.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import AccordionGallery from '../components/AccordionGallery.astro';
+import CircularCarousel from '../components/CircularCarousel.astro';
 import discoverData from '../data/discover.json';
 import cover from '../assets/gallery/cover.jpg';
 
@@ -71,6 +72,26 @@ const galleryItems = await Promise.all(
 			image: img.src,
 			label: p.data.title ?? p.data.caption ?? `照片 ${String(i + 1).padStart(2, '0')}`,
 			alt: p.data.caption ?? p.data.title ?? '',
+		};
+	}),
+);
+
+// 照片环廊：全部照片绕成一圈（圆柱切片 + 惯性拖拽）。标题取「帧 NN」兜底，
+// 因为早期上传的记录只有日期、没有标题/图注，纯数字标题也不适合当字幕。
+const reelItems = await Promise.all(
+	photos.map(async (p, i) => {
+		const img = await getImage({ src: p.data.image as ImageMetadata, width: 900, format: 'webp' });
+		const caption = p.data.caption?.trim() ?? '';
+		const rawTitle = p.data.title?.trim() ?? '';
+		const usableTitle = rawTitle && !/^\d+$/.test(rawTitle) ? rawTitle : '';
+		const label = caption || usableTitle || `帧 ${String(i + 1).padStart(2, '0')}`;
+		const d = p.data.date;
+		return {
+			src: img.src,
+			alt: caption || label,
+			title: label,
+			subtitle: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')} · 归档`,
+			href: '/gallery/',
 		};
 	}),
 );
@@ -222,6 +243,46 @@ const explore = [
 			<p>照片、路途，还有日常里那些没被说出口的部分。往下走一点，它们就都在了。</p>
 			<a class="se-link" href="/gallery">去看照片墙 →</a>
 		</ScrollExpand>
+
+		<!-- ═══════════ Act 1.6: 照片环廊（CircularCarousel） ═══════════ -->
+		<section class="reel" id="photos" data-section="photos">
+			<div class="wrap reel__head" data-reveal>
+				<div>
+					<span class="eyebrow">GALLERY / 02 · PHOTO REEL</span>
+					<h2 class="display">光影绕成一圈</h2>
+					<p class="reel__lede">把拍下的片段贴成一圈，让它自己慢慢转。拖动、滚轮或方向键都能换一张，点一下就把它带到眼前。</p>
+				</div>
+				<a class="reel__more" href="/gallery">
+					进入照片墙
+					<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+						<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+					</svg>
+				</a>
+			</div>
+
+			<div class="reel__stage">
+				<CircularCarousel
+					items={reelItems}
+					preset="cylinder"
+					intro="rise"
+					cardWidth={260}
+					aspectRatio={1}
+					gap={28}
+					autoplay="drift"
+					speed={11}
+					captions
+					depthFade={0.8}
+					fadeColor="#0b0b0c"
+					innerShade={0.12}
+					cornerRadius={12}
+				/>
+			</div>
+
+			<div class="wrap reel__foot">
+				<span class="reel__hint">拖动 / 滚轮 / ← → 切换 · 点按卡片聚焦</span>
+				<span class="reel__frames">{photos.length} FRAMES · ARCHIVE</span>
+			</div>
+		</section>
 
 		<!-- ═══════════ Act 2: 关于这里（反色分栏） ═══════════ -->
 		<section class="split" id="split">
@@ -911,6 +972,102 @@ const explore = [
 	}
 	.explore__label {
 		font-size: 0.86rem;
+	}
+
+	/* ═══════════ Act 1.6: 照片环廊 ═══════════ */
+	.reel {
+		position: relative;
+		z-index: 2;
+		padding: clamp(2.6rem, 5vw, 4.4rem) 0 clamp(1.2rem, 2.6vw, 2rem);
+		/* 中心压暗托住照片，边缘仍透出 fixed 地形等高线 */
+		background: radial-gradient(
+			ellipse 82% 78% at 50% 52%,
+			rgba(var(--bg), 0.99) 0%,
+			rgba(var(--bg), 0.96) 40%,
+			rgba(var(--bg), 0.7) 74%,
+			rgba(var(--bg), 0.16) 100%
+		);
+		color: rgb(var(--ink));
+	}
+	.reel__head {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 2rem;
+		margin-bottom: clamp(0.6rem, 1.6vw, 1.4rem);
+	}
+	.reel__head .eyebrow {
+		color: rgb(var(--accent));
+	}
+	.reel__head h2 {
+		margin: 0.65rem 0 0.5rem;
+		font-size: clamp(1.9rem, 3.8vw, 3.1rem);
+		line-height: 1.04;
+		letter-spacing: -0.035em;
+	}
+	.reel__lede {
+		max-width: 50ch;
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.72;
+		color: rgb(var(--muted));
+	}
+	.reel__more {
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 0.5rem;
+		padding-bottom: 0.35rem;
+		border-bottom: 1px solid rgba(var(--ink), 0.24);
+		font-size: 0.86rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+		transition: gap 0.25s var(--ease-out), color 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
+	}
+	.reel__more:hover {
+		gap: 0.8rem;
+		color: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+	}
+	.reel__stage {
+		position: relative;
+		width: 100%;
+		height: clamp(380px, 42vw, 540px);
+	}
+	.reel__stage :global(.cc__caption) {
+		bottom: 0;
+	}
+	.reel__foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		/* 右下角常驻的浮动 CTA 会盖住最右侧文字，给它留出通道 */
+		padding-right: 11rem;
+		margin-top: 0.4rem;
+		font-size: 0.7rem;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted-light));
+	}
+	.reel__frames {
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	@media (max-width: 760px) {
+		.reel__head {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 1rem;
+		}
+		.reel__stage {
+			height: clamp(330px, 88vw, 430px);
+		}
+		.reel__frames {
+			display: none;
+		}
+		.reel__foot {
+			padding-right: 0;
+		}
 	}
 
 	/* ═══════════ Act 2: 关于这里（跟随主题的面板） ═══════════ */

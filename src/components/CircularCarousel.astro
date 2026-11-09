@@ -1,0 +1,532 @@
+---
+/**
+ * CircularCarousel —— React Bits 同名组件的原生移植（无 React / 无 GSAP）。
+ *
+ * 照片绕成一圈：每张卡片被切成 8 条，按圆柱面做 translate3d + rotateY，
+ * 于是整张照片是「贴」在圆筒上的，而不是一块平板。运行时只有一个 rAF 循环，
+ * 负责漂移自动播放、弹簧吸附、惯性拖拽、指针视差、景深渐隐与开场动画。
+ *
+ * 布局与切片几何在构建期（本文件 frontmatter）算好并写进 DOM；
+ * 运行时逻辑放在 src/scripts/circular-carousel.ts，由 <script> 一次性装载，
+ * 支持同页多实例与 View Transitions 往返（mount/unmount 成对）。
+ *
+ * 数据：src 需为可访问 URL（本地图请用 astro:assets 的 getImage 转 URL 后传入）。
+ * 不使用组件自带的 Unsplash 示例图 —— 本站照片全部来自 src/content/gallery。
+ */
+
+interface Item {
+	src: string;
+	alt?: string;
+	title?: string;
+	subtitle?: string;
+	href?: string;
+}
+
+interface Props {
+	items: Item[];
+	preset?: 'cylinder' | 'orbit' | 'wheel' | 'panorama';
+	intro?: 'assemble' | 'rise' | 'spin' | 'none';
+	cardWidth?: number;
+	aspectRatio?: number;
+	gap?: number;
+	curve?: number;
+	tilt?: number;
+	perspective?: number;
+	autoplay?: 'drift' | 'step' | 'off';
+	speed?: number;
+	interval?: number;
+	direction?: 'left' | 'right';
+	draggable?: boolean;
+	momentum?: number;
+	snap?: boolean;
+	pauseOnHover?: boolean;
+	focusOnClick?: boolean;
+	parallax?: number;
+	stretch?: number;
+	depthFade?: number;
+	fadeColor?: string;
+	innerShade?: number;
+	cornerRadius?: number;
+	captions?: boolean;
+	class?: string;
+}
+
+interface Layout {
+	axis: 'x' | 'y';
+	tilt: number;
+	perspective: number;
+	curve: number;
+	spread: number;
+	inward: boolean;
+	billboard: boolean;
+	backfaces: boolean;
+	window: number;
+}
+
+const PRESETS: Record<string, Layout> = {
+	cylinder: { axis: 'y', tilt: -5, perspective: 2500, curve: 1, spread: 1, inward: false, billboard: false, backfaces: true, window: 0 },
+	orbit: { axis: 'y', tilt: -16, perspective: 1500, curve: 0, spread: 1.45, inward: false, billboard: true, backfaces: false, window: 0 },
+	wheel: { axis: 'x', tilt: 0, perspective: 1800, curve: 0, spread: 1, inward: false, billboard: false, backfaces: true, window: 1.7 },
+	panorama: { axis: 'y', tilt: 0, perspective: 0, curve: 1, spread: 1, inward: true, billboard: false, backfaces: false, window: 0 },
+};
+
+const INTRO_LENGTH = { assemble: 1500, rise: 1400, spin: 1800, none: 0 };
+const TILES = 8;
+const OVERLAP = 2.5;
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+const {
+	items = [],
+	preset = 'cylinder',
+	intro = 'rise',
+	cardWidth = 220,
+	aspectRatio = 1,
+	gap = 25,
+	curve,
+	tilt,
+	perspective,
+	autoplay = 'drift',
+	speed = 14,
+	interval = 3,
+	direction = 'left',
+	draggable = true,
+	momentum = 0.6,
+	snap = true,
+	pauseOnHover = true,
+	focusOnClick = true,
+	parallax = 0.3,
+	stretch = 0.5,
+	depthFade = 0.55,
+	fadeColor = '#0b0b0c',
+	innerShade = 0.6,
+	cornerRadius = 12,
+	captions = false,
+	class: className = '',
+} = Astro.props;
+
+const shape = PRESETS[preset] ? preset : 'cylinder';
+const layout = PRESETS[shape];
+const axis = layout.axis;
+const list = items.filter((it) => !!it.src);
+const count = list.length;
+const tiltValue = tilt ?? layout.tilt;
+const curveValue = layout.billboard ? 0 : clamp(curve ?? layout.curve, 0, 1);
+const cardW = Math.max(40, cardWidth);
+const cardH = cardW / clamp(aspectRatio, 0.2, 5);
+const along = axis === 'x' ? cardH : cardW;
+const step = count ? 360 / count : 360;
+const P = layout.inward ? radiusOf(count) : (perspective ?? layout.perspective);
+
+function radiusOf(n: number) {
+	const safe = Math.max(n, 3);
+	const pitch = (along + gap) * layout.spread;
+	const chord = pitch / (2 * Math.sin(Math.PI / safe));
+	const arc = (safe * pitch) / (2 * Math.PI);
+	return Math.max(chord + (arc - chord) * curveValue, along * 0.6);
+}
+const radius = radiusOf(count);
+
+// 圆柱切片：每条的横向位移、Z 深度、倾角都是纯几何，构建期一次算完。
+const tiles = Array.from({ length: curveValue > 0.001 ? TILES : 1 }, (_, index) => {
+	const total = curveValue > 0.001 ? TILES : 1;
+	const length = along / total;
+	const bend = curveValue > 0.001 ? radius / curveValue : 0;
+	const start = index * length - (index > 0 ? OVERLAP / 2 : 0);
+	const end = (index + 1) * length + (index < total - 1 ? OVERLAP / 2 : 0);
+	const center = (start + end) / 2 - along / 2;
+	const alpha = bend ? center / bend : 0;
+	const shift = bend ? bend * Math.sin(alpha) : center;
+	const sink = bend ? bend * (1 - Math.cos(alpha)) : 0;
+	const depth = layout.inward ? sink : -sink;
+	const turn = ((layout.inward ? -alpha : alpha) * 180) / Math.PI;
+	const move =
+		axis === 'x'
+			? `translate3d(0px, ${shift}px, ${depth}px) rotateX(${-turn}deg)`
+			: `translate3d(${shift}px, 0px, ${depth}px) rotateY(${turn}deg)`;
+	return { index, total, start, end, size: end - start, move };
+});
+
+const digitCount = Math.max(2, String(count).length);
+const cfg = {
+	count,
+	step,
+	radius,
+	cardW,
+	cardH,
+	axis,
+	tilt: tiltValue,
+	perspective: P,
+	window: layout.window,
+	inward: layout.inward,
+	billboard: layout.billboard,
+	intro,
+	introLength: INTRO_LENGTH[intro] ?? 0,
+	autoplay,
+	speed,
+	interval: Math.max(0.5, interval),
+	directionSign: (direction === 'right' ? 1 : -1) * (layout.inward ? -1 : 1),
+	draggable,
+	momentum: clamp(momentum, 0, 1),
+	snap,
+	pauseOnHover,
+	focusOnClick,
+	parallax: clamp(parallax, 0, 1),
+	stretch: clamp(stretch, 0, 1),
+	depthFade: clamp(depthFade, 0, 1),
+	captions,
+	digitCount,
+	items: list.map((it) => ({
+		title: it.title || it.alt || '',
+		subtitle: it.subtitle || '',
+		href: it.href || '',
+	})),
+};
+
+const rootStyle = `--cc-fade:${fadeColor};--cc-radius:${Math.max(0, cornerRadius)}px;--cc-inner:${(1 - clamp(innerShade, 0, 1)).toFixed(3)};`;
+---
+
+{
+	count >= 3 ? (
+		<div
+			class:list={['cc', className]}
+			data-circular-carousel
+			data-cfg={JSON.stringify(cfg)}
+			data-axis={axis}
+			data-shape={shape}
+			data-cc-draggable={draggable ? '' : undefined}
+			style={rootStyle}
+			role="region"
+			aria-roledescription="carousel"
+			aria-label="照片轮播"
+			tabindex="0"
+		>
+			<div class="cc__view">
+				<div class="cc__stage" data-cc-stage>
+					<div class="cc__camera" data-cc-camera>
+						<div class="cc__ring" data-cc-ring>
+							{list.map((item, index) => (
+								<div
+									class="cc__card"
+									data-cc-card
+									data-cc-index={index}
+									role="group"
+									aria-roledescription="slide"
+									aria-label={`${item.title || item.alt || `照片 ${index + 1}`}，第 ${index + 1} 张，共 ${count} 张`}
+								>
+									{tiles.map((tile) => {
+										const strip = tile.index;
+										const first = strip === 0;
+										const last = strip === tile.total - 1;
+										const r = 'var(--cc-radius)';
+										const radiusCss =
+											axis === 'x'
+												? `${first ? r : 0} ${first ? r : 0} ${last ? r : 0} ${last ? r : 0}`
+												: `${first ? r : 0} ${last ? r : 0} ${last ? r : 0} ${first ? r : 0}`;
+										const offset = tile.start;
+										const box =
+											axis === 'x'
+												? { left: -cardW / 2, top: -tile.size / 2, width: cardW, height: tile.size }
+												: { left: -tile.size / 2, top: -cardH / 2, width: tile.size, height: cardH };
+										const boxStyle = `left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;transform:${tile.move};`;
+										const frameStyle = `height:${axis === 'x' ? tile.size : cardH}px;border-radius:${radiusCss};`;
+										const photoStyle =
+											axis === 'x'
+												? `left:0;top:${-offset}px;width:${cardW}px;height:${cardH}px;`
+												: `left:${-offset}px;top:0;width:${cardW}px;height:${cardH}px;`;
+										return (
+											<div class="cc__tile" style={boxStyle} aria-hidden="true">
+												<div class="cc__frame" style={frameStyle}>
+													<img class="cc__photo" src={item.src} alt="" draggable="false" decoding="async" style={photoStyle} />
+													<div class="cc__shade" />
+												</div>
+											</div>
+										);
+									})}
+									{layout.backfaces &&
+										tiles.map((tile) => {
+											const strip = tile.total - 1 - tile.index;
+											const first = strip === 0;
+											const last = strip === tile.total - 1;
+											const r = 'var(--cc-radius)';
+											const radiusCss =
+												axis === 'x'
+													? `${first ? r : 0} ${first ? r : 0} ${last ? r : 0} ${last ? r : 0}`
+													: `${first ? r : 0} ${last ? r : 0} ${last ? r : 0} ${first ? r : 0}`;
+											const offset = along - tile.end;
+											const box =
+												axis === 'x'
+													? { left: -cardW / 2, top: -tile.size / 2, width: cardW, height: tile.size }
+													: { left: -tile.size / 2, top: -cardH / 2, width: tile.size, height: cardH };
+											const flip = axis === 'x' ? ' rotateX(180deg)' : ' rotateY(180deg)';
+											const boxStyle = `left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;transform:${tile.move}${flip};`;
+											const frameStyle = `height:${axis === 'x' ? tile.size : cardH}px;border-radius:${radiusCss};`;
+											const photoStyle =
+												axis === 'x'
+													? `left:0;top:${-offset}px;width:${cardW}px;height:${cardH}px;`
+													: `left:${-offset}px;top:0;width:${cardW}px;height:${cardH}px;`;
+											return (
+												<div class="cc__tile" style={boxStyle} aria-hidden="true">
+													<div class="cc__frame" style={frameStyle}>
+														<img class="cc__photo" src={item.src} alt="" draggable="false" decoding="async" style={photoStyle} />
+														<div class="cc__inner" />
+														<div class="cc__shade" />
+													</div>
+												</div>
+											);
+										})}
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{captions && (
+				<div class="cc__caption" data-cc-caption aria-hidden="true">
+					<span class="cc__title" data-cc-title>
+						{cfg.items[0].title}
+						{cfg.items[0].subtitle && <span class="cc__subtitle">{cfg.items[0].subtitle}</span>}
+					</span>
+					<span class="cc__count">
+						<span class="cc__digits">
+							{Array.from({ length: digitCount }, (_, d) => (
+								<span class="cc__digit">
+									<span class="cc__reel" data-cc-reel style={`transform:translateY(${-Number(String(1).padStart(digitCount, '0')[d]) * 10}%)`}>
+										{'0123456789'.split('').map((n) => <span>{n}</span>)}
+									</span>
+								</span>
+							))}
+						</span>
+						<span class="cc__slash">/</span>
+						<span>{String(count).padStart(2, '0')}</span>
+					</span>
+				</div>
+			)}
+
+			<div class="cc__live" data-cc-live aria-live="polite" aria-atomic="true">
+				{`${cfg.items[0].title}，第 1 张，共 ${count} 张`}
+			</div>
+		</div>
+	) : (
+		<div class:list={['cc cc--plain', className]} aria-label="照片">
+			{list.map((item) => (
+				<img class="cc__plain-img" src={item.src} alt={item.alt || item.title || ''} loading="lazy" decoding="async" />
+			))}
+		</div>
+	)
+}
+
+<script>
+	import { initCircularCarousel } from '../scripts/circular-carousel';
+	initCircularCarousel();
+</script>
+
+<style>
+	.cc {
+		--cc-fade: #0b0b0c;
+		--cc-radius: 12px;
+		--cc-inner: 0.4;
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		outline: none;
+		touch-action: pan-y;
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.cc[data-axis='x'] {
+		touch-action: pan-x;
+	}
+	.cc[data-cc-draggable] {
+		cursor: grab;
+	}
+	.cc[data-cc-dragging] {
+		cursor: grabbing;
+	}
+	.cc:focus-visible {
+		box-shadow: inset 0 0 0 2px rgba(var(--accent), 0.6);
+	}
+
+	.cc__view {
+		position: absolute;
+		inset: 0;
+	}
+	.cc[data-shape='wheel'] .cc__view {
+		-webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+		mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+	}
+	.cc[data-shape='panorama'] .cc__view {
+		-webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+		mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+	}
+
+	.cc__stage {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity 0.45s ease;
+	}
+	.cc[data-cc-ready] .cc__stage {
+		opacity: 1;
+	}
+
+	.cc__camera,
+	.cc__ring,
+	.cc__card {
+		width: 0;
+		height: 0;
+		transform-style: preserve-3d;
+	}
+	.cc__camera {
+		position: relative;
+	}
+	.cc__ring,
+	.cc__card {
+		position: absolute;
+		left: 0;
+		top: 0;
+	}
+
+	.cc__tile {
+		position: absolute;
+		outline: 1px solid transparent;
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+	}
+	.cc__frame {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		overflow: hidden;
+	}
+	.cc__photo {
+		position: absolute;
+		display: block;
+		max-width: none;
+		object-fit: cover;
+		pointer-events: none;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+	.cc__shade,
+	.cc__inner {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+	.cc__shade {
+		background: var(--cc-fade);
+		opacity: var(--cc-depth, 0);
+	}
+	.cc__inner {
+		background: #000;
+		opacity: var(--cc-inner);
+	}
+
+	.cc__caption {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 8px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		padding: 0 16px;
+		color: rgb(var(--ink));
+		text-align: center;
+		pointer-events: none;
+		animation: cc-reveal 900ms ease both;
+	}
+	.cc__title {
+		display: flex;
+		max-width: 100%;
+		flex-direction: column;
+		align-items: center;
+		font-size: 15px;
+		font-weight: 500;
+		line-height: 1.35;
+	}
+	.cc__subtitle {
+		font-size: 0.74rem;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		opacity: 0.6;
+	}
+	.cc__count {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		font-size: 12px;
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		opacity: 0.5;
+	}
+	.cc__slash {
+		opacity: 0.6;
+	}
+	.cc__digits {
+		display: inline-flex;
+	}
+	.cc__digit {
+		display: inline-block;
+		height: 1em;
+		overflow: hidden;
+	}
+	.cc__reel {
+		display: flex;
+		flex-direction: column;
+		transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.cc__reel > span {
+		height: 1em;
+	}
+
+	.cc__live {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	.cc--plain {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		justify-content: center;
+	}
+	.cc__plain-img {
+		width: min(30%, 240px);
+		height: auto;
+		aspect-ratio: 1;
+		object-fit: cover;
+		border-radius: var(--cc-radius);
+	}
+
+	@keyframes cc-reveal {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cc__stage,
+		.cc__reel {
+			transition: none;
+		}
+		.cc__caption {
+			animation: none;
+		}
+	}
+</style>

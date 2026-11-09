@@ -51,9 +51,8 @@ const ogImage = new URL(image.src, Astro.url);
 	href={new URL('rss.xml', Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
-<!-- 首屏防白闪：CSS 加载前先把深色背景铺上。
-     颜色必须与 global.css 里 body.studio 的 --bg (11,11,12) 完全一致，
-     否则 CSS 生效的一瞬会看到旧底色闪一下。 -->
+<!-- 首屏防白闪：CSS 加载前先铺一层默认深色；紧接着的内联脚本会按
+     用户保存的外观偏好覆盖成浅色，两者都在 <head> 里，body 尚未绘制，不会闪。 -->
 <style is:inline>
 	html {
 		background-color: #0b0b0c;
@@ -61,18 +60,50 @@ const ogImage = new URL(image.src, Astro.url);
 	}
 </style>
 <script is:inline>
-	/* 站点固定深色主题（已移除浅色与调色盘）。
-	   View Transitions 切页时 Astro 会用新文档的 <html> 属性覆盖当前节点，
-	   所以 after-swap 再写一次，保证 token 不丢。 */
+	/* 外观偏好：在 CSS 生效前把 html 属性与底色定好，避免浅色用户看到深色闪一下。
+	   完整逻辑（面板交互、IndexedDB 底图）在 appearance.ts，这里只做最小同步。
+	   View Transitions 换页时新文档的 <html> 会覆盖当前节点，故 after-swap 再写一次。 */
 	(() => {
+		const KEY = 'ystlr.appearance';
+		const DEFAULTS = {
+			theme: 'dark',
+			glass: 'frosted',
+			accent: 'orange',
+			bgMode: 'topo',
+			bgId: '',
+			overlay: 0.55,
+		};
+		const read = () => {
+			try {
+				return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}'));
+			} catch {
+				return Object.assign({}, DEFAULTS);
+			}
+		};
 		const sync = () => {
+			const s = read();
 			const d = document.documentElement;
+			const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+			const theme = s.theme === 'system' ? (prefersLight ? 'light' : 'dark') : s.theme === 'light' ? 'light' : 'dark';
 			d.classList.add('js');
-			d.dataset.theme = 'dark';
-			d.dataset.glass = 'frosted';
-			window.__getTheme = () => 'dark';
+			d.dataset.theme = theme;
+			d.dataset.glass = s.glass || 'frosted';
+			d.dataset.accent = s.accent || 'orange';
+			d.dataset.bgMode = s.bgMode || 'topo';
+			if (s.overlay != null) d.style.setProperty('--bg-overlay', String(s.overlay));
+			if (s.alpha != null) d.style.setProperty('--glass-alpha-user', String(s.alpha));
+			if (s.blur != null) d.style.setProperty('--glass-blur-user', `${s.blur}px`);
+			const color = theme === 'light' ? '#efece6' : '#0b0b0c';
+			d.style.backgroundColor = color;
+			d.style.colorScheme = theme;
+			const meta = document.querySelector('meta[name="theme-color"]');
+			if (meta) meta.setAttribute('content', color);
+			const scheme = document.querySelector('meta[name="color-scheme"]');
+			if (scheme) scheme.setAttribute('content', theme);
+			window.__getTheme = () => theme;
 		};
 		sync();
+		window.__syncAppearance = sync;
 		document.addEventListener('astro:after-swap', sync);
 		document.addEventListener('astro:page-load', sync);
 	})();

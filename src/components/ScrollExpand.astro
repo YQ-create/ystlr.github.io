@@ -1,0 +1,376 @@
+---
+/**
+ * ScrollExpand —— React Bits 同名组件的原生移植（无 React / 无依赖）。
+ *
+ * 一段 sticky 轨道：随着页面滚动，居中的小图通过 clip-path 的 inset+round
+ * 向四周展开到满屏，媒体同时从放大回落到 1:1，标题淡出、覆盖内容淡入。
+ * 参数经 data-cfg(JSON) 传入；setup() 返回 destroy，配合 astro:page-load
+ * 重建，View Transitions 往返不累积滚动 / resize 监听。
+ */
+interface Props {
+	src: string;
+	alt?: string;
+	title?: string;
+	hint?: string;
+	startWidth?: number;
+	startHeight?: number;
+	startRadius?: number;
+	endRadius?: number;
+	mediaZoom?: number;
+	scrollDistance?: number;
+	holdDistance?: number;
+	smoothing?: number;
+	overlayScrim?: number;
+	class?: string;
+}
+
+const {
+	src,
+	alt = '',
+	title = '',
+	hint = '',
+	startWidth = 46,
+	startHeight = 58,
+	startRadius = 24,
+	endRadius = 0,
+	mediaZoom = 1.35,
+	scrollDistance = 1.2,
+	holdDistance = 0.35,
+	smoothing = 0.1,
+	overlayScrim = 0.5,
+	class: className = '',
+} = Astro.props;
+
+const cfg = {
+	startWidth,
+	startHeight,
+	startRadius,
+	endRadius,
+	mediaZoom,
+	scrollDistance,
+	holdDistance,
+	smoothing,
+	overlayScrim,
+};
+---
+
+<div class:list={['se', className]} data-scroll-expand data-cfg={JSON.stringify(cfg)}>
+	<div class="se__track" data-se-track>
+		<div class="se__stage" data-se-stage>
+			<div class="se__frame" data-se-frame>
+				<img class="se__media" data-se-media src={src} alt={alt} loading="lazy" draggable="false" />
+				<div class="se__scrim" data-se-scrim></div>
+				<div class="se__overlay" data-se-overlay><slot /></div>
+			</div>
+			{title && <div class="se__title" data-se-title>{title}</div>}
+			{hint && <div class="se__hint" data-se-hint>{hint}</div>}
+		</div>
+	</div>
+</div>
+
+<script>
+	interface Cfg {
+		startWidth: number;
+		startHeight: number;
+		startRadius: number;
+		endRadius: number;
+		mediaZoom: number;
+		scrollDistance: number;
+		holdDistance: number;
+		smoothing: number;
+		overlayScrim: number;
+	}
+
+	const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+	const smoothstep = (edge0: number, edge1: number, x: number) => {
+		const t = clamp((x - edge0) / (edge1 - edge0 || 1e-6), 0, 1);
+		return t * t * (3 - 2 * t);
+	};
+
+	const instances = new Map<HTMLElement, () => void>();
+
+	function setup(root: HTMLElement): () => void {
+		const cfg = JSON.parse(root.dataset.cfg || '{}') as Cfg;
+		const track = root.querySelector<HTMLElement>('[data-se-track]');
+		const stage = root.querySelector<HTMLElement>('[data-se-stage]');
+		const frame = root.querySelector<HTMLElement>('[data-se-frame]');
+		const media = root.querySelector<HTMLElement>('[data-se-media]');
+		const scrim = root.querySelector<HTMLElement>('[data-se-scrim]');
+		const title = root.querySelector<HTMLElement>('[data-se-title]');
+		const hint = root.querySelector<HTMLElement>('[data-se-hint]');
+		const overlay = root.querySelector<HTMLElement>('[data-se-overlay]');
+		if (!track || !stage || !frame || !media) return () => {};
+
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		let raf = 0;
+		let current = 0;
+		let target = 0;
+		let stageH = 0;
+		let running = false;
+
+		const apply = (p: number) => {
+			const e = smoothstep(0, 1, p);
+			const w = cfg.startWidth + (100 - cfg.startWidth) * e;
+			const h = cfg.startHeight + (100 - cfg.startHeight) * e;
+			const ix = Math.max(0, (100 - w) / 2);
+			const iy = Math.max(0, (100 - h) / 2);
+			const r = cfg.startRadius + (cfg.endRadius - cfg.startRadius) * e;
+			const clip = `inset(${iy}% ${ix}% ${iy}% ${ix}% round ${r}px)`;
+			frame.style.clipPath = clip;
+			frame.style.setProperty('-webkit-clip-path', clip);
+			media.style.transform = `scale(${cfg.mediaZoom + (1 - cfg.mediaZoom) * e})`;
+			if (scrim) scrim.style.opacity = String(cfg.overlayScrim * e);
+			if (title) {
+				const out = smoothstep(0.4, 0.88, p);
+				title.style.opacity = String(1 - out);
+				title.style.transform = `translate3d(0, ${-28 * out}px, 0) scale(${1 + 0.06 * out})`;
+			}
+			if (hint) {
+				const gone = smoothstep(0, 0.12, p);
+				hint.style.opacity = String(1 - gone);
+				hint.style.transform = `translate3d(0, ${8 * gone}px, 0)`;
+			}
+			if (overlay) {
+				const inn = smoothstep(0.68, 1, p);
+				overlay.style.opacity = String(inn);
+				overlay.style.transform = `translate3d(0, ${18 * (1 - inn)}px, 0)`;
+			}
+		};
+
+		const measure = () => {
+			stageH = window.innerHeight;
+			stage.style.height = `${stageH}px`;
+			track.style.height = `${stageH * (1 + Math.max(0, cfg.scrollDistance) + Math.max(0, cfg.holdDistance))}px`;
+		};
+
+		const readProgress = () => {
+			const span = stageH * Math.max(0.01, cfg.scrollDistance);
+			return clamp(-track.getBoundingClientRect().top / span, 0, 1);
+		};
+
+		const tick = () => {
+			const k = cfg.smoothing <= 0 ? 1 : 1 - Math.exp(-1 / (60 * cfg.smoothing));
+			current += (target - current) * k;
+			if (Math.abs(target - current) < 0.0004) {
+				current = target;
+				running = false;
+			}
+			apply(current);
+			raf = running ? requestAnimationFrame(tick) : 0;
+		};
+
+		const kick = () => {
+			if (running) return;
+			running = true;
+			if (!raf) raf = requestAnimationFrame(tick);
+		};
+
+		const onScroll = () => {
+			target = readProgress();
+			if (cfg.smoothing <= 0 || reduce) {
+				current = target;
+				apply(current);
+				return;
+			}
+			kick();
+		};
+
+		const onResize = () => {
+			measure();
+			target = readProgress();
+			current = target;
+			apply(current);
+		};
+
+		measure();
+		target = readProgress();
+		current = target;
+		apply(current);
+
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onResize);
+		const ro = new ResizeObserver(onResize);
+		ro.observe(root);
+
+		return () => {
+			cancelAnimationFrame(raf);
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onResize);
+			ro.disconnect();
+		};
+	}
+
+	function mount() {
+		document.querySelectorAll<HTMLElement>('[data-scroll-expand]').forEach((root) => {
+			if (root.dataset.seReady === '1') return;
+			root.dataset.seReady = '1';
+			instances.set(root, setup(root));
+		});
+	}
+
+	function unmount() {
+		instances.forEach((destroy) => destroy());
+		instances.clear();
+		document.querySelectorAll<HTMLElement>('[data-scroll-expand]').forEach((root) => {
+			delete root.dataset.seReady;
+		});
+	}
+
+	document.addEventListener('astro:before-swap', unmount);
+	document.addEventListener('astro:page-load', mount);
+	if (document.readyState !== 'loading') mount();
+</script>
+
+<style>
+	.se {
+		position: relative;
+		width: 100%;
+	}
+	.se__track {
+		position: relative;
+		width: 100%;
+	}
+	.se__stage {
+		position: sticky;
+		top: 0;
+		width: 100%;
+		height: 100vh;
+		height: 100svh;
+		overflow: hidden;
+	}
+	.se__frame {
+		position: absolute;
+		inset: 0;
+		clip-path: inset(21% 27% 21% 27% round 24px);
+		-webkit-clip-path: inset(21% 27% 21% 27% round 24px);
+		will-change: clip-path;
+	}
+	.se__media {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transform-origin: center;
+		user-select: none;
+		-webkit-user-drag: none;
+		will-change: transform;
+	}
+	.se__scrim {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.08) 48%, rgba(0, 0, 0, 0.38));
+		opacity: 0;
+	}
+	.se__overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		padding: 8% var(--gutter);
+		text-align: center;
+		opacity: 0;
+		will-change: opacity, transform;
+	}
+	.se__title {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 var(--gutter);
+		font-family: var(--font-display), serif;
+		font-size: clamp(2rem, 6vw, 5.5rem);
+		font-weight: 600;
+		letter-spacing: -0.03em;
+		line-height: 1.05;
+		text-align: center;
+		color: #fff;
+		text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+		pointer-events: none;
+		will-change: opacity, transform;
+	}
+	.se__hint {
+		position: absolute;
+		right: 0;
+		bottom: 1.4rem;
+		left: 0;
+		text-align: center;
+		font-size: 0.76rem;
+		letter-spacing: 0.12em;
+		color: rgba(255, 255, 255, 0.68);
+		pointer-events: none;
+		will-change: opacity, transform;
+	}
+
+	/* slot 内容属于父组件，用 :global 命中 */
+	.se__overlay :global(.se-kicker) {
+		margin: 0;
+		font-size: 0.68rem;
+		font-weight: 600;
+		letter-spacing: 0.22em;
+		color: rgba(255, 255, 255, 0.72);
+	}
+	.se__overlay :global(h2) {
+		margin: 0;
+		font-family: var(--font-display), serif;
+		font-size: clamp(1.6rem, 3.6vw, 3rem);
+		font-weight: 600;
+		line-height: 1.2;
+		color: #fff;
+		text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+	}
+	.se__overlay :global(p) {
+		max-width: 34rem;
+		margin: 0;
+		font-size: 0.92rem;
+		line-height: 1.7;
+		color: rgba(255, 255, 255, 0.82);
+	}
+	.se__overlay :global(.se-link) {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: 0.5rem;
+		padding: 0.55rem 1.15rem;
+		border: 1px solid rgba(255, 255, 255, 0.42);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.1);
+		backdrop-filter: blur(10px);
+		color: #fff;
+		font-size: 0.82rem;
+		text-decoration: none;
+		transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+	}
+	.se__overlay :global(.se-link:hover) {
+		background: rgba(var(--accent), 0.85);
+		border-color: transparent;
+	}
+
+	/* 没有 JS 时直接给完整画面，别把内容困在小圆角框里 */
+	:global(html:not(.js)) .se__frame {
+		clip-path: none;
+		-webkit-clip-path: none;
+	}
+	:global(html:not(.js)) .se__overlay {
+		opacity: 1;
+	}
+	:global(html:not(.js)) .se__title,
+	:global(html:not(.js)) .se__hint {
+		display: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.se__frame,
+		.se__media,
+		.se__title,
+		.se__hint,
+		.se__overlay {
+			will-change: auto;
+		}
+	}
+</style>

@@ -103,11 +103,35 @@ npm run preview
 | `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
 | `GradualBlur.astro` | 视口/容器边缘的渐进模糊（多层 `backdrop-filter` + 分段 mask + 渐变 tint），照片墙上下渐隐 | `position`、`target`、`height`、`strength`、`layers`、`curve`、`tint`、`autoHide`、`zIndex` |
 | `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
+| `AppearancePanel.astro` | 页头雾面调色盘：深浅色 / 强调色 / 雾面与透明色 / 四种背景模式 / 底图库 | 逻辑在 `src/scripts/appearance.ts` |
+| `ScrollExpand.astro` | 首页滚动展开区块：`clip-path: inset() round` 把居中圆角小图展开到满屏 | `src`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`mediaZoom`、`scrollDistance`、`holdDistance`、`smoothing` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
-`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 11 条笔记（4 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
+`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 19 条笔记（4 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
 
 **滚动高亮的判定**：观察带是页头下方 96px 到视口 38% 高处。每次回调都基于所有可见分区的实时 `getBoundingClientRect()` 取重叠面积最大者 —— 不能只从本次 `entries` 里按 `intersectionRatio` 挑，否则某个分区「进入」时会顶掉仍占着观察带的分区（分类变多后很直观：滚到「Web 原理」却高亮「数据与存储」）。页面较短时跳到最后一组会被滚动上限钳制、观察器不再回调，所以额外有一个**只在滚到底时**才重算的 passive scroll 兜底（正常滚动不读布局），并用 `AbortController` 在 `astro:before-swap` 清理。`isAtBottom()` 必须要求页面确实可滚动（`maxScroll > 0`），否则内容还没撑开时会被误判成「已到底」。
+
+## 外观调色盘
+
+页头右侧的调色板按钮打开雾面浮层，偏好存 `localStorage['ystlr.appearance']`，**首屏由 `BaseHead.astro` 的内联脚本同步**（`<head>` 里、CSS 生效前），所以浅色用户不会看到深色闪一下。View Transitions 换页时 `astro:after-swap` 会再同步一次。
+
+| 分组 | 做什么 |
+| --- | --- |
+| 主题 | 深色 / 浅色 / 跟随系统，写 `html[data-theme]`、更新 `theme-color` 与 `color-scheme` |
+| 强调色 | 6 套，写 `html[data-accent]`，覆盖 `--accent` 三兄弟 |
+| 雾面质感 | 磨砂 / 透明 / 实色三档（写 `data-glass` 改 `--glass-alpha-preset`）+ 滑块写 `--glass-alpha-user` / `--glass-blur-user` |
+| 背景 | `topo`（首页等高线，默认）/ `ascii` / `image` / `plain`，写 `html[data-bg-mode]` |
+| 底图库 | 粘贴 URL 或本地上传（Blob 存 IndexedDB `ystlr-appearance/images`），支持设为底图、替换、删除；遮罩浓度滑块 |
+
+几个必须知道的约定：
+
+- **玻璃变量**：`--glass-bg` 在 `:root` / `:root[data-theme='light']` / `.studio` / `.studio[data-theme='light']` 四处各写一份完整的 `rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)))`。不能抽成中间变量 `--glass-alpha` 再从 `.studio` 覆盖 —— 自定义属性在**声明它的元素**上求值，那样 `.studio` 里改预设不会生效。
+- **`backdrop-filter` 只写标准声明，不要成对写 `-webkit-` 版**：Astro 的 CSS 构建会把成对声明压成纯 `-webkit-backdrop-filter`，而新版 Chrome 已不认该别名（实测 computed 为 `none`，全站毛玻璃会静默失效）。`astro.config.mjs` 里 `vite.build.cssTarget: 'esnext'` 保证产物保留标准声明。构建后应能统计到标准声明 > 0、纯前缀 = 0。
+- **背景模式互斥**：`.site-bg`（在 `BaseLayout.astro`）是全站 `fixed; z-index:-1` 的底图层；非 `topo` 模式会把 `body` 背景透出来、隐藏首页 `.page__topo`。`ascii` 模式才 `import()` 那份 900 行 WebGL 代码，默认完全不加载。
+- **ASCII 降帧**：`src/scripts/gradient-ascii.ts` 沿用 Topography 的闸门 —— 环境 30fps、滚动 15fps、开场/指针/点击才 60fps，dpr 上限 1.5。别把闸门去掉，它会和滚动抢 GPU。
+- **底图 objectURL**：每张本地图一个 URL 长期缓存，只在替换/删除时 `revokeObjectURL`。别用单个变量复用，否则渲染缩略图时会把正在当底图用的 URL 回收掉。
+- 面板 DOM 由 JS 动态创建的节点（底图列表）**没有 Astro 的 scope 属性**，那一组样式必须写 `:global()`，否则一条都不命中。
+- `ScrollExpand` 用窗口滚动 + sticky track，`astro:before-swap` 销毁、`astro:page-load` 重建；`prefers-reduced-motion` 下跳过平滑插值。
 
 ## 知识库笔记
 

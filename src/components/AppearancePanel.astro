@@ -1,0 +1,505 @@
+---
+/**
+ * 页面调色盘：雾面浮层，集中管理深浅色、强调色、雾面与透明度、背景模式、底图库。
+ * 挂在页头右侧；页头有 transition:persist，面板 DOM 换页保活，逻辑见 appearance.ts。
+ */
+const themes = [
+	{ value: 'dark', label: '深色' },
+	{ value: 'light', label: '浅色' },
+	{ value: 'system', label: '跟随系统' },
+];
+const glasses = [
+	{ value: 'frosted', label: '磨砂' },
+	{ value: 'clear', label: '透明' },
+	{ value: 'solid', label: '实色' },
+];
+const accents = [
+	{ value: 'orange', label: '亮橙', sw: '#ff6a2b' },
+	{ value: 'blue', label: '海蓝', sw: '#5a9ce8' },
+	{ value: 'teal', label: '青绿', sw: '#3eb09e' },
+	{ value: 'violet', label: '藕紫', sw: '#9878d6' },
+	{ value: 'pink', label: '玫粉', sw: '#d66e96' },
+	{ value: 'lime', label: '青柠', sw: '#96c44a' },
+];
+const bgModes = [
+	{ value: 'topo', label: '等高线' },
+	{ value: 'ascii', label: '字符光场' },
+	{ value: 'image', label: '自定义底图' },
+	{ value: 'plain', label: '纯色' },
+];
+---
+
+<div class="ap" data-appearance>
+	<button
+		class="ap-btn"
+		type="button"
+		data-ap-toggle
+		aria-expanded="false"
+		aria-controls="ap-panel"
+		aria-label="外观设置"
+		title="外观设置（主题 / 雾面 / 底图）"
+	>
+		<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">
+			<path
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				stroke-linecap="round"
+				d="M10 2.2a7.8 7.8 0 1 0 0 15.6c1 0 1.6-.7 1.6-1.5 0-.4-.15-.75-.4-1.03-.25-.28-.4-.62-.4-1 0-.85.7-1.5 1.55-1.5h1.4A3.65 3.65 0 0 0 17.4 9.1C17.4 5.3 14.1 2.2 10 2.2Z"
+			></path>
+			<circle cx="6.4" cy="9.1" r="1.05" fill="currentColor"></circle>
+			<circle cx="8.6" cy="6.1" r="1.05" fill="currentColor"></circle>
+			<circle cx="12.1" cy="6.4" r="1.05" fill="currentColor"></circle>
+			<circle cx="14" cy="9.3" r="1.05" fill="currentColor"></circle>
+		</svg>
+	</button>
+
+	<div class="ap-panel glass-strong" id="ap-panel" data-ap-panel role="dialog" aria-label="外观设置" hidden>
+		<div class="ap-head">
+			<div>
+				<span class="eyebrow">APPEARANCE</span>
+				<h2>外观调色盘</h2>
+			</div>
+			<span class="ap-head__dot" aria-hidden="true"></span>
+		</div>
+
+		<section class="ap-sec">
+			<p class="ap-label">主题</p>
+			<div class="ap-seg" role="group" aria-label="主题">
+				{themes.map((t) => (
+					<button type="button" data-ap-theme data-ap-value={t.value} aria-pressed="false">{t.label}</button>
+				))}
+			</div>
+		</section>
+
+		<section class="ap-sec">
+			<p class="ap-label">强调色</p>
+			<div class="ap-swatches" role="group" aria-label="强调色">
+				{accents.map((a) => (
+					<button
+						type="button"
+						class="ap-swatch"
+						data-ap-accent
+						data-ap-value={a.value}
+						style={`--sw:${a.sw}`}
+						aria-label={a.label}
+						aria-pressed="false"
+						title={a.label}
+					></button>
+				))}
+			</div>
+		</section>
+
+		<section class="ap-sec">
+			<p class="ap-label">雾面质感</p>
+			<div class="ap-seg" role="group" aria-label="雾面质感">
+				{glasses.map((g) => (
+					<button type="button" data-ap-glass data-ap-value={g.value} aria-pressed="false">{g.label}</button>
+				))}
+			</div>
+			<label class="ap-range">
+				<span>透明色</span>
+				<input type="range" min="0.1" max="0.95" step="0.01" value="0.62" data-ap-range="alpha" aria-label="玻璃透明度" />
+				<output data-ap-out="alpha">62%</output>
+			</label>
+			<label class="ap-range">
+				<span>雾面模糊</span>
+				<input type="range" min="0" max="40" step="1" value="26" data-ap-range="blur" aria-label="雾面模糊强度" />
+				<output data-ap-out="blur">26px</output>
+			</label>
+		</section>
+
+		<section class="ap-sec">
+			<p class="ap-label">背景</p>
+			<div class="ap-seg ap-seg--wrap" role="group" aria-label="背景模式">
+				{bgModes.map((m) => (
+					<button type="button" data-ap-bgmode data-ap-value={m.value} aria-pressed="false">{m.label}</button>
+				))}
+			</div>
+			<div class="ap-only-image" data-ap-only-image hidden>
+				<label class="ap-range">
+					<span>底图遮罩</span>
+					<input type="range" min="0" max="0.95" step="0.01" value="0.55" data-ap-range="overlay" aria-label="底图遮罩浓度" />
+					<output data-ap-out="overlay">55%</output>
+				</label>
+			</div>
+		</section>
+
+		<section class="ap-sec">
+			<p class="ap-label">底图库 <span class="ap-label__hint">点缩略图设为底图</span></p>
+			<div class="ap-images" data-ap-images></div>
+			<div class="ap-add">
+				<button type="button" class="ap-add__file" data-ap-add-file>＋ 本地图片</button>
+				<div class="ap-add__url">
+					<input type="url" placeholder="或粘贴图片网址…" data-ap-url aria-label="图片网址" />
+					<button type="button" data-ap-add-url aria-label="添加图片网址">添加</button>
+				</div>
+			</div>
+			<p class="ap-hint" data-ap-hint role="status" aria-live="polite"></p>
+		</section>
+
+		<footer class="ap-foot">
+			<button type="button" data-ap-reset>恢复默认</button>
+			<span>设置只存在你自己的浏览器里</span>
+		</footer>
+	</div>
+</div>
+
+<script>
+	import { initAppearancePanel } from '../scripts/appearance';
+
+	function mount() {
+		const el = document.querySelector<HTMLElement>('[data-appearance]');
+		if (el) initAppearancePanel(el);
+	}
+	document.addEventListener('astro:page-load', mount);
+	if (document.readyState !== 'loading') mount();
+</script>
+
+<style>
+	.ap {
+		position: relative;
+	}
+
+	.ap-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 34px;
+		height: 34px;
+		padding: 0;
+		border: 1px solid var(--glass-brd);
+		border-radius: 999px;
+		background: var(--glass-bg);
+		backdrop-filter: blur(var(--glass-blur));
+		color: rgb(var(--ink-soft));
+		cursor: pointer;
+		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+			transform var(--dur-fast) var(--ease-out);
+	}
+	.ap-btn:hover {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.5);
+		transform: translateY(-1px);
+	}
+	.ap-btn[aria-expanded='true'] {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.6);
+	}
+
+	/* 面板固定在视口右上角：不受页头 overflow / 保活节点影响 */
+	.ap-panel {
+		position: fixed;
+		top: calc(var(--head-h) + 10px);
+		right: var(--gutter);
+		z-index: 210;
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		width: min(338px, calc(100vw - 2rem));
+		max-height: min(78vh, 760px);
+		overflow-y: auto;
+		padding: 1.15rem 1.2rem 1rem;
+		border-radius: var(--r-lg);
+		background: var(--glass-bg-strong);
+		backdrop-filter: blur(30px);
+		box-shadow: var(--shadow-lg), var(--glass-shine);
+		overscroll-behavior: contain;
+	}
+	.ap-panel[hidden] {
+		display: none;
+	}
+
+	.ap-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		padding-bottom: 0.9rem;
+		margin-bottom: 0.1rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.ap-head h2 {
+		margin: 0.35rem 0 0;
+		font-family: var(--font-display), serif;
+		font-size: 1.28rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: rgb(var(--ink));
+	}
+	.ap-head__dot {
+		width: 9px;
+		height: 9px;
+		margin-top: 0.35rem;
+		border-radius: 50%;
+		background: rgb(var(--accent));
+		box-shadow: 0 0 0 4px rgba(var(--accent), 0.16);
+	}
+
+	.ap-sec {
+		padding: 0.9rem 0;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.ap-label {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin: 0 0 0.55rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		color: rgb(var(--muted));
+	}
+	.ap-label__hint {
+		font-size: 0.64rem;
+		font-weight: 400;
+		letter-spacing: 0;
+		color: rgb(var(--muted-light));
+	}
+
+	.ap-seg {
+		display: flex;
+		gap: 0.25rem;
+		padding: 3px;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		background: var(--chip-bg-dim);
+	}
+	.ap-seg--wrap {
+		flex-wrap: wrap;
+		border-radius: var(--r-sm);
+	}
+	.ap-seg button {
+		flex: 1;
+		min-width: 0;
+		padding: 0.34rem 0.3rem;
+		border: 0;
+		border-radius: 999px;
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.74rem;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+	}
+	.ap-seg--wrap button {
+		flex: 1 1 44%;
+		border-radius: 8px;
+	}
+	.ap-seg button:hover {
+		color: rgb(var(--ink));
+	}
+	.ap-seg button[aria-pressed='true'] {
+		background: rgb(var(--accent));
+		color: #14100e;
+		font-weight: 600;
+	}
+
+	.ap-swatches {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.ap-swatch {
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		border: 2px solid transparent;
+		border-radius: 50%;
+		background: var(--sw);
+		cursor: pointer;
+		transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+	}
+	.ap-swatch:hover {
+		transform: scale(1.12);
+	}
+	.ap-swatch[aria-pressed='true'] {
+		border-color: rgb(var(--ink));
+		box-shadow: 0 0 0 2px rgb(var(--bg)), 0 0 0 3px var(--sw);
+	}
+
+	.ap-range {
+		display: grid;
+		grid-template-columns: 4.2rem 1fr 2.8rem;
+		align-items: center;
+		gap: 0.55rem;
+		margin-top: 0.65rem;
+		font-size: 0.72rem;
+		color: rgb(var(--muted));
+	}
+	.ap-range input[type='range'] {
+		width: 100%;
+		height: 4px;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 99px;
+		background: rgb(var(--line));
+		accent-color: rgb(var(--accent));
+		cursor: pointer;
+	}
+	.ap-range output {
+		font-size: 0.7rem;
+		font-variant-numeric: tabular-nums;
+		text-align: right;
+		color: rgb(var(--ink-soft));
+	}
+
+	.ap-only-image[hidden] {
+		display: none;
+	}
+
+	/* 底图列表由 JS 动态创建，节点没有 Astro 的 data-astro-cid 属性，
+	   所以这一组必须用 :global()，否则 scoped 样式一条都命中不了。 */
+	.ap-images {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.5rem;
+	}
+	:global(.ap-empty) {
+		grid-column: 1 / -1;
+		margin: 0;
+		padding: 0.7rem;
+		border: 1px dashed rgb(var(--line));
+		border-radius: var(--r-sm);
+		font-size: 0.72rem;
+		line-height: 1.5;
+		text-align: center;
+		color: rgb(var(--muted-light));
+	}
+	:global(.ap-img) {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+	:global(.ap-img__thumb) {
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		padding: 0;
+		border: 2px solid transparent;
+		border-radius: var(--r-sm);
+		background-color: rgb(var(--surface));
+		background-position: center;
+		background-size: cover;
+		cursor: pointer;
+		transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+	}
+	:global(.ap-img__thumb:hover) {
+		transform: translateY(-2px);
+	}
+	:global(.ap-img.is-active .ap-img__thumb) {
+		border-color: rgb(var(--accent));
+	}
+	:global(.ap-img__name) {
+		overflow: hidden;
+		font-size: 0.64rem;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		color: rgb(var(--muted));
+	}
+	:global(.ap-img__act) {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: rgb(var(--muted-light));
+		font: inherit;
+		font-size: 0.64rem;
+		text-align: left;
+		cursor: pointer;
+	}
+	:global(.ap-img__act:hover) {
+		color: rgb(var(--accent));
+	}
+	:global(.ap-img__act--danger:hover) {
+		color: #ff7a6b;
+	}
+
+	.ap-add {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-top: 0.7rem;
+	}
+	.ap-add__file {
+		padding: 0.45rem 0.7rem;
+		border: 1px dashed rgb(var(--line));
+		border-radius: var(--r-sm);
+		background: var(--chip-bg-dim);
+		color: rgb(var(--ink-soft));
+		font: inherit;
+		font-size: 0.74rem;
+		cursor: pointer;
+	}
+	.ap-add__file:hover {
+		border-color: rgba(var(--accent), 0.6);
+		color: rgb(var(--accent));
+	}
+	.ap-add__url {
+		display: flex;
+		gap: 0.35rem;
+	}
+	.ap-add__url input {
+		flex: 1;
+		min-width: 0;
+		padding: 0.4rem 0.55rem;
+		font-size: 0.72rem;
+		background: var(--chip-bg-dim);
+	}
+	.ap-add__url button {
+		flex: none;
+		padding: 0.4rem 0.7rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: var(--r-sm);
+		background: none;
+		color: rgb(var(--ink-soft));
+		font: inherit;
+		font-size: 0.72rem;
+		cursor: pointer;
+	}
+	.ap-add__url button:hover {
+		border-color: rgba(var(--accent), 0.6);
+		color: rgb(var(--accent));
+	}
+	.ap-hint {
+		min-height: 1.1em;
+		margin: 0.5rem 0 0;
+		font-size: 0.68rem;
+		color: rgb(var(--accent-deep));
+	}
+	.ap-hint[data-ap-warn='true'] {
+		color: #ff8a72;
+	}
+
+	.ap-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding-top: 0.85rem;
+		font-size: 0.64rem;
+		color: rgb(var(--muted-light));
+	}
+	.ap-foot button {
+		padding: 0.3rem 0.6rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		background: none;
+		color: rgb(var(--muted));
+		font: inherit;
+		font-size: 0.68rem;
+		cursor: pointer;
+	}
+	.ap-foot button:hover {
+		color: rgb(var(--ink));
+		border-color: rgb(var(--muted));
+	}
+
+	@media (max-width: 720px) {
+		.ap-panel {
+			top: calc(var(--head-h) + 6px);
+			right: 0.75rem;
+			max-height: 72vh;
+		}
+	}
+</style>

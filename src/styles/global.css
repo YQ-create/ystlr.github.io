@@ -34,11 +34,17 @@
 	--muted-light: 132, 120, 106;
 
 	/* 玻璃 */
-	--glass-bg: rgba(38, 33, 28, 0.58);
-	--glass-bg-strong: rgba(31, 27, 23, 0.84);
+	/* 玻璃：档位给预设值，调色盘滑块写 --glass-alpha-user / --glass-blur-user（inline 在 html 上，
+	   由 BaseHead 同步），未设置时回落到预设。每处定义都写完整 var() 链，
+	   因为自定义属性在声明它的元素上求值，不能抽成中间变量再从 .studio 覆盖。 */
+	--glass-rgb: 38, 33, 28;
+	--glass-alpha-preset: 0.58;
+	--glass-blur-preset: 26px;
+	--glass-bg: rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)));
+	--glass-bg-strong: rgba(var(--glass-rgb), calc(var(--glass-alpha-user, var(--glass-alpha-preset)) + 0.26));
 	--glass-brd: rgba(255, 255, 255, 0.14);
 	--glass-brd-dim: rgba(255, 255, 255, 0.08);
-	--glass-blur: 26px;
+	--glass-blur: var(--glass-blur-user, var(--glass-blur-preset));
 	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 	/* 小控件（胶囊、输入框、tag）的填充 */
 	--chip-bg: rgba(255, 255, 255, 0.08);
@@ -107,8 +113,10 @@
 	--muted-light: 176, 166, 152;
 
 	/* 玻璃：雾白半透明 */
-	--glass-bg: rgba(255, 253, 250, 0.5);
-	--glass-bg-strong: rgba(255, 253, 250, 0.72);
+	--glass-rgb: 255, 253, 250;
+	--glass-alpha-preset: 0.5;
+	--glass-bg: rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)));
+	--glass-bg-strong: rgba(var(--glass-rgb), calc(var(--glass-alpha-user, var(--glass-alpha-preset)) + 0.22));
 	--glass-brd: rgba(255, 255, 255, 0.65);
 	--glass-brd-dim: rgba(255, 255, 255, 0.5);
 	--glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -1px 0 rgba(255, 255, 255, 0.4);
@@ -145,8 +153,10 @@
 	--muted: 139, 139, 144;
 	--muted-light: 104, 104, 110;
 
-	--glass-bg: rgba(18, 18, 20, 0.62);
-	--glass-bg-strong: rgba(13, 13, 15, 0.86);
+	--glass-rgb: 18, 18, 20;
+	--glass-alpha-preset: 0.62;
+	--glass-bg: rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)));
+	--glass-bg-strong: rgba(var(--glass-rgb), calc(var(--glass-alpha-user, var(--glass-alpha-preset)) + 0.24));
 	--glass-brd: rgba(255, 255, 255, 0.1);
 	--glass-brd-dim: rgba(255, 255, 255, 0.06);
 
@@ -176,8 +186,10 @@
 	--muted: 110, 106, 99;
 	--muted-light: 148, 143, 134;
 
-	--glass-bg: rgba(250, 248, 243, 0.62);
-	--glass-bg-strong: rgba(252, 250, 246, 0.88);
+	--glass-rgb: 250, 248, 243;
+	--glass-alpha-preset: 0.62;
+	--glass-bg: rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)));
+	--glass-bg-strong: rgba(var(--glass-rgb), calc(var(--glass-alpha-user, var(--glass-alpha-preset)) + 0.26));
 	--glass-brd: rgba(0, 0, 0, 0.1);
 	--glass-brd-dim: rgba(0, 0, 0, 0.06);
 
@@ -218,7 +230,6 @@
 .studio .glass,
 .studio .glass-soft {
 	background: rgb(var(--paper));
-	-webkit-backdrop-filter: none;
 	backdrop-filter: none;
 	border: 1px solid rgb(var(--line-soft));
 	box-shadow: none;
@@ -490,15 +501,13 @@ select:focus {
 .glass {
 	background: var(--glass-bg);
 	backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
-	-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
 	border: 1px solid var(--glass-brd);
 	box-shadow: var(--glass-shine), var(--shadow-md);
 }
 
 .glass-strong {
 	background: var(--glass-bg-strong);
-	backdrop-filter: blur(26px) saturate(1.5);
-	-webkit-backdrop-filter: blur(26px) saturate(1.5);
+	backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
 	border: 1px solid var(--glass-brd);
 	box-shadow: var(--glass-shine), var(--shadow-lg);
 }
@@ -942,17 +951,100 @@ select:focus {
 	}
 }
 
-/* ============ 透明玻璃 ============ */
-/* 备用：玻璃更透的一档（BaseHead 默认写 data-glass=frosted；站点支持深/浅两套主题与多套强调色） */
+/* ============ 调色盘：雾面档位 / 强调色 / 背景模式 ============ */
+/* 档位只改「预设」；滑块的 --glass-alpha-user / --glass-blur-user 由 BaseHead 写在
+   html 的 inline style 上，优先级更高，所以拖过滑块后再切档位由面板负责清掉用户值。 */
 :root[data-glass='clear'] {
-	--glass-bg: rgba(38, 33, 28, 0.24);
-	--glass-bg-strong: rgba(31, 27, 23, 0.52);
+	--glass-alpha-preset: 0.24;
+	--glass-blur-preset: 32px;
 	--glass-brd: rgba(255, 255, 255, 0.16);
 	--glass-brd-dim: rgba(255, 255, 255, 0.09);
-	--glass-blur: 30px;
 	--chip-bg: rgba(255, 255, 255, 0.09);
 	--chip-bg-dim: rgba(255, 255, 255, 0.05);
 	--chip-bg-strong: rgba(255, 255, 255, 0.2);
+}
+:root[data-glass='solid'] {
+	--glass-alpha-preset: 0.96;
+	--glass-blur-preset: 6px;
+}
+
+/* 多套强调色：放在 light 规则之后，深浅色下都能生效 */
+:root[data-accent='blue'] {
+	--accent: 90, 156, 232;
+	--accent-soft: 130, 184, 244;
+	--accent-deep: 156, 200, 250;
+}
+:root[data-accent='teal'] {
+	--accent: 62, 176, 158;
+	--accent-soft: 100, 200, 184;
+	--accent-deep: 140, 214, 200;
+}
+:root[data-accent='violet'] {
+	--accent: 152, 120, 214;
+	--accent-soft: 178, 152, 232;
+	--accent-deep: 198, 180, 242;
+}
+:root[data-accent='pink'] {
+	--accent: 214, 110, 150;
+	--accent-soft: 232, 146, 178;
+	--accent-deep: 242, 180, 204;
+}
+:root[data-accent='lime'] {
+	--accent: 150, 196, 74;
+	--accent-soft: 180, 216, 110;
+	--accent-deep: 204, 232, 150;
+}
+
+/* 全站底图层：fixed 在视口、负层级，图片/字符模式下把 body 的实底透出来 */
+.site-bg {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	overflow: hidden;
+}
+.site-bg__image,
+.site-bg__ascii {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transition: opacity 0.55s var(--ease-out);
+}
+.site-bg__image {
+	background-position: center;
+	background-size: cover;
+	background-repeat: no-repeat;
+	transform: scale(1.04);
+	filter: blur(var(--bg-image-blur, 0px));
+}
+.site-bg__ascii canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+.site-bg__veil {
+	position: absolute;
+	inset: 0;
+	background: rgb(var(--bg));
+	opacity: var(--bg-overlay, 0.55);
+}
+html[data-bg-mode='image'] .site-bg__image,
+html[data-bg-mode='ascii'] .site-bg__ascii {
+	opacity: 1;
+}
+html:not([data-bg-mode='image']) .site-bg__veil {
+	opacity: 0;
+}
+html[data-bg-mode='image'] body,
+html[data-bg-mode='ascii'] body {
+	background: transparent;
+}
+/* 首页 .atmo 自带实底；非等高线模式要透出来并停掉 WebGL 等高线 */
+html:not([data-bg-mode='topo']) .atmo {
+	background: transparent;
+}
+html:not([data-bg-mode='topo']) .page__topo {
+	display: none;
 }
 
 /* SpecularButton 的底色默认取 --btn-tint、文字默认取 --ink；

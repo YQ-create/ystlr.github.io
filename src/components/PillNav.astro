@@ -212,7 +212,6 @@ const {
 	.pill-nav__surface {
 		background: var(--pn-surface);
 		box-shadow: var(--pn-shadow);
-		-webkit-backdrop-filter: var(--pn-blur);
 		backdrop-filter: var(--pn-blur);
 	}
 
@@ -517,7 +516,6 @@ const {
 		box-sizing: border-box;
 		/* 面板要盖住正文，用实色（不依赖 backdrop-filter，避免某些环境合成层出问题） */
 		background: rgb(var(--surface));
-		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
 		box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
 	}

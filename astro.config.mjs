@@ -14,6 +14,11 @@ export default defineConfig({
 		// 目录式 URL（/blog/post/），与 GitHub Pages 的目录结构保持一致
 		format: 'directory',
 	},
+	// CSS 目标定为现代浏览器：默认的保守 targets 会把 backdrop-filter 整个
+	// 降级成纯 -webkit- 前缀版，而新版 Chrome 已不认该别名 → 全站毛玻璃失效。
+	vite: {
+		build: { cssTarget: 'esnext' },
+	},
 	integrations: [
 		mdx(),
 		// /admin 是纯前端后台：noindex，也不进 sitemap

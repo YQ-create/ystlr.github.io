@@ -3,6 +3,7 @@
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import PillNav from './PillNav.astro';
 import MusicPlayer from './MusicPlayer.astro';
+import AppearancePanel from './AppearancePanel.astro';
 
 // 主导航：PillNav 的项就是这五个页面
 const primaryNav = [
@@ -43,6 +44,7 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 					<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
 				</svg>
 			</button>
+			<AppearancePanel />
 			<MusicPlayer />
 			<a class="head-cta" href={SOCIAL_LINKS.email}>
 				<span>写信给我</span>
@@ -214,7 +216,6 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		font-size: 13px;
 	}
 	.site-head :global(.card-nav__panel) {
-		-webkit-backdrop-filter: blur(18px) saturate(1.25);
 		backdrop-filter: blur(18px) saturate(1.25);
 		box-shadow:
 			inset 0 0 0 1px var(--glass-brd),

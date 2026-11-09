@@ -50,10 +50,12 @@ const stats = [
 const latest = posts[0]?.data.pubDate;
 
 import Topography from '../components/Topography.astro';
+import ScrollExpand from '../components/ScrollExpand.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import AccordionGallery from '../components/AccordionGallery.astro';
 import discoverData from '../data/discover.json';
+import cover from '../assets/gallery/cover.jpg';
 
 import { STACK as stack } from '../data/stack';
 
@@ -201,6 +203,25 @@ const explore = [
 				</ul>
 			</nav>
 		</section>
+
+		<!-- ═══════════ Act 1.5: 滚动展开画面（ScrollExpand） ═══════════ -->
+		<ScrollExpand
+			src={cover.src}
+			alt="旅途中的一帧光影"
+			title="把瞬间，慢慢铺开"
+			hint="向下滚动 · 展开画面"
+			startWidth={46}
+			startHeight={56}
+			startRadius={26}
+			mediaZoom={1.35}
+			scrollDistance={1.1}
+			holdDistance={0.3}
+		>
+			<p class="se-kicker">GALLERY / 01</p>
+			<h2>把瞬间留成可以回看的形状</h2>
+			<p>照片、路途，还有日常里那些没被说出口的部分。往下走一点，它们就都在了。</p>
+			<a class="se-link" href="/gallery">去看照片墙 →</a>
+		</ScrollExpand>
 
 		<!-- ═══════════ Act 2: 关于这里（反色分栏） ═══════════ -->
 		<section class="split" id="split">

@@ -288,33 +288,83 @@ const previewItems = [
 		});
 		reset?.addEventListener('click', () => apply(''));
 
-		// 分类高亮：视口上半区进入哪个分类，索引栏对应组就点亮
+		// 分类高亮：视口上半区（页头下方到约 38% 高处）属于哪个分类
 		if (sections.length && 'IntersectionObserver' in window) {
+			const BAND_TOP = 96;
 			let currentId = '';
-			const io = new IntersectionObserver(
-				(entries) => {
-					const hit = entries
-						.filter((entry) => entry.isIntersecting)
-						.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-					if (!hit) return;
-					const id = (hit.target as HTMLElement).dataset.kbSection ?? '';
-					if (!id || id === currentId) return;
-					currentId = id;
+			const setActive = (id: string) => {
+				if (!id || id === currentId) return;
+				currentId = id;
 				anchors.forEach((anchor) => {
 					anchor.classList.toggle('is-active', anchor.dataset.kbAnchor === id);
 				});
-				// 分叉导航：把进入视口的分类的首个可见条目点亮，强调色连线随之绘制
+				// 分叉导航：把当前分类的首个可见条目点亮，强调色连线随之绘制
 				main.querySelector('[data-branched]')?.dispatchEvent(
 					new CustomEvent('bm:set-active', { detail: { anchor: id } }),
 				);
 				if (window.matchMedia('(max-width: 980px)').matches) {
-						const activeAnchor = anchors.find((a) => a.dataset.kbAnchor === id);
-						activeAnchor?.scrollIntoView({ block: 'nearest', inline: 'center' });
-					}
-				},
-				{ rootMargin: '-96px 0px -62% 0px', threshold: 0 },
-			);
+					const activeAnchor = anchors.find((a) => a.dataset.kbAnchor === id);
+					activeAnchor?.scrollIntoView({ block: 'nearest', inline: 'center' });
+				}
+			};
+
+			const isAtBottom = () => {
+				const max = document.documentElement.scrollHeight - window.innerHeight;
+				// 内容还没把高度撑开时 max <= 0，不能误判成「已到底」
+				return max > 0 && window.scrollY >= max - 2;
+			};
+
+			const update = () => {
+				// 不能只从本次 entries 里挑：某个分区「进入」时，会把仍占着观察带的
+				// 分区顶掉（分区变多后尤其明显）。每次都基于所有可见分区的实时位置，
+				// 取与观察带重叠面积最大的那个。
+				const bandBottom = window.innerHeight * 0.38;
+				const visible = sections.filter((section) => !section.hidden);
+				const atBottom = isAtBottom();
+				let best = { id: '', overlap: 0 };
+				for (const section of visible) {
+					const box = section.getBoundingClientRect();
+					const overlap = Math.min(box.bottom, bandBottom) - Math.max(box.top, BAND_TOP);
+					if (overlap > best.overlap) best = { id: section.dataset.kbSection ?? '', overlap };
+				}
+				// 滚到底时最后一个分区往往只露出一小截，直接高亮它
+				if (atBottom && visible.length) {
+					best = { id: visible[visible.length - 1].dataset.kbSection ?? '', overlap: 1 };
+				}
+				if (best.overlap > 0) setActive(best.id);
+			};
+
+			const io = new IntersectionObserver(update, {
+				rootMargin: `-${BAND_TOP}px 0px -62% 0px`,
+				threshold: 0,
+			});
 			sections.forEach((section) => io.observe(section));
+
+			// 页面较短时「跳到最后一组」会被滚动上限钳制，交叉状态不再变化，观察器
+			// 也就不会再回调。只在滚到底时补一次重算，正常滚动不读布局、不增加开销。
+			const controller = new AbortController();
+			let raf = 0;
+			window.addEventListener(
+				'scroll',
+				() => {
+					if (raf) return;
+					raf = requestAnimationFrame(() => {
+						raf = 0;
+						if (isAtBottom()) update();
+					});
+				},
+				{ passive: true, signal: controller.signal },
+			);
+			// View Transitions 换页时撤掉监听与观察器，避免旧页面残留
+			document.addEventListener(
+				'astro:before-swap',
+				() => {
+					controller.abort();
+					io.disconnect();
+					cancelAnimationFrame(raf);
+				},
+				{ once: true, signal: controller.signal },
+			);
 		}
 	}
 
@@ -479,6 +529,8 @@ const previewItems = [
 		font: inherit;
 		font-size: 0.72rem;
 		line-height: 1.2;
+		/* 标签名不折行：长标签（如 Markdown）会被数字挤成两行 */
+		white-space: nowrap;
 		cursor: pointer;
 		transition:
 			color var(--dur-fast) var(--ease-out),

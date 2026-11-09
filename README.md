@@ -105,7 +105,20 @@ npm run preview
 | `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
-`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。**知识库目前 0 条笔记**，空状态会渲染一份明确标注的「导航样式预览」（`preview` + `forceTree`），它不写入 content 集合、不生成假详情页；一旦有笔记自动切换为真实目录。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
+`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 11 条笔记（4 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
+
+**滚动高亮的判定**：观察带是页头下方 96px 到视口 38% 高处。每次回调都基于所有可见分区的实时 `getBoundingClientRect()` 取重叠面积最大者 —— 不能只从本次 `entries` 里按 `intersectionRatio` 挑，否则某个分区「进入」时会顶掉仍占着观察带的分区（分类变多后很直观：滚到「Web 原理」却高亮「数据与存储」）。页面较短时跳到最后一组会被滚动上限钳制、观察器不再回调，所以额外有一个**只在滚到底时**才重算的 passive scroll 兜底（正常滚动不读布局），并用 `AbortController` 在 `astro:before-swap` 清理。`isAtBottom()` 必须要求页面确实可滚动（`maxScroll > 0`），否则内容还没撑开时会被误判成「已到底」。
+
+## 知识库笔记
+
+`src/content/knowledge/*.md` 是独立于文章的成体系笔记，frontmatter 见 `src/content.config.ts`：`title` / `description` / `pubDate` / `category` / `tags` / `pinned` / `draft` / `cover`（可选）。`category` 决定索引栏分组，分组顺序按「该分类置顶数 → 分类名」；`tags` 聚合成筛选按钮。
+
+写作约定：
+
+- **速查 / 要点型**，不是教程全文：概念速查表 + 自写示例 + 「容易踩的坑」+ 参考链接。
+- 参考外部教程时（当前这批参照 [菜鸟教程](https://www.runoob.com/) 的对应章节脉络）**只借用知识结构，不复制原文段落**；每篇末尾写明原教程链接与「要点归纳、示例自行编写」的声明。
+- 正文用 `.prose` 渲染，支持表格、代码块（`pre` 带横向滚动）、行内代码；`h2` / `h3` 会自动进详情页的 ON THIS PAGE 目录。
+- 写完跑 `npm run build`：确认详情页数量与笔记数一致、目录树每条都能跳转、移动端无横向溢出。
 
 `GradualBlur` 在 `/gallery` 用两处，别再合成一条「视口顶部固定带」：
 - **网格内顶边轻雾**（`target="parent"`，放在 `.gallery-chroma` 里，`zIndex={10}`）：贴着第一排照片，不依赖滚动位置，首屏一眼可见。容器要有 `position: relative`。

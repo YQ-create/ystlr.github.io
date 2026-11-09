@@ -850,6 +850,10 @@ select:focus {
 	color: rgb(var(--muted));
 	border-bottom-color: rgba(var(--ink), 0.22);
 }
+/* 速查笔记里常有很长的行内代码（如 grid-template-columns），窄屏允许任意位置断行 */
+.prose :not(pre) > code {
+	overflow-wrap: anywhere;
+}
 
 /* ============ 页脚区（组件内只用这个工具类） ============ */
 .page-foot {

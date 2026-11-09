@@ -17,6 +17,9 @@ pnpm-debug.log*
 .env
 .env.production
 
+# 图像生成的临时产物（原图已裁切入库，这里只是中间文件）
+.gen/
+
 # macOS-specific files
 .DS_Store
 

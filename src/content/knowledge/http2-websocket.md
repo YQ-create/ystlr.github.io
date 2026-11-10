@@ -3,7 +3,7 @@ title: 'HTTP/2、HTTP/3 与实时通信速查'
 description: '多路复用、队头阻塞、SSE 与 WebSocket：从「一条连接能同时做多少事」理解协议演进。'
 pubDate: 2026-11-09
 category: 'Web 原理'
-tags: ['网络', 'HTTP', '实时通信']
+tags: ['进阶', '网络']
 pinned: false
 draft: false
 ---

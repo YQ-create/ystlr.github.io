@@ -3,7 +3,7 @@ title: 'SQL 增删改查与连接查询速查'
 description: 'SELECT / WHERE / JOIN / GROUP BY 的执行顺序，以及写 UPDATE 前该养成的习惯。'
 pubDate: 2026-11-04
 category: '数据与存储'
-tags: ['数据库', 'SQL', '速查']
+tags: ['入门', '数据']
 pinned: false
 draft: false
 ---

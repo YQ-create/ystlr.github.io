@@ -3,7 +3,7 @@ title: 'GitHub Actions 工作流速查'
 description: '触发条件、job 与 step、缓存、制品和密钥：读懂并写出一份能稳定跑起来的 CI 配置。'
 pubDate: 2026-11-09
 category: '工程实践'
-tags: ['工具', 'CI/CD', 'GitHub']
+tags: ['实战', '工具']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: 'SVG 与 Canvas 绘图速查'
 description: '两套绘图模型的差别、常用图形与路径命令，以及清晰度、事件和性能上各自要注意什么。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'SVG', 'Canvas']
+tags: ['进阶', '前端']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: '复杂度与常见数据结构速查'
 description: '大 O 怎么估、常见操作的代价，以及数组/链表/栈/队列/树分别在什么场景更合适。'
 pubDate: 2026-11-09
 category: '算法与数据结构'
-tags: ['算法', '数据结构', '入门']
+tags: ['入门', '算法']
 pinned: false
 draft: false
 ---

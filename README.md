@@ -74,7 +74,7 @@ npm run preview
 
 ## 视觉与动效
 
-整站是「近黑台面 + 亮橙强调」的编辑感设计：底色 `#0b0b0c`，强调色 `#ff6a2b`，展示字体 `Bodoni Moda`（衬线，中文由宋体兜底）、正文 `Hanken Grotesk`，三套字体都本地化在 `src/assets/fonts/`。首页背景是 `Topography.astro` 的 WebGL2 地形等高线（fixed 在视口，滚动时内容从上面滑过）。常规入场动效由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
+整站是「近黑台面 + 亮橙强调」的编辑感设计：底色 `#0b0b0c`，强调色 `#ff6a2b`，展示字体 `Bodoni Moda`（衬线，中文由宋体兜底）、正文 `Hanken Grotesk`，三套字体都本地化在 `src/assets/fonts/`。默认背景是 `src/scripts/gradient-ascii.ts` 的 WebGL2 字符光场（fixed 在视口，滚动时内容从上面滑过）：首页深色首屏是「暗日」字符环，内容页与浅色模式退回右上角的字符雾；`Topography.astro` 的地形等高线保留为调色盘里的可选项。常规入场动效由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
 
 | 写什么 | 效果 |
 | --- | --- |
@@ -88,7 +88,8 @@ npm run preview
 
 | 组件 | 用途 | 主要参数 |
 | --- | --- | --- |
-| `Topography.astro` | 整页地形等高线背景（WebGL2 噪声高度场 + Bloom + 指针抬升），首页 `.atmo` 固定层 | `color`、`lineCount`、`elevation`、`tilt`、`fog`、`glow`、`brightness`、`fps` / `scrollFps`、`dpr` |
+| `GradientASCII`（`src/scripts/`） | 默认的全站字符光场：字符图集 + Lab 色带 + 指针解码轨迹 + 点击波纹，四段式 GLSL（场 → 光晕 → 模糊 → 合成）；首页深色用 `eclipse` 字符环，其余用 `horizon` | `colors`、`shape`、`cellSize`、`density`、`glyphOpacity`、`glow`、`speed`、`scale`、`lightMode` |
+| `Topography.astro` | 可选的整页地形等高线背景（WebGL2 噪声高度场 + Bloom + 指针抬升）；默认不初始化，只有调色盘切到「等高线」才建上下文 | `color`、`lineCount`、`elevation`、`tilt`、`fog`、`glow`、`brightness`、`fps` / `scrollFps`、`dpr` |
 | `AccordionGallery.astro` | 首页「01 / 关于这里」的手风琴照片画廊（hover 展开、其余灰度收窄） | `items`、`height`、`gap`、`radius`、`expandRatio`、`orientation`、`trigger`、`grayscale` |
 | `PillNav.astro` | 页头胶囊导航（当前页高亮 + scroll-spy） | 见组件 Props |
 | `StarBorder.astro` | 主按钮的描边光效容器 | `surface`、`text`、`color`、`radius` |
@@ -110,7 +111,7 @@ npm run preview
 
 **照片环廊的数据与几何**：条目全部来自 `src/content/gallery`（`getImage` 转 900px webp），不引用组件自带的 Unsplash 示例图；早期照片记录没有标题/图注，字幕用「帧 NN + 拍摄年月」兜底，纯数字标题也被过滤。圆柱切片的位移、倾角、半径与包围盒缩放都在**构建期**算好写进 DOM，运行时只有一个 rAF 循环，每帧只写 7 个卡片的 transform 与 `--cc-depth`，不碰 112 个 tile。窄屏（容器 < 700px）放宽水平余量，让环两侧自然溢出裁切，避免整圈被缩成一排缩略图。交互：指针拖拽 / 横向滚轮 / 方向键 / Home·End / 点卡片聚焦；`cc:change` 与 `cc:item-click` 供外部联动。
 
-`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 39 条笔记（6 个分类）；空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
+`BranchedMenu` 用在 `/knowledge` 左侧索引：数据来自 `groups`（分类 → 笔记），条目带 `data-kb-link` / `data-tags`，所以标签筛选、分组计数、滚动高亮都沿用页面原有脚本；滚动到某分类时页面派发 `bm:set-active` 事件，组件把该分类首个可见条目点亮并绘制强调色分叉线。知识库现有 39 条笔记（6 个分类）；标签筛选已移到页面右端的 `.kb-tags`（阶段 / 主题两组），左栏只留分类树，正文按「分类 → 阶段」两级分组。空状态那份明确标注的「导航样式预览」（`preview` + `forceTree`）作为兜底保留，它不写入 content 集合、不生成假详情页。组件在窄屏（≤980px）自动退化成横滑胶囊，标题点击从「折叠」改为「锚点跳转」，预览态用 `forceTree` 保持完整树。
 
 **滚动高亮的判定**：观察带是页头下方 96px 到视口 38% 高处。每次回调都基于所有可见分区的实时 `getBoundingClientRect()` 取重叠面积最大者 —— 不能只从本次 `entries` 里按 `intersectionRatio` 挑，否则某个分区「进入」时会顶掉仍占着观察带的分区（分类变多后很直观：滚到「Web 原理」却高亮「数据与存储」）。页面较短时跳到最后一组会被滚动上限钳制、观察器不再回调，所以额外有一个**只在滚到底时**才重算的 passive scroll 兜底（正常滚动不读布局），并用 `AbortController` 在 `astro:before-swap` 清理。`isAtBottom()` 必须要求页面确实可滚动（`maxScroll > 0`），否则内容还没撑开时会被误判成「已到底」。
 
@@ -123,14 +124,15 @@ npm run preview
 | 主题 | 深色 / 浅色 / 跟随系统，写 `html[data-theme]`、更新 `theme-color` 与 `color-scheme` |
 | 强调色 | 6 套，写 `html[data-accent]`，覆盖 `--accent` 三兄弟 |
 | 雾面质感 | 磨砂 / 透明 / 实色三档（写 `data-glass` 改 `--glass-alpha-preset`）+ 滑块写 `--glass-alpha-user` / `--glass-blur-user` |
-| 背景 | `topo`（首页等高线，默认）/ `ascii` / `image` / `plain`，写 `html[data-bg-mode]` |
+| 背景 | `ascii`（字符光场，默认）/ `topo` / `image` / `plain`，写 `html[data-bg-mode]`；旧偏好里没有 `schema:2` 的 `topo` 会跟随迁移到 `ascii` |
 | 底图库 | 粘贴 URL 或本地上传（Blob 存 IndexedDB `ystlr-appearance/images`），支持设为底图、替换、删除；遮罩浓度滑块 |
 
 几个必须知道的约定：
 
 - **玻璃变量**：`--glass-bg` 在 `:root` / `:root[data-theme='light']` / `.studio` / `.studio[data-theme='light']` 四处各写一份完整的 `rgba(var(--glass-rgb), var(--glass-alpha-user, var(--glass-alpha-preset)))`。不能抽成中间变量 `--glass-alpha` 再从 `.studio` 覆盖 —— 自定义属性在**声明它的元素**上求值，那样 `.studio` 里改预设不会生效。
 - **`backdrop-filter` 只写标准声明，不要成对写 `-webkit-` 版**：Astro 的 CSS 构建会把成对声明压成纯 `-webkit-backdrop-filter`，而新版 Chrome 已不认该别名（实测 computed 为 `none`，全站毛玻璃会静默失效）。`astro.config.mjs` 里 `vite.build.cssTarget: 'esnext'` 保证产物保留标准声明。构建后应能统计到标准声明 > 0、纯前缀 = 0。
-- **背景模式互斥**：`.site-bg`（在 `BaseLayout.astro`）是全站 `fixed; z-index:-1` 的底图层；非 `topo` 模式会把 `body` 背景透出来、隐藏首页 `.page__topo`。`ascii` 模式才 `import()` 那份 900 行 WebGL 代码，默认完全不加载。
+- **背景模式互斥**：`.site-bg`（在 `BaseLayout.astro`）是全站 `fixed; z-index:-1` 的底图层；非 `topo` 模式会把 `body` 背景透出来、隐藏首页 `.page__topo`。`ascii` 是默认模式，`appearance.ts` 会 `import()` 那份 WebGL 代码；`topo` 反而改成按需 —— `Topography.astro` 只在 `data-bg-mode="topo"` 时才建上下文，切走时销毁并清掉 `data-topo-ready`。
+- **字符光场的遮罩**：`.site-bg__ascii` 用 64%×58% 的径向 mask 把光场收在右上，`::after` 再压掉顶部 17%，保证固定页头和大标题干净；`html[data-bg-mode='ascii'] .site-bg__veil` 保留 `--bg-overlay × 0.3` 的薄底，别把遮罩层整个关掉。
 - **ASCII 降帧**：`src/scripts/gradient-ascii.ts` 沿用 Topography 的闸门 —— 环境 30fps、滚动 15fps、开场/指针/点击才 60fps，dpr 上限 1.5。别把闸门去掉，它会和滚动抢 GPU。
 - **底图 objectURL**：每张本地图一个 URL 长期缓存，只在替换/删除时 `revokeObjectURL`。别用单个变量复用，否则渲染缩略图时会把正在当底图用的 URL 回收掉。
 - 面板 DOM 由 JS 动态创建的节点（底图列表）**没有 Astro 的 scope 属性**，那一组样式必须写 `:global()`，否则一条都不命中。
@@ -139,7 +141,9 @@ npm run preview
 
 ## 知识库笔记
 
-`src/content/knowledge/*.md` 是独立于文章的成体系笔记，frontmatter 见 `src/content.config.ts`：`title` / `description` / `pubDate` / `category` / `tags` / `pinned` / `draft` / `cover`（可选）。`category` 决定索引栏分组，分组顺序按「该分类置顶数 → 分类名」；`tags` 聚合成筛选按钮。
+`src/content/knowledge/*.md` 是独立于文章的成体系笔记，frontmatter 见 `src/content.config.ts`：`title` / `description` / `pubDate` / `category` / `tags` / `pinned` / `draft` / `cover`（可选）。`category` 决定索引栏分组，分组顺序按「该分类置顶数 → 分类名」；每个大类内部再按 `tags` 里的阶段分成若干小组。
+
+**标签约定**：`tags` 固定写成 `[阶段, 主题]` 两个值 —— 阶段取 `入门 / 核心 / 进阶 / 实战`，主题取 `前端 / 网络 / 数据 / 工具 / 运行时 / 算法`。这 10 个值在 `/knowledge` **页面右端**的 `.kb-tags` 里组成「阶段 / STAGE」与「主题 / TOPIC」两组筛选按钮（顺序写死，不再全量聚合技术名词），左栏只放分类树。筛选沿用卡片与索引条目的 `data-tags`，空阶段小组会随筛选一起隐藏。新增笔记时**不要引入新标签值**，否则右端栏会重新膨胀；明细检索交给站内搜索与卡片标题。
 
 写作约定：
 
@@ -154,9 +158,9 @@ npm run preview
 - 之前试过再加一条 `target="page"` 的视口顶边带：它初始为了不糊标题是全透明的，滚动后又只糊到已划上去的照片，且窗口一高、照片一少，底部带就整条落在空白区——**等于看不到变化**，已弃用。
 - 小屏把网格内轻雾收矮到 6rem、视口底部带收到 8rem（高度在组件 inline style 上，覆盖要 `!important`）。**每层 `backdrop-filter` 都要读回一次背景，单条控制在 5–6 层**，叠太多会拖累滚动。
 
-`Topography.astro` 是唯一带整套 shader 的组件（原生 WebGL2，约 1600 行）。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），这类渲染逻辑可以拆到 `src/scripts/*.ts` 交给 vite 按模块编译。`src/scripts/` 现有 `letter-reveal.ts`（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）、`appearance.ts`、`gradient-ascii.ts`、`circular-carousel.ts`（照片环廊运行时，约 500 行，同样走模块编译而不是塞进组件 `<script>`）。
+`Topography.astro`（约 1600 行）与 `src/scripts/gradient-ascii.ts`（约 930 行）各带一套完整 shader，都是原生 WebGL2。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），所以这两套渲染逻辑都放在模块里交给 vite 编译。`src/scripts/` 现有 `letter-reveal.ts`（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）、`appearance.ts`、`gradient-ascii.ts`、`circular-carousel.ts`（照片环廊运行时，约 500 行，同样走模块编译而不是塞进组件 `<script>`）。
 
-**背景性能约定（改动前先读）**：`Topography` 默认 30fps、滚动期间 15fps，指针移动 / 开场 / 点击脉冲时回到 60fps，`dpr` 上限 1.5；它 fixed 在视口里，滚动时只有内容在动、背景不重画整页。这是滚轮顺滑的关键，别改回「每个区块各挂一个背景实例」。滚动回调里也不要「先改 class 再读 `offsetHeight`」——那会每帧强制同步回流。
+**背景性能约定（改动前先读）**：`Topography` 与 `GradientASCII` 都默认 30fps、滚动期间 15fps，指针移动 / 开场 / 点击脉冲时回到 60fps，`dpr` 上限 1.5；两者都 fixed 在视口里，滚动时只有内容在动、背景不重画整页。这是滚轮顺滑的关键，别改回「每个区块各挂一个背景实例」。滚动回调里也不要「先改 class 再读 `offsetHeight`」——那会每帧强制同步回流。字符光场另有 `IntersectionObserver` + `visibilitychange` 双闸门，滚出视口 / 切到后台就停帧。
 
 页面切换用 Astro 的 `<ClientRouter />`（View Transitions）：页头通过 `transition:persist` 保活，所以切页时导航胶囊里的高亮会平滑滑动而不会闪。**所有在 `astro:page-load` 里执行的初始化都要自带幂等保护**，并在 `cleanups` 里成对移除监听器 / Observer / rAF，否则导航次数一多就会累积泄漏。
 

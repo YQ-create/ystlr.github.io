@@ -3,7 +3,7 @@ title: 'YAML 语法速查'
 description: '缩进、映射、列表、多行字符串与锚点：写 CI 配置和 compose 文件前该先弄清的那几条规则。'
 pubDate: 2026-11-09
 category: '工程实践'
-tags: ['工具', 'YAML', '配置']
+tags: ['进阶', '工具']
 pinned: false
 draft: false
 ---

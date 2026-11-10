@@ -3,7 +3,7 @@ title: 'Cookie、Session 与 JWT 鉴权速查'
 description: '三种「记住你是谁」的方案各自把状态放在哪、怎么失效，以及 Cookie 属性该怎么配。'
 pubDate: 2026-11-09
 category: 'Web 原理'
-tags: ['网络', '鉴权', '安全']
+tags: ['进阶', '网络']
 pinned: false
 draft: false
 ---

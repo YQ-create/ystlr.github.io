@@ -3,7 +3,7 @@ title: 'JSON 语法与 fetch 请求速查'
 description: '数据交换格式与浏览器发请求的现代写法，含错误处理和常见序列化陷阱。'
 pubDate: 2026-11-05
 category: 'Web 原理'
-tags: ['网络', 'JSON', '前端']
+tags: ['入门', '网络']
 pinned: false
 draft: false
 ---

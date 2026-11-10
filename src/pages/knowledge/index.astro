@@ -26,20 +26,42 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 	return a[0].localeCompare(b[0], 'zh-Hans-CN');
 });
 
-// 锚点用序号（cat-01），避免中文分类名进 id；索引栏与正文共用这份编号
-const groups = categories.map(([name, list], i) => ({
-	id: `cat-${String(i + 1).padStart(2, '0')}`,
-	num: String(i + 1).padStart(2, '0'),
-	name,
-	list,
-}));
+// 标签只保留两个维度：阶段（学习顺序）与主题（横向领域），顺序固定，不求全。
+const STAGES = ['入门', '核心', '进阶', '实战'];
+const TOPICS = ['前端', '网络', '数据', '工具', '运行时', '算法'];
+const stageOf = (note: (typeof notes)[number]) =>
+	note.data.tags.find((t) => STAGES.includes(t)) ?? '其他';
 
-// 标签聚合：出现次数多的排前面，同次数按拼音
+// 锚点用序号（cat-01），避免中文分类名进 id；索引栏与正文共用这份编号。
+// 每个大类内部再按阶段分组；分类 section 仍是滚动高亮与筛选的粒度。
+const groups = categories.map(([name, list], i) => {
+	const catId = `cat-${String(i + 1).padStart(2, '0')}`;
+	const byStage = STAGES.map((s, si) => ({
+		id: `${catId}-s${si + 1}`,
+		num: String(si + 1).padStart(2, '0'),
+		name: s,
+		list: list.filter((n) => stageOf(n) === s),
+	})).filter((g) => g.list.length > 0);
+	const rest = list.filter((n) => !STAGES.includes(stageOf(n)));
+	if (rest.length) byStage.push({ id: `${catId}-s0`, num: '00', name: '其他', list: rest });
+	return {
+		id: catId,
+		num: String(i + 1).padStart(2, '0'),
+		name,
+		list,
+		stages: byStage,
+	};
+});
+
+// 标签聚合：只数阶段与主题两组，不把每个技术名词都做成筛选按钮
 const tagCount = new Map<string, number>();
 for (const note of notes) {
 	for (const tag of note.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
 }
-const tags = [...tagCount.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hans-CN'));
+const tagGroup = (names: string[]) =>
+	names.filter((n) => tagCount.has(n)).map((n) => ({ name: n, count: tagCount.get(n)! }));
+const stageTags = tagGroup(STAGES);
+const topicTags = tagGroup(TOPICS);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const pinnedCount = notes.filter((n) => n.data.pinned).length;
@@ -52,7 +74,7 @@ const menuItems = groups.map((group) => ({
 	anchor: group.id,
 	num: group.num,
 	count: pad(group.list.length),
-	children: group.list.map((note) => ({
+	children: group.stages.flatMap((stage) => stage.list).map((note) => ({
 		value: note.id,
 		label: note.data.title,
 		href: `/knowledge/${note.id}/`,
@@ -92,11 +114,11 @@ const previewItems = [
 			<span class="sec-head__index">KNOWLEDGE / {pad(notes.length)}</span>
 			<h1>知识库</h1>
 			<p class="kb-head__desc">
-				成体系的笔记与心得，独立于日常随笔，按分类慢慢沉淀。
+				成体系的笔记与心得，独立于日常随笔，按分类沉淀、按阶段推进。
 			</p>
 			<p class="kb-head__meta">
 				<span>{pad(groups.length)} 个分类</span>
-				<span>{pad(tags.length)} 个标签</span>
+				<span>{pad(stageTags.length)} 个阶段 / {pad(topicTags.length)} 个主题</span>
 				{pinnedCount > 0 && <span>{pad(pinnedCount)} 条置顶</span>}
 			</p>
 			<p class="kb-filter-note" data-kb-note hidden>
@@ -127,30 +149,57 @@ const previewItems = [
 			</div>
 		) : (
 			<div class="kb-shell">
-				<!-- ═══ 索引栏 ═══ -->
+				<!-- ═══ 左：分类索引树 ═══ -->
 				<aside class="kb-index" aria-label="知识库索引">
 					<div class="kb-index__head">
 						<span class="sec-head__index">INDEX</span>
-						<span class="kb-index__total" data-kb-total>{pad(notes.length)} 条</span>
+						<span class="kb-index__total">{pad(notes.length)} 条</span>
 					</div>
-
-					{tags.length > 0 && (
-						<div class="kb-index__tags" role="group" aria-label="按标签筛选">
-							{tags.map(([tag, count]) => (
-								<button class="kb-tag" type="button" data-kb-tag={tag} aria-pressed="false">
-									<span class="kb-tag__name">{tag}</span>
-									<span class="kb-tag__count">{count}</span>
-								</button>
-							))}
-						</div>
-					)}
 
 					<BranchedMenu items={menuItems} defaultOpen={0} ariaLabel="按分类跳转" />
 
 					<p class="kb-index__empty" data-kb-empty hidden>没有匹配的条目</p>
 				</aside>
 
-				<!-- ═══ 正文：按分类分组 ═══ -->
+				<!-- ═══ 右端：标签筛选（阶段 / 主题两组） ═══ -->
+				<aside class="kb-tags" aria-label="按标签筛选">
+					<div class="kb-tags__head">
+						<span class="sec-head__index">FILTER</span>
+						<span class="kb-tags__total" data-kb-total>{pad(notes.length)} 条</span>
+					</div>
+
+					{stageTags.length > 0 && (
+						<div class="kb-tags__set">
+							<p class="kb-tags__label">阶段 / STAGE</p>
+							<div class="kb-tags__group" role="group" aria-label="按阶段筛选">
+								{stageTags.map(({ name, count }) => (
+									<button class="kb-tag" type="button" data-kb-tag={name} aria-pressed="false">
+										<span class="kb-tag__name">{name}</span>
+										<span class="kb-tag__count">{count}</span>
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
+					{topicTags.length > 0 && (
+						<div class="kb-tags__set">
+							<p class="kb-tags__label">主题 / TOPIC</p>
+							<div class="kb-tags__group" role="group" aria-label="按主题筛选">
+								{topicTags.map(({ name, count }) => (
+									<button class="kb-tag" type="button" data-kb-tag={name} aria-pressed="false">
+										<span class="kb-tag__name">{name}</span>
+										<span class="kb-tag__count">{count}</span>
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
+					<p class="kb-tags__hint">点标签筛选，再点一次取消</p>
+				</aside>
+
+				<!-- ═══ 中：按分类 → 阶段分组 ═══ -->
 				<div class="kb-body">
 					{groups.map((group) => (
 						<section class="kb-cat" id={group.id} data-kb-section={group.id}>
@@ -160,34 +209,44 @@ const previewItems = [
 								<span class="kb-cat__rule" aria-hidden="true"></span>
 								<span class="kb-cat__count" data-kb-count>{pad(group.list.length)} 条</span>
 							</h2>
-							<div class="kb-grid">
-								{group.list.map((note) => (
-									<a
-										class="kb-card"
-										href={`/knowledge/${note.id}/`}
-										data-kb-card
-										data-tags={note.data.tags.join(',')}
-									>
-										<div class="kb-card__top">
-											<span class="kb-card__tags">
-												{note.data.tags.slice(0, 3).map((t) => (
-													<span class="kb-card__tag">{t}</span>
-												))}
-											</span>
-											{note.data.pinned && (
-												<span class="kb-card__pin" title="置顶">◆</span>
-											)}
-										</div>
-										<h3 class="kb-card__title">{note.data.title}</h3>
-										{note.data.description && (
-											<p class="kb-card__desc">{note.data.description}</p>
-										)}
-										<time class="kb-card__date" datetime={note.data.pubDate.toISOString()}>
-											<FormattedDate date={note.data.pubDate} />
-										</time>
-									</a>
-								))}
-							</div>
+							{group.stages.map((stage) => (
+								<div class="kb-stage" data-kb-stage>
+									<h3 class="kb-stage__title">
+										<span class="kb-stage__n">{stage.num}</span>
+										<span class="kb-stage__name">{stage.name}</span>
+										<span class="kb-stage__rule" aria-hidden="true"></span>
+										<span class="kb-stage__count" data-kb-stage-count>{pad(stage.list.length)} 条</span>
+									</h3>
+									<div class="kb-grid">
+										{stage.list.map((note) => (
+											<a
+												class="kb-card"
+												href={`/knowledge/${note.id}/`}
+												data-kb-card
+												data-tags={note.data.tags.join(',')}
+											>
+												<div class="kb-card__top">
+													<span class="kb-card__tags">
+														{note.data.tags.map((t) => (
+															<span class="kb-card__tag">{t}</span>
+														))}
+													</span>
+													{note.data.pinned && (
+														<span class="kb-card__pin" title="置顶">◆</span>
+													)}
+												</div>
+												<h4 class="kb-card__title">{note.data.title}</h4>
+												{note.data.description && (
+													<p class="kb-card__desc">{note.data.description}</p>
+												)}
+												<time class="kb-card__date" datetime={note.data.pubDate.toISOString()}>
+													<FormattedDate date={note.data.pubDate} />
+												</time>
+											</a>
+										))}
+									</div>
+								</div>
+							))}
 						</section>
 					))}
 
@@ -211,6 +270,7 @@ const previewItems = [
 		const cards = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-card]'));
 		const links = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-link]'));
 		const sections = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-section]'));
+		const stages = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-stage]'));
 		const groups = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-group]'));
 		const anchors = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-anchor]'));
 		const note = main.querySelector<HTMLElement>('[data-kb-note]');
@@ -251,6 +311,16 @@ const previewItems = [
 				// 分叉导航的条目本身就是 <a>，直接隐藏它；
 				// 组件 CSS 里已显式兜住 display:flex 盖掉 [hidden] 的问题
 				link.hidden = !on;
+			});
+
+			// 阶段小组：筛选后整组没有可见卡片就收起来，计数同步更新
+			stages.forEach((stage) => {
+				const shown = Array.from(stage.querySelectorAll<HTMLElement>('[data-kb-card]')).filter(
+					(c) => !c.hidden,
+				).length;
+				stage.hidden = shown === 0;
+				const count = stage.querySelector<HTMLElement>('[data-kb-stage-count]');
+				if (count) count.textContent = `${String(shown).padStart(2, '0')} 条`;
 			});
 
 			sections.forEach((section) => {
@@ -475,14 +545,17 @@ const previewItems = [
 		min-width: min(100%, 20rem);
 	}
 
-	/* ── 两栏骨架：索引 264px + 正文 ── */
+	/* ── 三栏骨架：左索引 264px + 正文 + 右端标签 152px ── */
 	.kb-shell {
 		display: grid;
-		grid-template-columns: 264px minmax(0, 1fr);
-		gap: clamp(1.6rem, 3vw, 3rem);
+		grid-template-columns: 264px minmax(0, 1fr) 152px;
+		gap: clamp(1.2rem, 2vw, 2rem);
 		align-items: start;
 		padding-top: clamp(1.4rem, 3vw, 2.2rem);
 	}
+	.kb-index { grid-column: 1; grid-row: 1; }
+	.kb-body  { grid-column: 2; grid-row: 1; }
+	.kb-tags  { grid-column: 3; grid-row: 1; }
 
 	/* ── 索引栏 ── */
 	.kb-index {
@@ -512,10 +585,55 @@ const previewItems = [
 		font-variant-numeric: tabular-nums;
 	}
 
-	.kb-index__tags {
+	/* ── 右端标签栏：阶段 / 主题两组，竖排撑满一行 ── */
+	.kb-tags {
+		position: sticky;
+		top: calc(72px + 0.6rem);
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: column;
+		gap: 0.95rem;
+		max-height: calc(100vh - 96px - 1rem);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding-left: 1rem;
+		border-left: 1px solid rgb(var(--line));
+		scrollbar-width: thin;
+	}
+	.kb-tags__head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding-bottom: 0.7rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.kb-tags__total {
+		font-size: 0.7rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-tags__label {
+		margin: 0 0 0.55rem;
+		font-size: 0.64rem;
+		letter-spacing: 0.14em;
+		color: rgb(var(--muted-light));
+	}
+	.kb-tags__group {
+		display: flex;
+		flex-direction: column;
 		gap: 0.3rem;
+	}
+	.kb-tags .kb-tag {
+		width: 100%;
+		justify-content: space-between;
+		padding: 0.32rem 0.6rem;
+	}
+	.kb-tags__hint {
+		margin: 0;
+		font-size: 0.68rem;
+		line-height: 1.6;
+		color: rgb(var(--muted-light));
 	}
 	.kb-tag {
 		display: inline-flex;
@@ -556,8 +674,7 @@ const previewItems = [
 		opacity: 0.62;
 	}
 
-	/* 索引栏的分类树已改由 BranchedMenu.astro 渲染，样式随组件走；
-	   这里只保留标签筛选与空提示，不再重复定义导航样式。 */
+	/* 左栏只保留分类树（BranchedMenu 自带样式）与空提示；标签筛选在右端 .kb-tags。 */
 	.kb-index__empty {
 		margin: 0;
 		font-size: 0.76rem;
@@ -609,6 +726,44 @@ const previewItems = [
 		font-size: 0.68rem;
 		font-weight: 500;
 		letter-spacing: 0.08em;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* ── 分类内的阶段小组 ── */
+	.kb-stage {
+		margin-bottom: clamp(1.2rem, 2.4vw, 1.9rem);
+	}
+	.kb-stage[hidden] {
+		display: none;
+	}
+	.kb-stage__title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		margin: 0 0 0.75rem;
+		font-size: 0.82rem;
+		font-weight: 500;
+	}
+	.kb-stage__n {
+		font-size: 0.62rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--accent));
+		font-variant-numeric: tabular-nums;
+	}
+	.kb-stage__name {
+		font-size: 0.84rem;
+		font-weight: 600;
+		color: rgb(var(--ink-soft));
+	}
+	.kb-stage__rule {
+		flex: 1;
+		height: 1px;
+		background: rgb(var(--line-soft));
+		transform: translateY(-0.2em);
+	}
+	.kb-stage__count {
+		font-size: 0.66rem;
 		color: rgb(var(--muted-light));
 		font-variant-numeric: tabular-nums;
 	}
@@ -699,6 +854,35 @@ const previewItems = [
 		color: rgb(var(--muted-light));
 	}
 
+	/* ── 中等宽度：右端标签栏折到正文上方，横向排列 ── */
+	@media (max-width: 1200px) {
+		.kb-shell {
+			grid-template-columns: 264px minmax(0, 1fr);
+		}
+		.kb-index { grid-column: 1; grid-row: 1 / span 2; }
+		.kb-tags {
+			grid-column: 2;
+			grid-row: 1;
+			position: static;
+			max-height: none;
+			overflow: visible;
+			flex-direction: row;
+			align-items: flex-start;
+			flex-wrap: wrap;
+			gap: 0.6rem 1.2rem;
+			margin-bottom: 1.4rem;
+			padding: 0 0 0.9rem;
+			border-left: 0;
+			border-bottom: 1px solid rgb(var(--line));
+		}
+		.kb-tags__head,
+		.kb-tags__hint { display: none; }
+		.kb-tags__set { flex: 1 1 240px; min-width: 0; }
+		.kb-tags__group { flex-direction: row; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+		.kb-tags .kb-tag { width: auto; }
+		.kb-body { grid-column: 2; grid-row: 2; }
+	}
+
 	/* ── 窄屏：索引栏收成一条可横滑的胶囊 ── */
 	@media (max-width: 980px) {
 		.kb-shell {
@@ -723,9 +907,11 @@ const previewItems = [
 			backdrop-filter: blur(16px) saturate(1.3);
 		}
 		.kb-index__head,
-		.kb-index__tags,
 		.kb-index__empty {
 			display: none;
+		}
+		.kb-tags {
+			margin-bottom: 1.2rem;
 		}
 		/* 窄屏下 BranchedMenu 自己退化成横滑胶囊，样式在组件内，不在这里重复 */
 	}
@@ -738,6 +924,11 @@ const previewItems = [
 		}
 		.kb-grid {
 			grid-template-columns: 1fr;
+		}
+		.kb-tags__group {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			padding-bottom: 0.2rem;
 		}
 	}
 </style>

@@ -3,7 +3,7 @@ title: '从网址到页面：DNS、TCP/IP 与 TLS 速查'
 description: '分层模型、域名解析、三次握手与 TLS：把「打开一个网页」拆成能逐段排查的几步。'
 pubDate: 2026-11-09
 category: 'Web 原理'
-tags: ['网络', 'DNS', 'TCP/IP']
+tags: ['核心', '网络']
 pinned: false
 draft: false
 ---

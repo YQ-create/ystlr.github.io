@@ -3,7 +3,7 @@ title: 'Node.js 模块、事件循环与流速查'
 description: 'CommonJS 与 ESM、异步任务的执行顺序、Stream 与 Buffer：服务端 JS 的几个地基概念。'
 pubDate: 2026-11-09
 category: '后端运行时'
-tags: ['Node.js', '运行时', '后端']
+tags: ['核心', '运行时']
 pinned: false
 draft: false
 ---

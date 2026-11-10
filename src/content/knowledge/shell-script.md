@@ -3,7 +3,7 @@ title: 'Shell 脚本基础速查'
 description: '变量、引号、判断、循环与退出码：把「能跑」的命令行拼成「出错也靠谱」的脚本。'
 pubDate: 2026-11-09
 category: '工程实践'
-tags: ['工具', 'Shell', 'Linux']
+tags: ['进阶', '工具']
 pinned: false
 draft: false
 ---

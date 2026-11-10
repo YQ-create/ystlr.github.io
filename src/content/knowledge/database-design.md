@@ -3,7 +3,7 @@ title: '表设计：范式、约束与关系速查'
 description: '一对多/多对多怎么落表、主键外键怎么选，以及什么时候该故意不遵守范式。'
 pubDate: 2026-11-09
 category: '数据与存储'
-tags: ['数据库', '建模', 'SQL']
+tags: ['进阶', '数据']
 pinned: false
 draft: false
 ---

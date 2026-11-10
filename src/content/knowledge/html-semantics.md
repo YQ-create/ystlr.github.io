@@ -3,7 +3,7 @@ title: 'HTML 语义化与常用标签速查'
 description: '从文档骨架到表单：用对的标签，而不是把所有东西都写成 div。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'HTML', '入门']
+tags: ['入门', '前端']
 pinned: true
 draft: false
 ---

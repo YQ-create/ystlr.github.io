@@ -3,7 +3,7 @@ title: 'JavaScript 核心语法与异步速查'
 description: '类型、数组方法、DOM 事件与 Promise：日常开发真正反复用到的那部分。'
 pubDate: 2026-11-07
 category: '前端基础'
-tags: ['前端', 'JavaScript', '入门']
+tags: ['入门', '前端']
 pinned: false
 draft: false
 ---

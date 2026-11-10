@@ -3,7 +3,7 @@ title: '浏览器渲染流程与重排重绘速查'
 description: '从 HTML 到像素的几步流水线，哪些属性会触发布局，以及为什么「先改 class 再读高度」会卡。'
 pubDate: 2026-11-09
 category: 'Web 原理'
-tags: ['浏览器', '性能', '渲染']
+tags: ['进阶', '前端']
 pinned: false
 draft: false
 ---

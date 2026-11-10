@@ -3,7 +3,7 @@ title: 'SQLite 入门与常用 SQL 速查'
 description: '单文件数据库适合放在哪、类型与约束有什么特别，以及和 MySQL 写法差异最大的几处。'
 pubDate: 2026-11-09
 category: '数据与存储'
-tags: ['数据库', 'SQLite', '速查']
+tags: ['入门', '数据']
 pinned: false
 draft: false
 ---

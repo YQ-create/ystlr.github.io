@@ -3,7 +3,7 @@ title: 'Markdown 语法速查与写作约定'
 description: '标题、列表、链接、表格、代码块与 GFM 扩展，附一份不易出错的写作习惯。'
 pubDate: 2026-10-31
 category: '工程实践'
-tags: ['工具', 'Markdown', '速查']
+tags: ['入门', '工具']
 pinned: false
 draft: false
 ---

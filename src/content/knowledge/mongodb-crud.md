@@ -3,7 +3,7 @@ title: 'MongoDB 文档模型与 CRUD 速查'
 description: '集合与文档、查询运算符、更新与聚合：从 SQL 思维切到文档模型时最该先换的那几个概念。'
 pubDate: 2026-11-09
 category: '数据与存储'
-tags: ['数据库', 'MongoDB', '速查']
+tags: ['核心', '数据']
 pinned: false
 draft: false
 ---

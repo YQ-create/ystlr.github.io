@@ -3,7 +3,7 @@ title: 'SQL 进阶：子查询、CTE 与窗口函数'
 description: '把「先算一组中间结果再对外查询」写清楚：CTE、相关子查询与 ROW_NUMBER / RANK 的典型用法。'
 pubDate: 2026-11-09
 category: '数据与存储'
-tags: ['数据库', 'SQL', '进阶']
+tags: ['进阶', '数据']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: 'Redis 五种基本数据类型与选型'
 description: 'String / Hash / List / Set / ZSet 各自适合存什么，以及过期时间和缓存穿透要点。'
 pubDate: 2026-11-03
 category: '数据与存储'
-tags: ['数据库', 'Redis', '速查']
+tags: ['核心', '数据']
 pinned: false
 draft: false
 ---

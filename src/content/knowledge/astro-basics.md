@@ -3,7 +3,7 @@ title: 'Astro 静态站点与内容集合速查'
 description: '岛屿架构、内容集合的 schema 与 getCollection、静态路由：本站这套结构的运作方式。'
 pubDate: 2026-11-09
 category: '后端运行时'
-tags: ['Astro', '静态站点', 'SSG']
+tags: ['实战', '运行时']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: 'CSS 过渡、变换与动画速查'
 description: 'transition、transform、keyframes 的分工，以及哪些属性动起来不卡、哪些一动就掉帧。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'CSS', '动效']
+tags: ['进阶', '前端']
 pinned: false
 draft: false
 ---

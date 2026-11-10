@@ -3,7 +3,7 @@ title: 'CSS 盒模型与布局体系速查'
 description: '优先级、盒模型、Flex、Grid 与响应式：把「为什么没生效」变成可推导的问题。'
 pubDate: 2026-11-08
 category: '前端基础'
-tags: ['前端', 'CSS', '布局']
+tags: ['入门', '前端']
 pinned: false
 draft: false
 ---

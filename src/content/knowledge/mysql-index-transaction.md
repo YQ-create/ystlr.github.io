@@ -3,7 +3,7 @@ title: 'MySQL 索引与事务速查'
 description: '最左前缀、EXPLAIN 怎么看、ACID 与隔离级别：慢查询和「数据莫名不一致」的两条主线。'
 pubDate: 2026-11-09
 category: '数据与存储'
-tags: ['数据库', 'MySQL', '索引']
+tags: ['实战', '数据']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: 'HTTP 方法、状态码与缓存速查'
 description: '一次请求从浏览器到服务器都发生了什么：方法语义、状态码分类、缓存头怎么配合。'
 pubDate: 2026-11-06
 category: 'Web 原理'
-tags: ['网络', 'HTTP', '速查']
+tags: ['核心', '网络']
 pinned: true
 draft: false
 ---

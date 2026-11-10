@@ -3,7 +3,7 @@ title: '同源策略、CORS 与常见 Web 安全速查'
 description: '浏览器凭什么拦住跨域请求，CORS 响应头怎么配，以及 XSS / CSRF / 点击劫持各自的防线。'
 pubDate: 2026-11-09
 category: 'Web 原理'
-tags: ['网络', '安全', '浏览器']
+tags: ['实战', '网络']
 pinned: false
 draft: false
 ---

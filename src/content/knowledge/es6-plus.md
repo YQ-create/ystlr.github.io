@@ -3,7 +3,7 @@ title: 'ES6+ 常用语法与模块速查'
 description: '解构、展开、可选链、模块导入导出与常用数组/对象写法：日常代码里真正高频的那批语法糖。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'JavaScript', 'ES6']
+tags: ['核心', '前端']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: '正则表达式速查与常见模式'
 description: '元字符、量词、分组、断言一张表，外加几个能直接改用的匹配模式。'
 pubDate: 2026-11-01
 category: '工程实践'
-tags: ['工具', '正则', '速查']
+tags: ['核心', '工具']
 pinned: false
 draft: false
 ---

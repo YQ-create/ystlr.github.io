@@ -3,7 +3,7 @@ title: 'Web 可访问性速查'
 description: '语义、键盘、对比度、替代文本与 ARIA 的使用边界：不靠重写页面也能明显改善可用性。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', '可访问性', 'HTML']
+tags: ['实战', '前端']
 pinned: false
 draft: false
 ---

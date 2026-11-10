@@ -3,7 +3,7 @@ title: 'Nginx 配置与反向代理速查'
 description: 'server / location 匹配规则、静态站点与反向代理的最小可用配置，以及改完必做的两件事。'
 pubDate: 2026-11-09
 category: '工程实践'
-tags: ['工具', 'Nginx', '部署']
+tags: ['实战', '工具']
 pinned: false
 draft: false
 ---

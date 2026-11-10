@@ -3,7 +3,7 @@ title: 'HTML5 浏览器存储与常用 API 速查'
 description: 'localStorage、sessionStorage、Cookie 各自适合放什么，以及 History、剪贴板、可见性等浏览器接口怎么配合。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'HTML5', '浏览器']
+tags: ['核心', '前端']
 pinned: false
 draft: false
 ---

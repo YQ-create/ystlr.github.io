@@ -3,7 +3,7 @@ title: '哈希、集合与去重技巧速查'
 description: 'Map / Set / WeakMap 的差别、常见去重与分组写法，以及「键」选择上的几个隐蔽坑。'
 pubDate: 2026-11-09
 category: '算法与数据结构'
-tags: ['算法', 'Map', '去重']
+tags: ['核心', '算法']
 pinned: false
 draft: false
 ---

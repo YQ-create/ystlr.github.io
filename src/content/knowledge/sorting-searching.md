@@ -3,7 +3,7 @@ title: '排序与查找算法速查'
 description: '常见排序的复杂度与稳定性、二分查找的边界写法，以及 JS 里 sort 到底怎么排。'
 pubDate: 2026-11-09
 category: '算法与数据结构'
-tags: ['算法', '排序', '查找']
+tags: ['进阶', '算法']
 pinned: false
 draft: false
 ---

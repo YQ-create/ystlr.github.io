@@ -3,7 +3,7 @@ title: 'package.json 与依赖版本速查'
 description: '常用字段、^ 与 ~ 的差别、锁文件与 scripts：把「换个机器就装不上」挡在提交之前。'
 pubDate: 2026-11-09
 category: '工程实践'
-tags: ['工具', 'npm', 'Node.js']
+tags: ['核心', '工具']
 pinned: false
 draft: false
 ---

@@ -3,7 +3,7 @@ title: 'REST API 设计与错误响应速查'
 description: '资源命名、方法语义、状态码与错误体格式：让接口不用读文档也能猜对大半。'
 pubDate: 2026-11-09
 category: '后端运行时'
-tags: ['API', '后端', 'HTTP']
+tags: ['进阶', '网络']
 pinned: false
 draft: false
 ---

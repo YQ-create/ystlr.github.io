@@ -3,7 +3,7 @@ title: 'Linux 常用命令速查'
 description: '文件操作、权限、查找、管道、进程与网络：服务器上真正天天敲的那些。'
 pubDate: 2026-10-30
 category: '工程实践'
-tags: ['工具', 'Linux', '速查']
+tags: ['入门', '工具']
 pinned: false
 draft: false
 ---

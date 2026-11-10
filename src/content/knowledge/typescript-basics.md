@@ -3,7 +3,7 @@ title: 'TypeScript 类型、接口与泛型速查'
 description: '基础类型标注、接口与联合类型、泛型与常用工具类型，附一份从 JavaScript 迁移时的检查清单。'
 pubDate: 2026-11-09
 category: '前端基础'
-tags: ['前端', 'TypeScript', '类型']
+tags: ['进阶', '前端']
 pinned: false
 draft: false
 ---

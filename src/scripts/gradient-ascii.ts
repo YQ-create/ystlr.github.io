@@ -834,7 +834,8 @@ export class GradientASCII {
 		const interacting =
 			!this.reduce &&
 			(this.introClock < 1 || this.clicks.length > 0 || this.trail.length > 0 || now < this.pointerUntil);
-		const rate = this.reduce ? 60 : interacting ? 60 : now < this.scrollUntil ? 15 : 30;
+		// 滚动优先降帧：触屏滚动会持续触发 pointermove，不能让它把滚动期间的 15fps 又抬回 60。
+		const rate = this.reduce ? 60 : now < this.scrollUntil ? 15 : interacting ? 60 : 30;
 		if (this.lastDraw && now - this.lastDraw < 1000 / rate - 1) {
 			this.raf = requestAnimationFrame(this.frame);
 			return;

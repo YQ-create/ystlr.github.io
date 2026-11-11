@@ -1017,6 +1017,30 @@ select:focus {
 	transform: scale(1.04);
 	filter: blur(var(--bg-image-blur, 0px));
 }
+.site-bg__ascii {
+	/* 光场收在右上：左侧留给标题，底部渐隐，避免整屏字符噪点。
+	   遮罩只裁剪显示范围，不改画布的渲染分辨率。 */
+	-webkit-mask-image: radial-gradient(
+		ellipse 66% 58% at 72% 38%,
+		#000 0%,
+		rgba(0, 0, 0, 0.9) 40%,
+		transparent 78%
+	);
+	mask-image: radial-gradient(ellipse 66% 58% at 72% 38%, #000 0%, rgba(0, 0, 0, 0.9) 40%, transparent 78%);
+}
+/* 顶边渐隐：页头是固定的玻璃条，字符不要从导航按钮下面穿出来 */
+.site-bg__ascii::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: linear-gradient(
+		to bottom,
+		rgb(var(--bg)) 0%,
+		rgba(var(--bg), 0.72) 6%,
+		rgba(var(--bg), 0) 17%
+	);
+}
 .site-bg__ascii canvas {
 	display: block;
 	width: 100%;
@@ -1032,14 +1056,18 @@ html[data-bg-mode='image'] .site-bg__image,
 html[data-bg-mode='ascii'] .site-bg__ascii {
 	opacity: 1;
 }
-html:not([data-bg-mode='image']) .site-bg__veil {
+html:not([data-bg-mode='image']):not([data-bg-mode='ascii']) .site-bg__veil {
 	opacity: 0;
+}
+/* 字符光场本身是低亮度的暖色雾，遮罩仍给薄薄一层底色，保住正文的可读性 */
+html[data-bg-mode='ascii'] .site-bg__veil {
+	opacity: calc(var(--bg-overlay, 0.55) * 0.3);
 }
 html[data-bg-mode='image'] body,
 html[data-bg-mode='ascii'] body {
 	background: transparent;
 }
-/* 首页 .atmo 自带实底；非等高线模式要透出来并停掉 WebGL 等高线 */
+/* 首页 .atmo 自带实底；字符光场/图片/纯色模式要透出来并停掉可选的等高线 */
 html:not([data-bg-mode='topo']) .atmo {
 	background: transparent;
 }

@@ -21,6 +21,8 @@ export type AccentChoice = 'orange' | 'blue' | 'teal' | 'violet' | 'pink' | 'lim
 export type BgMode = 'topo' | 'ascii' | 'image' | 'plain';
 
 interface Appearance {
+	/** 偏好结构版本：2 起默认背景改为字符光场，旧的无版本 topo 偏好会跟随迁移 */
+	schema?: number;
 	theme: ThemeChoice;
 	glass: GlassChoice;
 	accent: AccentChoice;
@@ -40,11 +42,14 @@ interface StoredImage {
 	createdAt: number;
 }
 
+const SCHEMA = 2;
+
 const DEFAULTS: Appearance = {
+	schema: SCHEMA,
 	theme: 'dark',
 	glass: 'frosted',
 	accent: 'orange',
-	bgMode: 'topo',
+	bgMode: 'ascii',
 	bgId: '',
 	overlay: 0.55,
 };
@@ -53,16 +58,20 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 const uid = () => `bg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
 function readState(): Appearance {
+	let raw: Partial<Appearance> = {};
 	try {
-		const raw = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Appearance>;
-		return {
-			...DEFAULTS,
-			...raw,
-			overlay: clamp(Number(raw.overlay ?? DEFAULTS.overlay), 0, 0.95),
-		};
+		raw = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<Appearance>;
 	} catch {
-		return { ...DEFAULTS };
+		raw = {};
 	}
+	const state: Appearance = {
+		...DEFAULTS,
+		...raw,
+		overlay: clamp(Number(raw.overlay ?? DEFAULTS.overlay), 0, 0.95),
+	};
+	if ((raw.schema || 1) < SCHEMA && state.bgMode === 'topo') state.bgMode = 'ascii';
+	state.schema = SCHEMA;
+	return state;
 }
 
 function writeState(state: Appearance) {
@@ -161,26 +170,39 @@ async function mountAscii() {
 		// 等待期间用户可能已经切走模式 / 换了页，再确认一次
 		if (state.bgMode !== 'ascii' || !host.isConnected || ascii) return;
 		const light = (window.__getTheme?.() ?? 'dark') === 'light';
+		// 首页深色首屏是「暗日」主视觉；内容页与浅色模式用更安静的字符雾，
+		// 避免环形的强构图压过正文与卡片。
+		const eclipse = document.body.classList.contains('home') && !light;
+		// 内容页的深色字符雾再收一档，蓝色在近黑底上比原来的暖褐更「亮」，
+		// 不压一档会显得抢过正文。
+		const quiet = !light && !eclipse;
 		ascii = new GradientASCII(host, {
-				colors: light
-					? ['#e8e3d8', '#c4783f', '#ff8a3d', '#fff5e8']
-					: ['#1b1108', '#7a3410', '#ff6a2b', '#ffd9b8'],
-				shape: 'horizon',
-				characters: ' =+xX0S8#@',
-				cellSize: 18,
-				density: 0.78,
-				glyphOpacity: 0.8,
-				glow: 0.2,
-				softness: 0.6,
-				speed: 0.7,
-				gradientOpacity: 0.85,
-				grain: 0.06,
-				mouseInteraction: true,
-				clickEffect: 'wave',
-				lightMode: light,
-				intro: true,
-				dpr: 1.5,
-			});
+			// 蓝色字符雾：主体压在低亮度，只有靠近光核的一层才提到亮蓝，
+			// 这样整屏像「冷光里的数据尘」，不会盖住首页大标题。
+			// 内容页比首页环形再压深一档，避免字符雾压过正文与卡片。
+			// 浅色模式只留一层浅蓝水印，字符再深就会显脏。
+			colors: light
+				? ['#f4f8fd', '#e2ecf7', '#b7d2ea', '#6a93bd']
+				: eclipse
+					? ['#0a1526', '#14395c', '#4a97cc', '#d2ebff']
+					: ['#0a1320', '#102a44', '#357aa6', '#b3d9f5'],
+			shape: eclipse ? 'eclipse' : 'horizon',
+			scale: eclipse ? 1.25 : 1,
+			characters: ' =+xX0S8#@',
+			cellSize: 18,
+			density: light ? 0.3 : quiet ? 0.38 : 0.44,
+			glyphOpacity: light ? 0.34 : quiet ? 0.46 : 0.55,
+			glow: light ? 0.16 : 0.22,
+			softness: 0.72,
+			speed: 0.55,
+			gradientOpacity: light ? 0.38 : 0.5,
+			grain: 0.05,
+			mouseInteraction: true,
+			clickEffect: 'wave',
+			lightMode: light,
+			intro: true,
+			dpr: 1.5,
+		});
 	} catch (err) {
 		console.warn('[appearance] ASCII 背景初始化失败', err);
 	} finally {

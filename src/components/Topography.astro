@@ -796,8 +796,13 @@ void main() {
 	let mountedToken = -1;
 
 	function setup(root) {
-		const canvas = root.querySelector('[data-topo-canvas]');
-		if (!canvas) return null;
+		// 切走时画布会被移除（上下文已 lose，不能复用），再切回来就新建一张。
+		let canvas = root.querySelector('[data-topo-canvas]');
+		if (!canvas) {
+			canvas = document.createElement('canvas');
+			canvas.setAttribute('data-topo-canvas', '');
+			root.append(canvas);
+		}
 		let cfg = {};
 		try {
 			cfg = JSON.parse(root.dataset.cfg || '{}');
@@ -1625,7 +1630,16 @@ void main() {
 		};
 	}
 
+	// 默认背景是字符光场；等高线只在使用者显式选到 topo 时才建 WebGL 上下文，
+	// 否则首页会白养一个隐藏的 GL 实例（着色器编译 + 显存）。
+	const wanted = () => document.documentElement.dataset.bgMode === 'topo';
+
 	function mount() {
+		if (!wanted()) {
+			// 换页后若当前不是等高线模式，顺手清掉上一页遗留的实例
+			if (instances.length) unmount();
+			return;
+		}
 		if (mountedToken === pageToken) return;
 		mountedToken = pageToken;
 		for (const item of instances.splice(0)) item.destroy();
@@ -1636,12 +1650,24 @@ void main() {
 		});
 	}
 
+	function unmount() {
+		pageToken += 1;
+		for (const item of instances.splice(0)) item.destroy();
+		document.querySelectorAll('[data-topo-ready]').forEach((root) => {
+			delete root.dataset.topoReady;
+			root.querySelector('[data-topo-canvas]')?.remove();
+		});
+	}
+
 	if (!bound) {
 		bound = true;
-		document.addEventListener('astro:before-swap', () => {
-			pageToken += 1;
-		});
+		// 换页时立即销毁：目标页不一定包含本组件，等下一次 mount() 回收会漏掉
+		document.addEventListener('astro:before-swap', unmount);
 		document.addEventListener('astro:page-load', mount);
+		new MutationObserver(() => {
+			if (wanted()) mount();
+			else unmount();
+		}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bg-mode'] });
 	}
 	mount();
 </script>

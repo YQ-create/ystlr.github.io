@@ -106,8 +106,9 @@ const explore = [
 ];
 ---
 
-<BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="studio">
-	<!-- 全屏固定层：纯色底 + 地形等高线背景。
+<BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="home">
+	<!-- 全屏固定层：默认底色 + 可选的等高线。
+	     字符光场由 BaseLayout 的 .site-bg 提供，这一层只负责首页的实底与 topo 模式；
 	     背景固定在视口里、内容在上面滑，滚动时不会错位。 -->
 	<div class="atmo" aria-hidden="true">
 		<Topography
@@ -729,7 +730,7 @@ const explore = [
 </script>
 
 <style>
-	/* ═══════════ 粒子场固定层 ═══════════ */
+	/* ═══════════ 首页背景底座 ═══════════ */
 	.atmo {
 		position: fixed;
 		inset: 0;
@@ -979,7 +980,7 @@ const explore = [
 		position: relative;
 		z-index: 2;
 		padding: clamp(2.6rem, 5vw, 4.4rem) 0 clamp(1.2rem, 2.6vw, 2rem);
-		/* 中心压暗托住照片，边缘仍透出 fixed 地形等高线 */
+		/* 中心压暗托住照片，边缘仍透出 fixed 字符光场 */
 		background: radial-gradient(
 			ellipse 82% 78% at 50% 52%,
 			rgba(var(--bg), 0.99) 0%,

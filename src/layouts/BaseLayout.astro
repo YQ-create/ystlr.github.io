@@ -34,7 +34,7 @@ const { title, description, image, noindex, bodyClass, hero = false, type, publi
 	</head>
 	<!-- studio：全站统一走「近黑台面 + 发丝线」版式（见 global.css 的 .studio） -->
 	<body class:list={['studio', bodyClass]} data-hero={hero ? '1' : undefined}>
-		<!-- 全站底图层：自定义图片 / ASCII 字符光场 / 遮罩，由调色盘切换，默认等高线模式下不显示 -->
+		<!-- 全站底图层：默认 ASCII 字符光场 / 可选自定义图片 / 遮罩，由调色盘切换 -->
 		<div class="site-bg" aria-hidden="true">
 			<div class="site-bg__image" data-site-bg-image></div>
 			<div class="site-bg__ascii" data-site-bg-ascii></div>

@@ -65,20 +65,29 @@ const ogImage = new URL(image.src, Astro.url);
 	   View Transitions 换页时新文档的 <html> 会覆盖当前节点，故 after-swap 再写一次。 */
 	(() => {
 		const KEY = 'ystlr.appearance';
+		/* schema 2：默认背景从「等高线」换成「字符光场」。旧偏好里没写 schema 的
+		   topo 视为沿用旧默认，跟随迁移；用户在面板里显式选过的 topo 会带上 schema=2，不再动。 */
+		const SCHEMA = 2;
 		const DEFAULTS = {
+			schema: SCHEMA,
 			theme: 'dark',
 			glass: 'frosted',
 			accent: 'orange',
-			bgMode: 'topo',
+			bgMode: 'ascii',
 			bgId: '',
 			overlay: 0.55,
 		};
 		const read = () => {
+			let raw = {};
 			try {
-				return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}'));
+				raw = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
 			} catch {
-				return Object.assign({}, DEFAULTS);
+				raw = {};
 			}
+			const s = Object.assign({}, DEFAULTS, raw);
+			if ((raw.schema || 1) < SCHEMA && s.bgMode === 'topo') s.bgMode = 'ascii';
+			s.schema = SCHEMA;
+			return s;
 		};
 		const sync = () => {
 			const s = read();
@@ -89,7 +98,7 @@ const ogImage = new URL(image.src, Astro.url);
 			d.dataset.theme = theme;
 			d.dataset.glass = s.glass || 'frosted';
 			d.dataset.accent = s.accent || 'orange';
-			d.dataset.bgMode = s.bgMode || 'topo';
+			d.dataset.bgMode = s.bgMode || 'ascii';
 			if (s.overlay != null) d.style.setProperty('--bg-overlay', String(s.overlay));
 			if (s.alpha != null) d.style.setProperty('--glass-alpha-user', String(s.alpha));
 			if (s.blur != null) d.style.setProperty('--glass-blur-user', `${s.blur}px`);

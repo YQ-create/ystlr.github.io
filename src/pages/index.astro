@@ -55,6 +55,7 @@ import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import AccordionGallery from '../components/AccordionGallery.astro';
 import CircularCarousel from '../components/CircularCarousel.astro';
+import Rain from '../components/Rain.astro';
 import discoverData from '../data/discover.json';
 import cover from '../assets/gallery/cover.jpg';
 
@@ -143,6 +144,9 @@ const explore = [
 			lightMode={false}
 		/>
 	</div>
+
+	<!-- 首页雨滴层：压在字符光场之上、正文之下；滚出首屏淡出并停帧 -->
+	<Rain />
 
 	<main class="home">
 		<!-- ═══════════ Act 1: Hero ═══════════ -->

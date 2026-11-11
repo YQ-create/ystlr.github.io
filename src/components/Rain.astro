@@ -1,0 +1,41 @@
+---
+/**
+ * 首页雨滴层：固定在视口、在背景之上、正文之下，只做视觉，不接收指针事件。
+ * 远景细密斜雨 + 近景玻璃水珠，运行时在 src/scripts/rain.ts；
+ * 滚出首屏会整层淡出并停帧，reduced motion 下只留一张静态水珠。
+ */
+---
+
+<div class="rain" data-rain aria-hidden="true">
+	<canvas class="rain__canvas" data-rain-canvas></canvas>
+</div>
+
+<script>
+	import { initRain } from '../scripts/rain';
+	initRain();
+</script>
+
+<style>
+	.rain {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		opacity: 0;
+		/* 只裁显示范围，不改画布分辨率；顶部与底部各留一点渐隐，
+		   免得雨丝从页头玻璃条下面直穿出来、或在视口底缘硬切。 */
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%);
+		mask-image: linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%);
+	}
+
+	.rain__canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	/* 浅色模式下水珠是「白玻璃上的水」，整体压低存在感 */
+	:global(html[data-theme='light']) .rain {
+		mix-blend-mode: multiply;
+	}
+</style>

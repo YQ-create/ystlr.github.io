@@ -107,6 +107,7 @@ npm run preview
 | `AppearancePanel.astro` | 页头雾面调色盘：深浅色 / 强调色 / 雾面与透明色 / 四种背景模式 / 底图库 | 逻辑在 `src/scripts/appearance.ts` |
 | `ScrollExpand.astro` | 首页滚动展开区块：`clip-path: inset() round` 把居中圆角小图展开到满屏 | `src`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`mediaZoom`、`scrollDistance`、`holdDistance`、`smoothing` |
 | `CircularCarousel.astro` | 首页 3D 照片环廊：照片切成 8 条贴在圆柱面上，漂移自转 / 惯性拖拽 / 景深渐隐 / 数字卷轴字幕 | `items`、`preset`、`intro`、`cardWidth`、`gap`、`autoplay`、`speed`、`captions`、`depthFade`、`innerShade`（逻辑在 `src/scripts/circular-carousel.ts`） |
+| `Rain.astro` | 首页雨滴层：远景斜雨 + 近景玻璃水珠（缓滑带水痕），fixed 在背景之上、正文之下，滚出首屏淡出停帧 | 无 props；参数在 `src/scripts/rain.ts` 顶部常量与 `PALETTES` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
 **照片环廊的数据与几何**：条目全部来自 `src/content/gallery`（`getImage` 转 900px webp），不引用组件自带的 Unsplash 示例图；早期照片记录没有标题/图注，字幕用「帧 NN + 拍摄年月」兜底，纯数字标题也被过滤。圆柱切片的位移、倾角、半径与包围盒缩放都在**构建期**算好写进 DOM，运行时只有一个 rAF 循环，每帧只写 7 个卡片的 transform 与 `--cc-depth`，不碰 112 个 tile。窄屏（容器 < 700px）放宽水平余量，让环两侧自然溢出裁切，避免整圈被缩成一排缩略图。交互：指针拖拽 / 横向滚轮 / 方向键 / Home·End / 点卡片聚焦；`cc:change` 与 `cc:item-click` 供外部联动。
@@ -138,6 +139,7 @@ npm run preview
 - 面板 DOM 由 JS 动态创建的节点（底图列表）**没有 Astro 的 scope 属性**，那一组样式必须写 `:global()`，否则一条都不命中。
 - `ScrollExpand` 用窗口滚动 + sticky track，`astro:before-swap` 销毁、`astro:page-load` 重建；`prefers-reduced-motion` 下跳过平滑插值。
 - `CircularCarousel` 的 rAF 只在环廊进入视口、页面可见且没有 hover 暂停时跑（`IntersectionObserver` + `visibilitychange` + `pauseOnHover`），`drift` 自转常驻但不代表页面滚到哪里都在算。`prefers-reduced-motion` 下关掉开场、视差、拉伸与自动播放，只保留静态一圈与键盘/拖拽切换。所有监听器共用一个 `AbortController`，`astro:before-swap` 统一销毁；`initCircularCarousel()` 自带 `bound` 幂等锁，同页多实例也只注册一次事件。
+- `Rain` 是**一块** fixed 画布，不是每个区块各挂一层：dpr 上限 1.75、帧率上限 45；滚过首屏 90% 高度整层 `opacity` 归零并 `cancelAnimationFrame`，滚回来才续帧。雨丝只在原地转动一次画布坐标系后 `drawImage` 一张预渲染贴图（水珠、水痕同理），不要在每帧里 `createLinearGradient`。`prefers-reduced-motion` 下只画一帧静态水珠、不跑 rAF；主题切换靠 `MutationObserver` 监听 `html[data-theme]` 重建贴图，别每帧去读 `getComputedStyle`。
 
 ## 知识库笔记
 

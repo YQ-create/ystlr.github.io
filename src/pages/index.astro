@@ -233,13 +233,18 @@ const explore = [
 		<!-- ═══════════ Act 1.5: 滚动展开画面（ScrollExpand） ═══════════ -->
 		<ScrollExpand
 			src={cover.src}
-			alt="旅途中的一帧光影"
+			video="/videos/lake-expand.mp4"
+			alt="雾中的湖面，一只小船停在涟漪中央"
 			title="把瞬间，慢慢铺开"
 			hint="向下滚动 · 展开画面"
 			startWidth={46}
-			startHeight={56}
+			startHeight={41}
 			startRadius={26}
-			mediaZoom={1.35}
+			startWidthMobile={86}
+			startHeightMobile={22}
+			startRadiusMobile={18}
+			fitBox
+			zoomTo={1.18}
 			scrollDistance={1.1}
 			holdDistance={0.3}
 		>

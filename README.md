@@ -102,7 +102,7 @@ npm run preview
 | `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
 | `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
 | `AppearancePanel.astro` | 页头雾面调色盘：深浅色 / 强调色 / 雾面与透明色 / 四种背景模式 / 底图库 | 逻辑在 `src/scripts/appearance.ts` |
-| `ScrollExpand.astro` | 首页滚动展开区块：`clip-path: inset() round` 把居中圆角小图展开到满屏 | `src`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`mediaZoom`、`scrollDistance`、`holdDistance`、`smoothing` |
+| `ScrollExpand.astro` | 首页滚动展开区块：圆角小窗随滚动铺满全屏，画面同时**一路推近**（不回缩）。媒体可以是图，也可以是 `video`（首页现在是雾湖小船那段） | `src`（图 / poster）、`video`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`startWidthMobile` / `startHeightMobile` / `startRadiusMobile`、`fitBox`、`zoomTo`、`scrollDistance`、`holdDistance`、`smoothing` |
 | `CircularCarousel.astro` | 首页 3D 照片环廊：照片切成 8 条贴在圆柱面上，漂移自转 / 惯性拖拽 / 景深渐隐 / 数字卷轴字幕 | `items`、`preset`、`intro`、`cardWidth`、`gap`、`autoplay`、`speed`、`captions`、`depthFade`、`innerShade`（逻辑在 `src/scripts/circular-carousel.ts`） |
 | `DockNav.astro` | 底部居中磨砂 dock：斜体衬线标签按需展开、数字缩成上标、菜单向上弹出；全站唯一导航（页头只留身份与工具） | 导航项写死在组件里；逻辑在 `src/scripts/dock-nav.ts` |
 | `GlassGrid.astro` | 照片墙的 WebGL 网格：骨架流光 → 静帧淡入、悬停推近、32-tap 毛玻璃角标、上下 8% 折射带、点击灯箱 | `items`（`src`/`big`/`title`/`meta`/`label`/`ar`，可选 `video`）；逻辑在 `src/scripts/glass-grid.ts` |
@@ -137,7 +137,9 @@ npm run preview
 - **ASCII 降帧**：`src/scripts/gradient-ascii.ts` 沿用 Topography 的闸门 —— 环境 30fps、滚动 15fps、开场/指针/点击才 60fps，dpr 上限 1.5。别把闸门去掉，它会和滚动抢 GPU。
 - **底图 objectURL**：每张本地图一个 URL 长期缓存，只在替换/删除时 `revokeObjectURL`。别用单个变量复用，否则渲染缩略图时会把正在当底图用的 URL 回收掉。
 - 面板 DOM 由 JS 动态创建的节点（底图列表）**没有 Astro 的 scope 属性**，那一组样式必须写 `:global()`，否则一条都不命中。
-- `ScrollExpand` 用窗口滚动 + sticky track，`astro:before-swap` 销毁、`astro:page-load` 重建；`prefers-reduced-motion` 下跳过平滑插值。
+- `ScrollExpand` 用窗口滚动 + sticky track，`astro:before-swap` 销毁、`astro:page-load` 重建；`prefers-reduced-motion` 下跳过平滑插值，视频改为 seek 到第 2 秒的静态帧。
+- `ScrollExpand` 的展开是「媒体尺寸跟着框长」而不是单纯 scale：竖屏下满屏 cover 会把 16:9 裁成一条竖缝，小窗里就只剩一片雾。所以别改成「固定满屏 + scale」，要保留宽高跟着框走。
+- 开场视频放 `public/videos/`（原片 1912×1080 / 14MB 压成 720p / 3.3MB），`preload="metadata"`，首屏只拉 ~96KB 头信息；进视口才 `play()`，滚出去 `pause()`。
 - `CircularCarousel` 的 rAF 只在环廊进入视口、页面可见且没有 hover 暂停时跑（`IntersectionObserver` + `visibilitychange` + `pauseOnHover`），`drift` 自转常驻但不代表页面滚到哪里都在算。`prefers-reduced-motion` 下关掉开场、视差、拉伸与自动播放，只保留静态一圈与键盘/拖拽切换。所有监听器共用一个 `AbortController`，`astro:before-swap` 统一销毁；`initCircularCarousel()` 自带 `bound` 幂等锁，同页多实例也只注册一次事件。
 - `Rain` 是**一块** fixed 画布，不是每个区块各挂一层：dpr 上限 1.75、帧率上限 45；滚过首屏 90% 高度整层 `opacity` 归零并 `cancelAnimationFrame`，滚回来才续帧。雨丝只在原地转动一次画布坐标系后 `drawImage` 一张预渲染贴图（水珠、水痕同理），不要在每帧里 `createLinearGradient`。`prefers-reduced-motion` 下只画一帧静态水珠、不跑 rAF；主题切换靠 `MutationObserver` 监听 `html[data-theme]` 重建贴图，别每帧去读 `getComputedStyle`。
 

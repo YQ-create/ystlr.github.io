@@ -3,12 +3,15 @@
  * ScrollExpand —— React Bits 同名组件的原生移植（无 React / 无依赖）。
  *
  * 一段 sticky 轨道：随着页面滚动，居中的小图通过 clip-path 的 inset+round
- * 向四周展开到满屏，媒体同时从放大回落到 1:1，标题淡出、覆盖内容淡入。
+ * 向四周展开到满屏，媒体同时**持续放大**（镜头一直往里推，而不是先放大再缩回）。
  * 参数经 data-cfg(JSON) 传入；setup() 返回 destroy，配合 astro:page-load
  * 重建，View Transitions 往返不累积滚动 / resize 监听。
  */
 interface Props {
+	/** 静态图：有视频时同时充当 poster，也作为无 JS / 加载失败时的兜底 */
 	src: string;
+	/** 可选视频（.mp4）。给了就用 loop 播放的视频当媒体，滚动时同样一路推近 */
+	video?: string;
 	alt?: string;
 	title?: string;
 	hint?: string;
@@ -16,7 +19,14 @@ interface Props {
 	startHeight?: number;
 	startRadius?: number;
 	endRadius?: number;
-	mediaZoom?: number;
+	/** 展开完成时的倍率，> 1 表示一路推近 */
+	zoomTo?: number;
+	/** 窄屏（≤640px）单独给的起始框比例，默认沿用上面的值 */
+	startWidthMobile?: number;
+	startHeightMobile?: number;
+	startRadiusMobile?: number;
+	/** 起始框的宽高比直接跟随媒体（视频建议开），此时 startHeight 只在取不到媒体尺寸时兜底 */
+	fitBox?: boolean;
 	scrollDistance?: number;
 	holdDistance?: number;
 	smoothing?: number;
@@ -26,6 +36,7 @@ interface Props {
 
 const {
 	src,
+	video = '',
 	alt = '',
 	title = '',
 	hint = '',
@@ -33,7 +44,11 @@ const {
 	startHeight = 58,
 	startRadius = 24,
 	endRadius = 0,
-	mediaZoom = 1.35,
+	zoomTo = 1.14,
+	startWidthMobile,
+	startHeightMobile,
+	startRadiusMobile,
+	fitBox = false,
 	scrollDistance = 1.2,
 	holdDistance = 0.35,
 	smoothing = 0.1,
@@ -45,8 +60,12 @@ const cfg = {
 	startWidth,
 	startHeight,
 	startRadius,
+	startWidthMobile,
+	startHeightMobile,
+	startRadiusMobile,
+	fitBox,
 	endRadius,
-	mediaZoom,
+	zoomTo,
 	scrollDistance,
 	holdDistance,
 	smoothing,
@@ -58,7 +77,24 @@ const cfg = {
 	<div class="se__track" data-se-track>
 		<div class="se__stage" data-se-stage>
 			<div class="se__frame" data-se-frame>
-				<img class="se__media" data-se-media src={src} alt={alt} loading="lazy" draggable="false" />
+				{
+					video ? (
+						<video
+							class="se__media"
+							data-se-media
+							data-se-video
+							src={video}
+							poster={src}
+							muted
+							loop
+							playsinline
+							preload="metadata"
+							aria-label={alt}
+						/>
+					) : (
+						<img class="se__media" data-se-media src={src} alt={alt} loading="lazy" draggable="false" />
+					)
+				}
 				<div class="se__scrim" data-se-scrim></div>
 				<div class="se__overlay" data-se-overlay><slot /></div>
 			</div>
@@ -73,8 +109,12 @@ const cfg = {
 		startWidth: number;
 		startHeight: number;
 		startRadius: number;
+		startWidthMobile?: number;
+		startHeightMobile?: number;
+		startRadiusMobile?: number;
+		fitBox?: boolean;
 		endRadius: number;
-		mediaZoom: number;
+		zoomTo: number;
 		scrollDistance: number;
 		holdDistance: number;
 		smoothing: number;
@@ -108,17 +148,72 @@ const cfg = {
 		let stageH = 0;
 		let running = false;
 
+		// 起始框的尺寸（占容器的百分比），随窗口宽度在桌面 / 窄屏两套值之间切换
+		let boxW = 0.46;
+		let boxH = 0.58;
+		let boxR = 0;
+		let boxCw = 0;
+		let boxCh = 0;
+
+		const natSize = () =>
+			media instanceof HTMLVideoElement
+				? { w: media.videoWidth, h: media.videoHeight }
+				: {
+						w: (media as HTMLImageElement).naturalWidth,
+						h: (media as HTMLImageElement).naturalHeight,
+					};
+
+		const measureBox = () => {
+			const narrow = window.innerWidth <= 640;
+			// 容器尺寸取 frame（inset:0），媒体自身宽高由脚本改写，不能拿来量
+			boxCw = frame.clientWidth;
+			boxCh = frame.clientHeight;
+			boxW = (narrow ? (cfg.startWidthMobile ?? cfg.startWidth) : cfg.startWidth) / 100;
+			boxR = narrow ? (cfg.startRadiusMobile ?? cfg.startRadius) : cfg.startRadius;
+			const nat = natSize();
+			if (cfg.fitBox && boxCw && boxCh && nat.w && nat.h) {
+				boxH = (boxCw * boxW) / (nat.w / nat.h) / boxCh;
+			} else {
+				boxH = (narrow ? (cfg.startHeightMobile ?? cfg.startHeight) : cfg.startHeight) / 100;
+			}
+		};
+
+		// 元数据到达后媒体尺寸才有意义：框比例与起始倍率都要按它重算一次
+		const mediaReady = () => {
+			measureBox();
+			apply(current);
+		};
+
 		const apply = (p: number) => {
 			const e = smoothstep(0, 1, p);
-			const w = cfg.startWidth + (100 - cfg.startWidth) * e;
-			const h = cfg.startHeight + (100 - cfg.startHeight) * e;
+			const cw = boxCw;
+			const ch = boxCh;
+			const w = boxW * 100 + (100 - boxW * 100) * e;
+			const h = boxH * 100 + (100 - boxH * 100) * e;
 			const ix = Math.max(0, (100 - w) / 2);
 			const iy = Math.max(0, (100 - h) / 2);
-			const r = cfg.startRadius + (cfg.endRadius - cfg.startRadius) * e;
+			// 半径比外框收得慢一点：中段还留着圆角，最后才跟屏幕边缘对齐
+			const r = boxR + (cfg.endRadius - boxR) * Math.pow(e, 2.2);
+			// 媒体始终和框等大，所以 clip 的 round 能裁到画面上（视频是合成层，
+			// 只有媒体比框小的时候 round 才会失效、露出直角）。border-radius 作兜底。
+			frame.style.borderRadius = `${r}px`;
 			const clip = `inset(${iy}% ${ix}% ${iy}% ${ix}% round ${r}px)`;
 			frame.style.clipPath = clip;
 			frame.style.setProperty('-webkit-clip-path', clip);
-			media.style.transform = `scale(${cfg.mediaZoom + (1 - cfg.mediaZoom) * e})`;
+
+			// 媒体尺寸从「和起始框一模一样」长到「铺满容器」，同时再推近一点。
+			// 不能只做 scale：竖屏下满屏 cover 会把 16:9 的画面裁成一条竖缝，
+			// 小框里就只剩雾了。尺寸跟着框走，起点才是完整画面。
+			if (cw && ch) {
+				const w0 = cw * boxW;
+				const h0 = ch * boxH;
+				media.style.width = `${w0 + (cw - w0) * e}px`;
+				media.style.height = `${h0 + (ch - h0) * e}px`;
+			}
+			const s = 1 + (cfg.zoomTo - 1) * p;
+			media.style.transform = `translate(-50%, -50%) scale(${s})`;
+			// 元素被 scale 缩放，半径要除回去才等于视觉上的 r
+			media.style.borderRadius = r > 0.5 ? `${r / s}px` : '0px';
 			if (scrim) scrim.style.opacity = String(cfg.overlayScrim * e);
 			if (title) {
 				const out = smoothstep(0.4, 0.88, p);
@@ -141,6 +236,7 @@ const cfg = {
 			stageH = window.innerHeight;
 			stage.style.height = `${stageH}px`;
 			track.style.height = `${stageH * (1 + Math.max(0, cfg.scrollDistance) + Math.max(0, cfg.holdDistance))}px`;
+			measureBox();
 		};
 
 		const readProgress = () => {
@@ -187,6 +283,47 @@ const cfg = {
 		current = target;
 		apply(current);
 
+		// 元数据到手才知道真实宽高，起始倍率要重算一次（视频 preload=metadata，图片看 load）
+		if (media instanceof HTMLVideoElement) {
+			media.addEventListener('loadedmetadata', mediaReady);
+		} else {
+			const img = media as HTMLImageElement;
+			if (img.complete) mediaReady();
+			else img.addEventListener('load', mediaReady);
+		}
+
+		// 视频媒体：只在区块临近视口时播，滚出去就停 —— 一块循环背景不值得常驻解码。
+		// preload="none"，所以真正开始下载发生在第一次 play()，首屏不会被它拖住。
+		const vid = media instanceof HTMLVideoElement ? media : null;
+		let io: IntersectionObserver | null = null;
+		if (vid && !reduce) {
+			io = new IntersectionObserver(
+				(entries) => {
+					for (const en of entries) {
+						if (en.isIntersecting) {
+							if (vid.paused) void vid.play().catch(() => {});
+						} else if (!vid.paused) {
+							vid.pause();
+						}
+					}
+				},
+				{ rootMargin: '240px 0px', threshold: 0 }
+			);
+			io.observe(root);
+		} else if (vid) {
+			// 降级模式下不播，但海报是另一张图 —— 往后取一帧当静态画面更对得上
+			vid.preload = 'auto';
+			const onLoaded = () => {
+				try {
+					vid.currentTime = Math.min(2, (vid.duration || 4) * 0.2);
+				} catch {
+					/* 取不到就留着 poster */
+				}
+			};
+			vid.addEventListener('loadeddata', onLoaded, { once: true });
+			vid.load();
+		}
+
 		window.addEventListener('scroll', onScroll, { passive: true });
 		window.addEventListener('resize', onResize);
 		const ro = new ResizeObserver(onResize);
@@ -197,6 +334,10 @@ const cfg = {
 			window.removeEventListener('scroll', onScroll);
 			window.removeEventListener('resize', onResize);
 			ro.disconnect();
+			io?.disconnect();
+			vid?.pause();
+			media.removeEventListener('loadedmetadata', mediaReady);
+			media.removeEventListener('load', mediaReady);
 		};
 	}
 
@@ -241,20 +382,29 @@ const cfg = {
 	.se__frame {
 		position: absolute;
 		inset: 0;
-		clip-path: inset(21% 27% 21% 27% round 24px);
-		-webkit-clip-path: inset(21% 27% 21% 27% round 24px);
+		overflow: hidden;
+		border-radius: 24px;
+		clip-path: inset(21% 27% 21% 27%);
+		-webkit-clip-path: inset(21% 27% 21% 27%);
 		will-change: clip-path;
 	}
 	.se__media {
 		position: absolute;
-		inset: 0;
+		left: 50%;
+		top: 50%;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		transform: translate(-50%, -50%);
 		transform-origin: center;
 		user-select: none;
 		-webkit-user-drag: none;
+		pointer-events: none;
 		will-change: transform;
+	}
+	/* 视频容器自己不做裁剪，交给 .se__frame 的 clip-path，避免两层圆角互相对不上 */
+	video.se__media {
+		background: #0b0b0c;
 	}
 	.se__scrim {
 		position: absolute;

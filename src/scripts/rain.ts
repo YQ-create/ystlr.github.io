@@ -317,11 +317,20 @@ function setup(host: HTMLElement) {
 		raf = requestAnimationFrame(frame);
 	}
 
+	// --rain-gain：页面可以用它整体压雨量（首页背后是动态海景，雨别抢戏）
+	// 只读一次，滚动回调里不要再 getComputedStyle —— 那是每帧一次强制样式计算。
+	let gain = 1;
+	const readGain = () => {
+		const v = Number.parseFloat(getComputedStyle(host).getPropertyValue('--rain-gain'));
+		gain = Number.isFinite(v) && v > 0 ? v : 1;
+	};
+	readGain();
+
 	const updateFade = () => {
 		const reach = Math.max(1, heroHeight * FADE_AT);
 		const progress = clamp(1 - window.scrollY / reach, 0, 1);
 		// reduced motion 不滚出淡出：只留一张很淡的静态水珠
-		host.style.opacity = (progress * (reduce ? 0.55 : 1)).toFixed(3);
+		host.style.opacity = (progress * (reduce ? 0.55 : 1) * gain).toFixed(3);
 		const next = progress > 0.02;
 		if (next === active) return;
 		active = next;

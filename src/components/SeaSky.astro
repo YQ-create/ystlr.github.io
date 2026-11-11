@@ -1,0 +1,111 @@
+---
+/**
+ * SeaSky — 首页首屏的黄昏海景背景（原生 WebGL2，见 src/scripts/sea-sky.ts）。
+ *
+ * 只做背景，不接收指针事件；外层由 index.astro 的 .atmo 固定层承载，
+ * 滚动时内容从它上面滑过，滚出首屏后自动淡出并停帧。
+ *
+ * 上面盖两层「veil」：顶边压暗（页头与 eyebrow 要压得住）、左侧径向压暗
+ * （标题区），否则浅色文字落在被落日照亮的云上会糊。
+ */
+interface Props {
+	class?: string;
+	/** 地平线高度（0 在视口底部） */
+	horizon?: number;
+	/** 落日中心（0—1，视口横向） */
+	sun?: number;
+	/** 压暗强度倍数，1 为默认 */
+	veil?: number;
+}
+
+const { class: className = '', horizon = 0.42, sun = 0.56, veil = 1 } = Astro.props;
+---
+
+<div
+	class:list={['sea-sky', className]}
+	data-sea-sky
+	data-horizon={horizon}
+	data-sun={sun}
+	style={`--sea-veil:${veil}`}
+	aria-hidden="true"
+>
+	<canvas class="sea-sky__canvas" data-sea-canvas></canvas>
+	<div class="sea-sky__veil"></div>
+</div>
+
+<script>
+	import { mountSeaSky } from '../scripts/sea-sky';
+
+	mountSeaSky();
+</script>
+
+<style>
+	.sea-sky {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		/* WebGL 不可用时的兜底：一条静态的黄昏色带，至少不塌成白屏 */
+		background: linear-gradient(
+			to bottom,
+			#101322 0%,
+			#2a2140 34%,
+			#6a3a44 56%,
+			#c06a42 67%,
+			#2b3a4c 68%,
+			#0d1420 100%
+		);
+		/* 底边渐隐到页面底色，首屏结束时不留一道横切 */
+		-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%);
+		mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%);
+	}
+
+	.sea-sky__canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.sea-sky__veil {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background:
+			linear-gradient(
+				to bottom,
+				rgba(var(--bg), 0.62) 0%,
+				rgba(var(--bg), 0.3) 11%,
+				rgba(var(--bg), 0.07) 26%,
+				rgba(var(--bg), 0) 42%
+			),
+			radial-gradient(ellipse 76% 62% at 14% 44%, rgba(var(--bg), 0.42), transparent 76%);
+		opacity: var(--sea-veil, 1);
+	}
+
+	/* 窄屏：压暗层收一收，否则整块天空会被压成黑色 */
+	@media (max-width: 700px) {
+		.sea-sky__veil {
+			background:
+				linear-gradient(
+					to bottom,
+					rgba(var(--bg), 0.52) 0%,
+					rgba(var(--bg), 0.26) 12%,
+					rgba(var(--bg), 0.04) 30%,
+					rgba(var(--bg), 0) 46%
+				),
+				radial-gradient(ellipse 96% 52% at 18% 40%, rgba(var(--bg), 0.3), transparent 80%);
+		}
+	}
+
+	/* 浅色主题：背景是亮的，压暗层改用纸色（只压顶部，别把整幅画冲成灰） */
+	:global(html[data-theme='light']) .sea-sky__veil {
+		background:
+			linear-gradient(
+				to bottom,
+				rgba(var(--paper), 0.52) 0%,
+				rgba(var(--paper), 0.2) 11%,
+				rgba(var(--paper), 0.02) 26%,
+				rgba(var(--paper), 0) 40%
+			),
+			radial-gradient(ellipse 76% 58% at 15% 44%, rgba(var(--paper), 0.18), transparent 74%);
+	}
+</style>

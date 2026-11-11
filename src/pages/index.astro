@@ -50,6 +50,7 @@ const stats = [
 const latest = posts[0]?.data.pubDate;
 
 import Topography from '../components/Topography.astro';
+import SeaSky from '../components/SeaSky.astro';
 import ScrollExpand from '../components/ScrollExpand.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
@@ -108,10 +109,11 @@ const explore = [
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="home">
-	<!-- 全屏固定层：默认底色 + 可选的等高线。
-	     字符光场由 BaseLayout 的 .site-bg 提供，这一层只负责首页的实底与 topo 模式；
-	     背景固定在视口里、内容在上面滑，滚动时不会错位。 -->
+	<!-- 全屏固定层：默认是黄昏海景，用户切到「等高线」时退回 Topography。
+	     内容在上面滑，滚动时背景不会错位；海景滚出首屏后自行淡出并停帧。 -->
 	<div class="atmo" aria-hidden="true">
+		<SeaSky class="page__sky" horizon={0.42} sun={0.56} />
+
 		<Topography
 			class="page__topo"
 			color="#ff6a2b"
@@ -616,14 +618,25 @@ const explore = [
 		if (!splitSection && !document.querySelector('[data-hero-letters]')) return;
 
 		// ---- 颜色：一次读取（站点固定深色主题，无需再响应换肤） ----
+		// 首页首屏的背景是暗色海景，即使切到浅色主题，hero 内的文字仍是浅色
+		// （样式里对 html[data-theme='light'] .hero 覆盖了 ink 变量）。
+		// 所以这里要按 .hero 取值，不能按 body 取，否则逐字动画会收在深色上。
+		const heroEl = document.querySelector<HTMLElement>('.hero') ?? document.body;
 		const readColors = () => ({
-			ink: cssColor('--ink', 'rgb(241,238,232)'),
+			ink: cssColor('--ink', 'rgb(241,238,232)', heroEl),
 			accent: cssColor('--accent', 'rgb(208,132,92)'),
-			ghost: cssColor('--muted-light', 'rgb(104,102,98)'),
+			ghost: cssColor('--muted-light', 'rgb(104,102,98)', heroEl),
 			creamInk: cssColor('--cream-ink', 'rgb(241,238,232)', splitSection ?? document.body),
 			creamGhost: cssColor('--cream-muted', 'rgb(142,139,133)', splitSection ?? document.body),
 		});
 		const C = readColors();
+
+		// 副标题压在暖色天空上时，纯 accent 会和背景糊在一起；提亮一档保住对比
+		const accentBright = (() => {
+			const m = C.accent.match(/[\d.]+/g)?.map(Number) ?? [208, 132, 92];
+			const lift = (v: number) => Math.round(v + (255 - v) * 0.42);
+			return `rgb(${lift(m[0])}, ${lift(m[1])}, ${lift(m[2])})`;
+		})();
 
 		// ---- Act 1: Hero 逐字揭示（时间驱动 1.25s） ----
 		let heroAlive = true;
@@ -644,7 +657,7 @@ const explore = [
 			paint(heroChars, p, 0.35, C.ink, C.accent, C.ghost);
 			// 副标题延迟 0.3s 启动，spread 更窄
 			const pSub = clamp((now - heroStart - 300) / 1000, 0, 1);
-			paint(heroSubChars, pSub, 0.25, C.accent, C.accent, C.ghost);
+			paint(heroSubChars, pSub, 0.25, accentBright, accentBright, C.ghost);
 			if (p < 1 || pSub < 1) requestAnimationFrame(tickHero);
 		}
 		requestAnimationFrame(tickHero);
@@ -747,12 +760,30 @@ const explore = [
 		pointer-events: none;
 		background: rgb(var(--bg));
 	}
+	/* 首屏背后是动态海景，雨层压到六成，只留氛围 */
+	:global(.home .rain) {
+		--rain-gain: 0.6;
+	}
 	/* 整页唯一的背景层：fixed 在视口里，滚动时内容从它上面滑过 */
 	:global(.page__topo) {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
+	}
+	:global(.page__sky) {
+		position: absolute;
+		inset: 0;
+	}
+	/* 用户显式选了自定义图片 / 等高线，就让海景退场，别两个背景打架 */
+	:global(html[data-bg-mode='topo'] .page__sky),
+	:global(html[data-bg-mode='image'] .page__sky) {
+		display: none;
+	}
+	/* 首屏是动态海景，底下的字符光场跟着海景做交叉淡化：
+	   海景退到一半以下它才开始浮上来，前半段不给两个背景叠加的机会。 */
+	:global(html[data-bg-mode='ascii']) :global(body.home) :global(.site-bg__ascii) {
+		opacity: clamp(0, calc((0.5 - var(--sea-fade, 0)) * 2.2), 1);
 	}
 	.home {
 		position: relative;
@@ -819,7 +850,7 @@ const explore = [
 		font-weight: 700;
 		letter-spacing: -0.055em;
 		line-height: 0.75;
-		color: rgba(var(--ink), 0.045);
+		color: rgba(var(--ink), 0.022);
 		pointer-events: none;
 		user-select: none;
 	}
@@ -884,7 +915,8 @@ const explore = [
 		max-width: 34ch;
 		font-size: 0.94rem;
 		line-height: 1.7;
-		color: rgb(var(--muted));
+		/* 背景是动态海景，次级文字不能再用纯 muted，否则落在亮区就散了 */
+		color: rgba(var(--ink), 0.76);
 	}
 	.hero-stats {
 		display: flex;
@@ -938,6 +970,10 @@ const explore = [
 		padding: 0 1.1rem;
 		border: 1px solid rgba(236, 235, 230, 0.16);
 		border-radius: 999px;
+		/* 透明按钮落在被落日照亮的云上会整块消失，垫一层很薄的底色托住 */
+		background: rgba(var(--bg), 0.34);
+		backdrop-filter: blur(12px) saturate(1.15);
+		-webkit-backdrop-filter: blur(12px) saturate(1.15);
 		font-size: 0.88rem;
 		color: rgb(var(--ink-soft));
 		text-decoration: none;
@@ -949,13 +985,33 @@ const explore = [
 	.hero-quiet:hover {
 		color: rgb(var(--ink));
 		border-color: rgba(236, 235, 230, 0.3);
-		background: rgba(236, 235, 230, 0.04);
+		background: rgba(var(--bg), 0.56);
+	}
+	/* 首屏背后是动态海景：次级文字落到亮区时，靠一层柔影托住 */
+	.hero-sub,
+	.hero-trust,
+	.hero-note,
+	.hero-led,
+	.hero-meta :global(.eyebrow) {
+		text-shadow:
+			0 1px 14px rgba(8, 9, 14, 0.62),
+			0 0 34px rgba(8, 9, 14, 0.36);
+	}
+	/* 浅色主题下首屏背后仍是暗色海景：这一屏继续用浅色墨，别让文字沉进画面 */
+	:global(html[data-theme='light']) .hero {
+		--ink: 236, 235, 230;
+		--ink-soft: 214, 210, 202;
+		--muted: 158, 155, 150;
+		--muted-light: 126, 123, 119;
+		--line: 62, 62, 66;
+		--line-soft: 40, 40, 44;
+		--bg: 11, 11, 12;
 	}
 	.hero-note {
 		margin: 1.4rem 0 0;
 		font-size: 0.72rem;
 		letter-spacing: 0.1em;
-		color: rgb(var(--muted-light));
+		color: rgba(var(--ink), 0.52);
 		font-variant-numeric: tabular-nums;
 	}
 

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
+import StudioHero from '../components/StudioHero.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import { STACK } from '../data/stack';
 import { getCollection } from 'astro:content';
@@ -30,9 +31,17 @@ const facts = [
 ];
 
 const topics = PROFILE.topics;
+
+// 首屏那组数字：文章 / 照片 / 知识笔记 / 已记录天数
+const knowledge = await getCollection('knowledge');
+const days = startedAt ? Math.max(1, Math.round((Date.now() - startedAt.valueOf()) / 86400000)) : 0;
+const stats = { posts: posts.length, photos: photos.length, notes: knowledge.length, days };
 ---
 
-<BaseLayout title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+<BaseLayout title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} hero={true}>
+	<!-- 首屏要占满整个视口，必须落在 main 的版心留白之外 -->
+	<StudioHero stats={stats} />
+
 	<main class="about">
 		<section class="about-hero">
 			<div class="about-hero__blob" aria-hidden="true"></div>

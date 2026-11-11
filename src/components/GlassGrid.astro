@@ -1,0 +1,286 @@
+---
+// GlassGrid：照片墙的 WebGL 网格（three.js）。
+// 全视口画布，页面在画布里自己滚动；tile 用骨架 → 静帧淡入，悬停缓慢推近，
+// 顶部 / 底部 8% 有一条玻璃折射带（带色散），点击打开灯箱。
+// 运行时：src/scripts/glass-grid.ts。视频位留着（item.video），暂时用静帧 + 推近代替。
+import type { GlassItem } from '../scripts/glass-grid';
+
+interface Props {
+	items: GlassItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<!-- 撑开文档流：画布是 fixed 的，页面高度靠这块占位，滚完才轮到页脚 -->
+<div class="gg-spacer" data-gg-spacer aria-hidden="true"></div>
+
+<div class="gg" data-glass-grid>
+	<canvas class="gg__canvas" data-gg-canvas aria-hidden="true"></canvas>
+
+	<!-- 顶部压一层暗角：页头是透明的，照片滚到它下面时文字会看不清 -->
+	<div class="gg__scrim" aria-hidden="true"></div>
+
+	<!-- 顶部压一层暗角：页头是透明的，照片滚到它下面时文字会看不清 -->
+	<div class="gg__scrim" aria-hidden="true"></div>
+
+	<div class="gg__hud" aria-hidden="true">
+		<span class="gg__count">PHOTOS / {String(items.length).padStart(2, '0')}</span>
+		<span class="gg__hint" data-gg-hint>滚动 · 悬停 · 点击放大</span>
+	</div>
+
+	<span class="gg__bubble" data-gg-bubble aria-hidden="true">打开</span>
+
+	<!-- 键盘 / 读屏用户的通路：网格是画布，不给 DOM 的话这里就完全点不到 -->
+	<ul class="gg__a11y">
+		{
+			items.map((item, i) => (
+				<li>
+					<a href={item.big}>
+						{String(i + 1).padStart(2, '0')} {item.title} — {item.meta}
+					</a>
+				</li>
+			))
+		}
+	</ul>
+
+	<script type="application/json" data-gg-items set:html={JSON.stringify(items)} />
+</div>
+
+<style>
+	.gg {
+		position: fixed;
+		inset: 0;
+		background: #0c0c0d;
+		overflow: hidden;
+	}
+
+	.gg__canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+		cursor: grab;
+		/* 不要写 touch-action: none —— 画布是 fixed 的，禁掉手势页面就滚不动了 */
+	}
+
+	.gg__canvas:active {
+		cursor: grabbing;
+	}
+
+	.gg__scrim {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 148px;
+		background: linear-gradient(to bottom, #0c0c0d 0%, rgba(12, 12, 13, 0.9) 44%, rgba(12, 12, 13, 0) 100%);
+		pointer-events: none;
+	}
+
+	.gg__scrim {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 148px;
+		background: linear-gradient(to bottom, #0c0c0d 0%, rgba(12, 12, 13, 0.9) 44%, rgba(12, 12, 13, 0) 100%);
+		pointer-events: none;
+	}
+
+	/* 左上角索引 + 底部提示：都是纯装饰，读屏跳过 */
+	.gg__hud {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		color: #8a8a88;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 11px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+
+	.gg__count {
+		position: absolute;
+		left: var(--gutter);
+		top: calc(var(--head-h) + 1.2rem);
+	}
+
+	.gg__hint {
+		position: absolute;
+		left: var(--gutter);
+		bottom: 76px;
+		letter-spacing: 0.18em;
+		transition:
+			opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+			transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.gg__hint.is-hidden {
+		transform: translateY(-6px);
+		opacity: 0;
+	}
+
+	/* 跟随指针的圆形气泡 */
+	.gg__bubble {
+		position: fixed;
+		top: var(--y, 0);
+		left: var(--x, 0);
+		z-index: 5;
+		display: grid;
+		place-items: center;
+		width: 64px;
+		height: 64px;
+		margin: -32px 0 0 -32px;
+		border-radius: 50%;
+		background: rgba(237, 237, 235, 0.94);
+		color: #0c0c0d;
+		font-family: var(--font-editorial), 'Noto Serif SC', Georgia, serif;
+		font-size: 16px;
+		font-style: italic;
+		letter-spacing: 0.01em;
+		pointer-events: none;
+		opacity: 0;
+		transform: scale(0.6);
+		transition:
+			opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+			transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.gg__bubble.is-on {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	/* 小屏：标题居中，左上角的索引会和它撞在一起，直接收掉 */
+	@media (max-width: 640px) {
+		.gg__count {
+			display: none;
+		}
+	}
+
+	.gg__a11y {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+		list-style: none;
+	}
+
+	.gg__a11y a:focus-visible {
+		position: fixed;
+		left: 1rem;
+		top: 1rem;
+		z-index: 20;
+		padding: 0.5rem 0.9rem;
+		border-radius: 6px;
+		background: #1c1c1e;
+		color: #ededeb;
+		font-size: 13px;
+		clip: auto;
+		width: auto;
+		height: auto;
+		white-space: normal;
+	}
+</style>
+
+<style is:global>
+	/* 灯箱由脚本动态创建，没有 Astro 的 scope 属性，必须写成全局 */
+	.gg-lb {
+		position: fixed;
+		inset: 0;
+		z-index: 200;
+		display: grid;
+		place-items: center;
+		padding: 5vh 4vw;
+		background: rgba(8, 8, 9, 0.86);
+		backdrop-filter: blur(14px);
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+			visibility 0.45s;
+	}
+
+	.gg-lb.is-open {
+		opacity: 1;
+		visibility: visible;
+	}
+
+	.gg-lb__figure {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		margin: 0;
+		max-width: 1100px;
+	}
+
+	.gg-lb__figure img {
+		display: block;
+		max-width: 1100px;
+		max-height: 70vh;
+		width: auto;
+		height: auto;
+		border-radius: 6px;
+		object-fit: contain;
+		transform: translateY(20px) scale(0.94);
+		transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.gg-lb.is-open .gg-lb__figure img {
+		transform: none;
+	}
+
+	.gg-lb__figure figcaption {
+		display: flex;
+		align-items: baseline;
+		gap: 0.7rem;
+		color: #ededeb;
+	}
+
+	.gg-lb__figure strong {
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 15px;
+		font-weight: 500;
+	}
+
+	.gg-lb__figure span {
+		color: #8a8a88;
+		font-family: var(--font-editorial), 'Noto Serif SC', Georgia, serif;
+		font-size: 14px;
+	}
+
+	.gg-lb__close {
+		position: absolute;
+		top: 74px;
+		right: 26px;
+		height: 26px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 5px;
+		background: #1c1c1e;
+		color: #ededeb;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 12px;
+		cursor: pointer;
+		transition: background 0.25s;
+	}
+
+	.gg-lb__close:hover {
+		background: #262628;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.gg-lb,
+		.gg-lb__figure img,
+		.gg__bubble {
+			transition-duration: 0.01ms;
+		}
+	}
+</style>
+
+<script>
+	import { initGlassGrid } from '../scripts/glass-grid';
+	initGlassGrid();
+	document.addEventListener('astro:page-load', initGlassGrid);
+</script>

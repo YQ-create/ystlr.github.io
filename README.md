@@ -74,7 +74,7 @@ npm run preview
 
 ## 视觉与动效
 
-整站是「近黑台面 + 亮橙强调」的编辑感设计：底色 `#0b0b0c`，强调色 `#ff6a2b`，展示字体 `Bodoni Moda`（衬线，中文由宋体兜底）、正文 `Hanken Grotesk`，三套字体都本地化在 `src/assets/fonts/`。默认背景是 `src/scripts/gradient-ascii.ts` 的 WebGL2 字符光场（fixed 在视口，滚动时内容从上面滑过）：首页深色首屏是「暗日」字符环，内容页与浅色模式退回右上角的字符雾；`Topography.astro` 的地形等高线保留为调色盘里的可选项。常规入场动效由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
+整站是「近黑台面 + 亮橙强调」的编辑感设计：底色 `#0b0b0c`，强调色 `#ff6a2b`，展示字体 `Bodoni Moda`（衬线，中文由宋体兜底）、正文 `Geist`（变量字重 100–900）、编辑体 `Newsreader`（300–500，含斜体，只给短句 / 标签 / 引文用），三套字体都本地化在 `src/assets/fonts/`。默认背景是 `src/scripts/gradient-ascii.ts` 的 WebGL2 字符光场（fixed 在视口，滚动时内容从上面滑过）：首页深色首屏是「暗日」字符环，内容页与浅色模式退回右上角的字符雾；`Topography.astro` 的地形等高线保留为调色盘里的可选项。常规入场动效由 `src/components/Motion.astro` 统一驱动，页面里只写 data 属性：
 
 | 写什么 | 效果 |
 | --- | --- |
@@ -91,22 +91,22 @@ npm run preview
 | `GradientASCII`（`src/scripts/`） | 默认的全站字符光场：字符图集 + Lab 色带 + 指针解码轨迹 + 点击波纹，四段式 GLSL（场 → 光晕 → 模糊 → 合成）；首页深色用 `eclipse` 字符环，其余用 `horizon` | `colors`、`shape`、`cellSize`、`density`、`glyphOpacity`、`glow`、`speed`、`scale`、`lightMode` |
 | `Topography.astro` | 可选的整页地形等高线背景（WebGL2 噪声高度场 + Bloom + 指针抬升）；默认不初始化，只有调色盘切到「等高线」才建上下文 | `color`、`lineCount`、`elevation`、`tilt`、`fog`、`glow`、`brightness`、`fps` / `scrollFps`、`dpr` |
 | `AccordionGallery.astro` | 首页「01 / 关于这里」的手风琴照片画廊（hover 展开、其余灰度收窄） | `items`、`height`、`gap`、`radius`、`expandRatio`、`orientation`、`trigger`、`grayscale` |
-| `PillNav.astro` | 页头胶囊导航（当前页高亮 + scroll-spy） | 见组件 Props |
 | `StarBorder.astro` | 主按钮的描边光效容器 | `surface`、`text`、`color`、`radius` |
 | `LogoLoop.astro` | 首页 / 关于页的横向徽标跑马灯 | `items`、`speed`、`boost`、`pauseOnHover` |
 | `SpotlightCard.astro` | 指针跟随的聚光卡片 | 见组件 Props |
-| `ChromaGrid.astro` | 照片墙的彩色网格卡片 | `items` |
 | `CountUp.astro` | 滚动数字 | `to`、`from`、`duration`、`decimals`、`prefix`、`suffix` |
 | `ClickSpark.astro` | 点击处迸出火花 | `color`（默认跟随 `--accent`）、`size`、`radius`、`count` |
 | `Shredder.astro` | 404 页的碎纸机互动 | `title`、`message`、`actionLabel`、`width`、`height` |
 | `SiteSearch.astro` | 站内搜索浮层（⌘K / Ctrl+K） | — |
 | `MusicPlayer.astro` | 顶部播放器，`transition:persist` 保活、切页不中断 | 曲目在 `src/data/playlist.json` |
 | `SubmitPost.astro` | 投稿弹窗，由 `SUBMIT_ENABLED` 控制 | — |
-| `GradualBlur.astro` | 视口/容器边缘的渐进模糊（多层 `backdrop-filter` + 分段 mask + 渐变 tint），照片墙上下渐隐 | `position`、`target`、`height`、`strength`、`layers`、`curve`、`tint`、`autoHide`、`zIndex` |
 | `BranchedMenu.astro` | 带分叉 SVG 连线的可折叠树形导航（知识库左侧索引），活动条目用强调色「画」出连线 | `items`、`defaultOpen`、`activeValue`、`preview`、`forceTree`、`rowHeight`、`indent`、`trunk`、`radius` |
 | `AppearancePanel.astro` | 页头雾面调色盘：深浅色 / 强调色 / 雾面与透明色 / 四种背景模式 / 底图库 | 逻辑在 `src/scripts/appearance.ts` |
 | `ScrollExpand.astro` | 首页滚动展开区块：`clip-path: inset() round` 把居中圆角小图展开到满屏 | `src`、`title`、`hint`、`startWidth` / `startHeight`、`startRadius`、`mediaZoom`、`scrollDistance`、`holdDistance`、`smoothing` |
 | `CircularCarousel.astro` | 首页 3D 照片环廊：照片切成 8 条贴在圆柱面上，漂移自转 / 惯性拖拽 / 景深渐隐 / 数字卷轴字幕 | `items`、`preset`、`intro`、`cardWidth`、`gap`、`autoplay`、`speed`、`captions`、`depthFade`、`innerShade`（逻辑在 `src/scripts/circular-carousel.ts`） |
+| `DockNav.astro` | 底部居中磨砂 dock：斜体衬线标签按需展开、数字缩成上标、菜单向上弹出；全站唯一导航（页头只留身份与工具） | 导航项写死在组件里；逻辑在 `src/scripts/dock-nav.ts` |
+| `GlassGrid.astro` | 照片墙的 WebGL 网格：骨架流光 → 静帧淡入、悬停推近、32-tap 毛玻璃角标、上下 8% 折射带、点击灯箱 | `items`（`src`/`big`/`title`/`meta`/`label`/`ar`，可选 `video`）；逻辑在 `src/scripts/glass-grid.ts` |
+| `StudioHero.astro` | 关于页首屏：PMREM 黑房间里的镀铬机器人 + 居中衬线标题 + 横向无限文字轨道（椭圆禁区把每行顶开再放回） | `stats`；逻辑在 `src/scripts/studio-hero.ts` |
 | `Rain.astro` | 首页雨滴层：远景斜雨 + 近景玻璃水珠（缓滑带水痕），fixed 在背景之上、正文之下，滚出首屏淡出停帧 | 无 props；参数在 `src/scripts/rain.ts` 顶部常量与 `PALETTES` |
 | `PostCard` / `PostListItem` / `Giscus` / `FormattedDate` | 文章卡、列表项、评论、日期 | — |
 
@@ -154,13 +154,11 @@ npm run preview
 - 正文用 `.prose` 渲染，支持表格、代码块（`pre` 带横向滚动）、行内代码；`h2` / `h3` 会自动进详情页的 ON THIS PAGE 目录。
 - 写完跑 `npm run build`：确认详情页数量与笔记数一致、目录树每条都能跳转、移动端无横向溢出。
 
-`GradualBlur` 在 `/gallery` 用两处，别再合成一条「视口顶部固定带」：
-- **网格内顶边轻雾**（`target="parent"`，放在 `.gallery-chroma` 里，`zIndex={10}`）：贴着第一排照片，不依赖滚动位置，首屏一眼可见。容器要有 `position: relative`。
-- **视口底边滚动渐隐**（`target="page"`，`zIndex={30}` 必须低于页头 120 / 灯箱 100）：`autoHide` 让它在接近页面末尾时淡出，最后一张照片与页脚完整可见。
-- 之前试过再加一条 `target="page"` 的视口顶边带：它初始为了不糊标题是全透明的，滚动后又只糊到已划上去的照片，且窗口一高、照片一少，底部带就整条落在空白区——**等于看不到变化**，已弃用。
-- 小屏把网格内轻雾收矮到 6rem、视口底部带收到 8rem（高度在组件 inline style 上，覆盖要 `!important`）。**每层 `backdrop-filter` 都要读回一次背景，单条控制在 5–6 层**，叠太多会拖累滚动。
+**照片墙**（`/gallery`）是一块 fixed 全视口画布 + 一块占位 div：画布自己按 `window.scrollY` 缓动位移，占位高度撑开文档流，滚过网格后整层淡出让位给页脚。上下 8% 的折射带只取三次 sample（红/绿/蓝各错一点），别改回「9 次按通道加权求和」——那会把整条带压成彩虹。tile 的静帧用 `cover` 映射到 16:9，视频位（`item.video`）已留好，有视频时 `uMix` 在静帧与视频之间交叉淡化。
 
-`Topography.astro`（约 1600 行）与 `src/scripts/gradient-ascii.ts`（约 930 行）各带一套完整 shader，都是原生 WebGL2。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），所以这两套渲染逻辑都放在模块里交给 vite 编译。`src/scripts/` 现有 `letter-reveal.ts`（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）、`appearance.ts`、`gradient-ascii.ts`、`circular-carousel.ts`（照片环廊运行时，约 500 行，同样走模块编译而不是塞进组件 `<script>`）。
+`Topography.astro`（约 1600 行）与 `src/scripts/gradient-ascii.ts`（约 930 行）各带一套完整 shader，都是原生 WebGL2。Astro 对 `<script>` 内大段模板字符串和 shader 的解析比较脆（`?` 后直接跟模板字符串会报 `Expected a semicolon`，切分 shader 漏一个反引号会报 `Unterminated string`），所以这两套渲染逻辑都放在模块里交给 vite 编译。`src/scripts/` 现有 `letter-reveal.ts`（首页逐字揭示；`splitChars()` 必须幂等，否则 View Transitions 重复初始化会把每个字再包一层）、`appearance.ts`、`gradient-ascii.ts`、`circular-carousel.ts`（照片环廊运行时，约 500 行，同样走模块编译而不是塞进组件 `<script>`）、`rain.ts`、`dock-nav.ts`、`glass-grid.ts`、`studio-hero.ts`。
+
+**three.js 是唯一的第三方渲染依赖**（0.160，`npm i three`），只被 `GlassGrid` 与 `StudioHero` 两个组件静态引入，所以只会打进 `/gallery` 与 `/about` 两个页面的 chunk，别的页面不加载。别在 `Motion.astro` 或全站脚本里 `import 'three'`。
 
 **背景性能约定（改动前先读）**：`Topography` 与 `GradientASCII` 都默认 30fps、滚动期间 15fps，指针移动 / 开场 / 点击脉冲时回到 60fps，`dpr` 上限 1.5；两者都 fixed 在视口里，滚动时只有内容在动、背景不重画整页。这是滚轮顺滑的关键，别改回「每个区块各挂一个背景实例」。滚动回调里也不要「先改 class 再读 `offsetHeight`」——那会每帧强制同步回流。字符光场另有 `IntersectionObserver` + `visibilitychange` 双闸门，滚出视口 / 切到后台就停帧。
 

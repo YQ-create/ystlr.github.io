@@ -1,0 +1,413 @@
+---
+// StudioHero：About 页首屏。镀铬机器人（three.js）+ 居中衬线标题 + 横向无限文字轨道，
+// 机器人脚下有一个椭圆形禁区，把经过的每一行文字顶开再放回。
+//
+// 分工：机器人是真 3D（画布在标题之上、轨道之下）；所有文字都是普通 DOM ——
+// 逐行位移用 CSS transform 就够了，没必要把字画进 canvas，读屏和 SEO 也一起保住了。
+// 运行时在 src/scripts/studio-hero.ts。
+interface Block {
+	kind: 'para' | 'list' | 'chapter' | 'quote' | 'stats' | 'links';
+	heading: string;
+	side: 'top' | 'bottom';
+	/** 段落 / 引文 / 章节正文，一个字一行由脚本按宽度切开 */
+	text?: string;
+	/** 列表项 */
+	items?: string[];
+	/** 章节编号 */
+	numeral?: string;
+	/** 引文出处 */
+	cite?: string;
+	/** 链接项：[文字, href] */
+	links?: [string, string][];
+}
+
+interface Props {
+	stats: { posts: number; photos: number; notes: number; days: number };
+}
+
+const { stats } = Astro.props;
+
+const blocks: Block[] = [
+	{
+		kind: 'para',
+		heading: 'Writing',
+		side: 'top',
+		text: '不定期记录日常、阅读与随想。写完就放在这里，不追热点，也不为了更新而更新。',
+	},
+	{
+		kind: 'list',
+		heading: 'Sections',
+		side: 'bottom',
+		items: ['日常随笔', '阅读笔记', '生活片段', '随想与思考'],
+	},
+	{
+		kind: 'chapter',
+		heading: 'Part One · Archiving',
+		side: 'top',
+		numeral: 'I',
+		text: '写下来的意义不在于被看见，而在于把当时的感觉固定住。过很久再读，还能认出那天的自己。',
+	},
+	{
+		kind: 'quote',
+		heading: '',
+		side: 'bottom',
+		text: '“把散落的生活片段，整理成文字与照片。”',
+		cite: '— 站点说明',
+	},
+	{
+		kind: 'stats',
+		heading: 'So far',
+		side: 'top',
+		items: [
+			`${String(stats.posts).padStart(2, '0')}  篇文章`,
+			`${String(stats.photos).padStart(2, '0')}  张照片`,
+			`${String(stats.notes).padStart(2, '0')}  条笔记`,
+			`${String(stats.days).padStart(2, '0')}  天记录`,
+		],
+	},
+	{
+		kind: 'chapter',
+		heading: 'Part Two · Light',
+		side: 'bottom',
+		numeral: 'II',
+		text: '照片留下光线，文字留下当时的念头。两样凑在一起，才算一次完整的回忆。',
+	},
+	{
+		kind: 'quote',
+		heading: '',
+		side: 'top',
+		text: '“慢一点，也是一种速度。”',
+		cite: '— 随想，2026',
+	},
+	{
+		kind: 'links',
+		heading: 'Contact',
+		side: 'bottom',
+		links: [
+			['hello@ystlr.com →', 'mailto:hello@ystlr.com'],
+			['看看文章 →', '/blog'],
+			['订阅 RSS →', '/rss.xml'],
+		],
+	},
+];
+---
+
+<section class="sh" data-studio-hero aria-labelledby="sh-title">
+	<canvas class="sh__bot" data-sh-bot aria-hidden="true"></canvas>
+
+	<div class="sh__stage">
+		<h1 class="sh__headline" id="sh-title">
+			<span>把散落的日常</span>
+			<span>整理成可以重读的</span>
+			<span>文字与照片。</span>
+		</h1>
+		<p class="sh__sub">持续记录中 · 自 2026 年 10 月起</p>
+
+		<div class="sh__track" data-sh-track aria-label="站内掠影">
+			{
+				blocks.map((b) => (
+					<article class="sh-block" data-sh-block data-side={b.side} data-kind={b.kind} aria-hidden="true">
+						{b.heading && <span class="sh-block__head">{b.heading}</span>}
+						{b.numeral && <span class="sh-block__numeral">{b.numeral}</span>}
+						{b.text && <p class="sh-block__body" data-sh-split>{b.text}</p>}
+						{b.items &&
+							b.items.map((item) => (
+								<span class="sh-line sh-line--item" data-role={b.kind === 'stats' ? 'stat' : 'list'}>
+									{item}
+								</span>
+							))}
+						{b.links &&
+							b.links.map(([label, href]) => (
+								<a class="sh-line sh-line--link" href={href}>
+									{label}
+								</a>
+							))}
+						{b.cite && <span class="sh-block__cite">{b.cite}</span>}
+					</article>
+				))
+			}
+		</div>
+	</div>
+
+	<span class="sh__burst" data-sh-burst aria-hidden="true"></span>
+	<span class="sh__hint" data-sh-hint aria-hidden="true">Scroll →</span>
+</section>
+
+<style>
+	.sh {
+		position: relative;
+		width: 100vw;
+		height: 100svh;
+		min-height: 620px;
+		margin-left: calc(50% - 50vw);
+		overflow: hidden;
+		background: #0c0c0d;
+		isolation: isolate;
+	}
+
+	.sh__bot {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+	}
+
+	.sh__stage {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+	}
+
+	/* 居中三行衬线标题：机器人正好压在中间那行的字上 */
+	.sh__headline {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		margin: 0;
+		transform: translate(-50%, -50%);
+		width: min(92vw, 1080px);
+		color: #ededeb;
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', Georgia, serif;
+		font-size: clamp(1.9rem, 4vw, 3.5rem);
+		font-weight: 300;
+		letter-spacing: -0.012em;
+		line-height: 1.18;
+		text-align: center;
+		text-wrap: balance;
+		pointer-events: none;
+	}
+
+	.sh__headline span {
+		display: block;
+	}
+
+	.sh__sub {
+		position: absolute;
+		left: 50%;
+		top: calc(50% + clamp(5.4rem, 8vw, 7.4rem));
+		margin: 0;
+		transform: translateX(-50%);
+		color: #8a8a88;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+		pointer-events: none;
+	}
+
+	/* 轨道容器本身不定位子元素，块的 x/y 全由脚本写 transform */
+	.sh__track {
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		pointer-events: none;
+	}
+
+	.sh-block {
+		position: absolute;
+		left: 0;
+		top: 50%;
+		width: max-content;
+		max-width: min(320px, 78vw);
+		will-change: transform;
+	}
+
+	.sh-block[data-side='top'] {
+		/* 块的底边离中线 78px */
+		transform: translateY(calc(-100% - 78px));
+	}
+
+	.sh-block[data-side='bottom'] {
+		transform: translateY(78px);
+	}
+
+	.sh-block__head {
+		display: block;
+		margin-bottom: 14px;
+		color: #8a8a88;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.01em;
+	}
+
+	.sh-block__numeral {
+		display: block;
+		margin-bottom: 6px;
+		color: #ededeb;
+		font-family: var(--font-editorial), 'Noto Serif SC', Georgia, serif;
+		font-size: 72px;
+		font-weight: 300;
+		line-height: 1;
+	}
+
+	.sh-block__cite {
+		display: block;
+		margin-top: 12px;
+		color: #8a8a88;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 12px;
+		font-weight: 500;
+	}
+
+	/* 切行前脚本要按这个字体量宽度，所以排版必须在 p 上就位 */
+	.sh-block__body {
+		max-width: 320px;
+		margin: 0;
+		color: #ededeb;
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', Georgia, serif;
+		font-size: 22px;
+		font-weight: 300;
+		line-height: 1.32;
+	}
+
+	[data-kind='quote'] .sh-block__body {
+		font-size: 40px;
+		font-weight: 300;
+		line-height: 1.12;
+	}
+
+	/* 每一行都是独立的块，脚本按行给 translateY —— 磁吸效果就靠这个 */
+	.sh-line {
+		display: block;
+		color: #ededeb;
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', Georgia, serif;
+		font-size: 22px;
+		font-weight: 300;
+		line-height: 1.32;
+		white-space: nowrap;
+		will-change: transform;
+	}
+
+	.sh-line--item {
+		font-weight: 400;
+		line-height: 1.55;
+	}
+
+	.sh-line[data-role='stat'] {
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 18px;
+		font-weight: 400;
+		line-height: 1.9;
+	}
+
+	.sh-line--link {
+		color: #ededeb;
+		text-decoration: none;
+		pointer-events: auto;
+		transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.sh-line--link:hover {
+		opacity: 0.5;
+	}
+
+	[data-kind='quote'] .sh-line {
+		font-size: 40px;
+		font-weight: 300;
+		line-height: 1.12;
+	}
+
+	.sh__hint {
+		position: absolute;
+		left: 50%;
+		bottom: 124px;
+		z-index: 4;
+		transform: translateX(-50%);
+		color: #8a8a88;
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 11px;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		pointer-events: none;
+		transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.sh__hint.is-off {
+		opacity: 0;
+	}
+
+	/* 点击机器人时的蓝色透镜：DOM 造一个径向光斑，不去采样背景 */
+	.sh__burst {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		z-index: 4;
+		width: 120px;
+		height: 120px;
+		margin: -60px 0 0 -60px;
+		border-radius: 50%;
+		background:
+			radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95) 0%, rgba(37, 43, 167, 0.5) 22%, rgba(22, 33, 255, 0.16) 42%, rgba(22, 33, 255, 0) 68%);
+		opacity: 0;
+		transform: scale(0.2);
+		pointer-events: none;
+	}
+
+	.sh__burst.is-fire {
+		animation: sh-burst 1.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+
+	@keyframes sh-burst {
+		0% {
+			opacity: 0;
+			transform: scale(0.2);
+		}
+		12% {
+			opacity: 1;
+		}
+		70% {
+			opacity: 0.55;
+		}
+		100% {
+			opacity: 0;
+			transform: scale(14);
+		}
+	}
+
+	@media (max-width: 1024px) {
+		.sh__headline {
+			font-size: clamp(1.7rem, 6.4vw, 2.6rem);
+		}
+
+		.sh-line,
+		.sh-block__body {
+			font-size: 17px;
+			max-width: 300px;
+		}
+
+		[data-kind='quote'] .sh-line,
+		[data-kind='quote'] .sh-block__body {
+			font-size: 26px;
+		}
+
+		.sh-block {
+			max-width: min(300px, 72vw);
+		}
+
+		/* 小屏轨道会压到底部，SCROLL 提示只剩干扰 */
+		.sh__hint {
+			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.sh__hint,
+		.sh-line--link {
+			transition-duration: 0.01ms;
+		}
+
+		.sh__burst {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	import { initStudioHero } from '../scripts/studio-hero';
+	initStudioHero();
+	document.addEventListener('astro:page-load', initStudioHero);
+</script>

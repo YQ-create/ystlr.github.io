@@ -1,428 +1,117 @@
 ---
+// 照片墙：全视口 WebGL 网格（GlassGrid）。
+// 页面在画布里滚动，tile 用骨架 → 静帧淡入、悬停推近、点击开灯箱；
+// 上下 8% 有玻璃折射带。数据仍全部来自 src/content/gallery。
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ChromaGrid from '../../components/ChromaGrid.astro';
-import GradualBlur from '../../components/GradualBlur.astro';
+import GlassGrid from '../../components/GlassGrid.astro';
 import { getCollection } from 'astro:content';
 import { getImage } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
-const photos = (await getCollection('gallery')).sort(
-	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
+const photos = (await getCollection('gallery')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
-// 大图地址在构建期算好，灯箱直接取，避免放大时糊（灯箱图片点击时才真正加载）
-const bigUrls = new Map<string, string>();
-for (const photo of photos) {
-	const big = await getImage({ src: photo.data.image as ImageMetadata, width: 1600, format: 'webp' });
-	bigUrls.set(photo.id, big.src);
-}
-
-// 追光网格数据：每张照片生成彩色卡片（多档 srcset 响应式）+ 日期/标题/强调色，可点开灯箱
-const ACCENTS = ['#ffb86c', '#7c5cff', '#ff6b9d', '#4cc2ff', '#5ad1a0', '#ffd166'];
-// 卡片实际槽位约 300px（4 列），2x 屏约 600px；给三档，浏览器按需取
-const CARD_WIDTHS = [400, 600, 900];
-const chromaItems = await Promise.all(
+// tile 用 1200px 静帧（1440 宽三列时约 470 CSS px，2x 屏刚好够），灯箱另取 1600px
+const items = await Promise.all(
 	photos.map(async (photo, i) => {
-		const [base, ...rest] = await Promise.all(
-			CARD_WIDTHS.map((w) => getImage({ src: photo.data.image as ImageMetadata, width: w, format: 'webp' })),
-		);
-		const srcset = [base, ...rest]
-			.map((img, idx) => `${img.src} ${CARD_WIDTHS[idx]}w`)
-			.join(', ');
+		const [tile, big] = await Promise.all([
+			getImage({ src: photo.data.image as ImageMetadata, width: 1200, format: 'webp' }),
+			getImage({ src: photo.data.image as ImageMetadata, width: 1600, format: 'webp' }),
+		]);
 		const d = photo.data.date;
-		const month = String(d.getMonth() + 1).padStart(2, '0');
-		const day = String(d.getDate()).padStart(2, '0');
-		const title = photo.data.title ?? photo.data.caption ?? '';
+		const meta = `${d.getFullYear()} · ${String(d.getMonth() + 1)} 月 ${String(d.getDate())} 日`;
+		const title = photo.data.title ?? photo.data.caption ?? `第 ${String(i + 1).padStart(2, '0')} 帧`;
+		const img = photo.data.image as ImageMetadata;
 		return {
-			image: base.src,
+			src: tile.src,
+			big: big.src,
 			title,
-			subtitle: `${d.getFullYear()} · ${month} 月 ${day} 日`,
-			accent: ACCENTS[i % ACCENTS.length],
-			lightbox: bigUrls.get(photo.id),
-			srcset,
-			sizes: '(max-width: 720px) 50vw, (max-width: 1080px) 33vw, 400px',
-			// alt 兜底：没写标题/说明时用「照片」，避免空 alt
-			alt: title || '照片',
+			meta,
+			label: `${String(i + 1).padStart(2, '0')}  ${photo.data.tags?.[0] ?? '照片'}`,
+			alt: title,
+			ar: img.width / img.height,
 		};
-	})
+	}),
 );
 ---
 
-<BaseLayout title={`照片墙 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
-	<main class="gallery-main">
-		<header class="page-head" data-reveal>
-			<span class="sec-head__index">PHOTOS / {String(photos.length).padStart(2, '0')}</span>
-			<h1>照片墙</h1>
-			<p>生活里的瞬间，按年月慢慢整理成墙。点开任意一张可以放大看。</p>
-		</header>
-
-		{photos.length === 0 ? (
-			<div class="empty-wall glass" data-reveal>
-				<span class="empty-wall__index">WALL IS EMPTY</span>
-				<h2>这张墙还在等第一张照片</h2>
-				<p>
-					本地跑一条命令就行：<code>npm run photo -- 图片路径</code>，脚本会压图并生成同名记录；
-					也可以打开 <a href="/admin">/admin</a> 直接上传，或者手动把图片放进
-					<code>src/assets/gallery/</code>、在 <code>src/content/gallery/</code>
-					里新建一个 <code>.md</code> 填上日期。放好后这张墙会自动按年月排好。
-				</p>
-				<pre><code># 一条命令：压图 + 写记录（支持文件夹批量）
-npm run photo -- ./照片.jpg -t "江边的傍晚" -d 2026-10-22 -g 生活,风景
-
-# 等价的手写记录：src/content/gallery/my-photo.md
----
-title: "江边的傍晚"
-date: 2026-10-22
-image: ../../assets/gallery/my-photo.jpg
-caption: "落日把江面染成暖橙色。"
-tags: ["生活", "风景"]
----</code></pre>
-			</div>
-		) : (
-			<div class="gallery-chroma" data-reveal="scale">
-				<ChromaGrid
-					items={chromaItems}
-					reveal="spotlight"
-					columns={3}
-					minCardWidth={260}
-					gap={14}
-					radius={220}
-					softness={0.72}
-					damping={0.5}
-					fadeOut={0.5}
-					grayscale={1}
-					dim={0.1}
-					glow={0.62}
-					borderGlow={1}
-					aspectRatio="4 / 3"
-					cardRadius={22}
-					showInfo={true}
-					frame={true}
-					theme="dark"
-				/>
-				<!-- 贴着照片网格顶边的轻雾：不依赖滚动位置，首屏第一眼就能看到改版效果。
-				     放在容器内部而不是视口边缘，是因为 fixed 在视口底/顶的渐隐带，
-				     在高窗口或照片较少时会整条落在空白区，等于没有效果。
-				     强度刻意压低，照片仍可辨认；z-index 10 高于网格卡片(最高 2)。 -->
-				<GradualBlur
-					class="gallery-frame-fade"
-					target="parent"
-					position="top"
-					height="9rem"
-					strength={1.3}
-					layers={5}
-					curve="bezier"
-					exponential
-					tint="rgba(11, 11, 12, 0.38)"
-					zIndex={10}
-				/>
-			</div>
-		)}
+<BaseLayout title={`照片墙 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} bodyClass="page-gallery">
+	<main class="gallery-view">
+		<h1 class="sr-only">照片墙</h1>
+		{
+			photos.length === 0 ? (
+				<div class="empty-wall glass">
+					<span class="empty-wall__index">WALL IS EMPTY</span>
+					<h2>这张墙还在等第一张照片</h2>
+					<p>
+						本地跑一条命令就行：<code>npm run photo -- 图片路径</code>，脚本会压图并生成同名记录；
+						也可以打开 <a href="/admin">/admin</a> 直接上传，或者手动把图片放进
+						<code>src/assets/gallery/</code>、在 <code>src/content/gallery/</code>
+						里新建一个 <code>.md</code> 填上日期。
+					</p>
+					<pre><code># 一条命令：压图 + 写记录（支持文件夹批量）
+npm run photo -- ./照片.jpg -t "江边的傍晚" -d 2026-10-22 -g 生活,风景</code></pre>
+				</div>
+			) : (
+				<GlassGrid items={items} />
+			)
+		}
 	</main>
-
-	<!-- 视口底边的滚动渐隐：往下滚时照片柔和沉入背景。
-	     z-index 30 低于导航(120)与灯箱(100)，不会糊住导航、也不影响放大看照片。
-	     autoHide 让它在接近页面末尾时淡出，保证最后一张照片与页脚完整可见。
-	     顶部不再挂视口固定层：它初始为了不糊标题是全透明的，滚动后又只会糊到
-	     已经划上去的照片，实际观感很弱，改由网格内部那条「贴内容的轻雾」负责。 -->
-	<GradualBlur
-		class="gallery-fade gallery-fade--bottom"
-		target="page"
-		position="bottom"
-		height="12rem"
-		strength={1.9}
-		layers={6}
-		curve="bezier"
-		exponential
-		tint="rgba(11, 11, 12, 0.62)"
-		autoHide
-		zIndex={30}
-	/>
-
-	<!-- 灯箱 -->
-	<div class="lightbox" data-lightbox-root role="dialog" aria-modal="true" aria-label="照片查看" hidden>
-		<div class="lightbox-veil" data-lightbox-close></div>
-		<figure class="lightbox-figure">
-			<img data-lightbox-img alt="" />
-			<figcaption>
-				<span data-lightbox-caption></span>
-				<button class="lightbox-close" type="button" data-lightbox-close aria-label="关闭">
-					×
-				</button>
-			</figcaption>
-		</figure>
-	</div>
 </BaseLayout>
 
-<script>
-	// 灯箱：View Transitions 下脚本只执行一次，元素每次导航后重新查询。
-	let lastFocus: HTMLElement | null = null;
-	let wired = false;
-
-	/** 锁滚动并补滚动条宽度，避免桌面端横向抖动 */
-	function lockScroll() {
-		const bar = window.innerWidth - document.documentElement.clientWidth;
-		document.documentElement.style.overflow = 'hidden';
-		document.body.style.overflow = 'hidden';
-		if (bar > 0) document.body.style.paddingRight = `${bar}px`;
-	}
-	function unlockScroll() {
-		document.documentElement.style.removeProperty('overflow');
-		document.body.style.removeProperty('overflow');
-		document.body.style.removeProperty('padding-right');
-	}
-
-	/** 焦点陷阱：Tab 在灯箱内的可聚焦元素间循环 */
-	function trapFocus(e: KeyboardEvent) {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		if (!root || root.hidden || e.key !== 'Tab') return;
-		const focusables = Array.from(
-			root.querySelectorAll<HTMLElement>(
-				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-			),
-		);
-		if (!focusables.length) return;
-		const first = focusables[0];
-		const last = focusables[focusables.length - 1];
-		if (e.shiftKey && document.activeElement === first) {
-			e.preventDefault();
-			last.focus();
-		} else if (!e.shiftKey && document.activeElement === last) {
-			e.preventDefault();
-			first.focus();
-		}
-	}
-
-	/** 立刻收起并解锁滚动：切页、Esc、点遮罩都走这里 */
-	function resetLightbox(restoreFocus = false) {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		const img = document.querySelector<HTMLImageElement>('[data-lightbox-img]');
-		if (!root) return;
-		root.classList.remove('is-open');
-		root.hidden = true;
-		unlockScroll();
-		if (img) img.removeAttribute('src');
-		if (restoreFocus) lastFocus?.focus();
-	}
-
-	function closeLightbox() {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		if (!root) return;
-		root.classList.remove('is-open');
-		unlockScroll();
-		window.setTimeout(() => resetLightbox(true), 200);
-	}
-
-	function openLightbox(trigger: HTMLElement) {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		const img = document.querySelector<HTMLImageElement>('[data-lightbox-img]');
-		const caption = document.querySelector<HTMLElement>('[data-lightbox-caption]');
-		if (!root || !img) return;
-		lastFocus = trigger;
-		img.src = trigger.dataset.full ?? '';
-		if (caption) caption.textContent = trigger.dataset.caption ?? '';
-		root.hidden = false;
-		lockScroll();
-		requestAnimationFrame(() => root.classList.add('is-open'));
-		root.querySelector<HTMLElement>('[data-lightbox-close]')?.focus();
-	}
-
-	function init() {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		if (!root || root.dataset.wired === '1') return;
-		root.dataset.wired = '1';
-
-		root.addEventListener('click', (e) => {
-			if ((e.target as HTMLElement).closest('[data-lightbox-close]')) closeLightbox();
-		});
-
-		document.querySelectorAll<HTMLElement>('[data-lightbox]').forEach((t) => {
-			t.addEventListener('click', () => openLightbox(t));
-		});
-	}
-
-	// 用 View Transitions 切页时页面不会卸载，灯箱留下的状态和滚动锁必须手动清掉，
-	// 否则“放大看过一张之后”整站都滑不动、也点不动导航。
-	document.addEventListener('astro:before-swap', () => resetLightbox());
-	document.addEventListener('astro:page-load', () => {
-		const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-		if (root && root.hidden) unlockScroll();
-	});
-
-	if (!wired) {
-		wired = true;
-		document.addEventListener('keydown', (e) => {
-			const root = document.querySelector<HTMLElement>('[data-lightbox-root]');
-			if (e.key === 'Escape' && root && !root.hidden) closeLightbox();
-			trapFocus(e);
-		});
-	}
-
-	document.addEventListener('astro:page-load', init);
-	if (document.readyState !== 'loading') init();
-	else document.addEventListener('DOMContentLoaded', init);
-</script>
-
 <style>
-	.gallery-main {
-		width: var(--w-page);
-		margin-inline: auto;
-	}
-	.gallery-chroma {
+	.gallery-view {
 		position: relative;
-		margin: 0 0 clamp(2rem, 4vw, 3.2rem);
 	}
 
-	.page-head {
-		padding: 1rem 0 1.2rem;
-	}
-	.page-head h1 {
-		margin: 0.2em 0 0.35em;
-	}
-	.page-head p {
-		color: rgb(var(--muted));
-		margin: 0;
-	}
-
-
-
-	/* 空状态：告诉用户照片该怎么加进来 */
+	/* 空状态：画布没内容时给一块正常的阅读版心 */
 	.empty-wall {
-		margin-top: 0.6rem;
-		padding: clamp(1.4rem, 3.4vw, 2.4rem);
-		border-radius: var(--r-lg);
-		max-width: 44rem;
+		max-width: 760px;
+		margin: calc(var(--head-h) + 4rem) auto 8rem;
+		padding: clamp(1.6rem, 3vw, 2.6rem);
+		border-radius: 14px;
 	}
+
 	.empty-wall__index {
-		font-size: 0.68rem;
-		letter-spacing: 0.22em;
-		color: rgb(var(--muted-light));
-	}
-	.empty-wall h2 {
-		margin: 0.5rem 0 0.7rem;
-		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
-	}
-	.empty-wall p {
-		margin: 0 0 1rem;
+		display: block;
+		margin-bottom: 0.8rem;
 		color: rgb(var(--muted));
-		line-height: 1.85;
+		font-size: 11px;
+		letter-spacing: 0.18em;
 	}
-	.empty-wall p a {
-		color: rgb(var(--accent-deep));
-		text-decoration: underline;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 3px;
+
+	.empty-wall h2 {
+		margin: 0 0 0.8rem;
+		font-family: var(--font-display), 'Noto Serif SC', Georgia, serif;
+		font-size: clamp(1.4rem, 3vw, 1.9rem);
+		font-weight: 400;
 	}
-	.empty-wall p a:hover {
-		color: rgb(var(--accent));
-	}
-	.empty-wall code {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-		font-size: 0.88em;
-		padding: 0.1em 0.38em;
-		border-radius: 4px;
-		background: rgba(var(--accent), 0.1);
-		color: rgb(var(--accent-deep));
-	}
-	.empty-wall pre {
-		margin: 0;
-		padding: 0.9rem 1rem;
-		overflow-x: auto;
-		border-radius: var(--r-md);
-		background: var(--glass-bg-strong);
-		border: 1px solid rgba(var(--line), 1);
-	}
-	.empty-wall pre code {
-		background: none;
-		padding: 0;
+
+	.empty-wall p {
 		color: rgb(var(--ink-soft));
+		font-size: 15px;
+		line-height: 1.8;
+	}
+
+	.empty-wall code {
+		padding: 1px 5px;
+		border-radius: 4px;
+		background: var(--chip-bg);
+		font-size: 0.9em;
+	}
+
+	.empty-wall pre {
+		overflow-x: auto;
+		padding: 1rem 1.1rem;
+		border: 1px solid rgba(var(--line), 1);
+		border-radius: 8px;
+		background: rgba(0, 0, 0, 0.25);
+	}
+
+	.empty-wall pre code {
+		padding: 0;
+		background: none;
+		font-size: 12.5px;
 		line-height: 1.7;
 	}
-
-	/* ---- 灯箱 ---- */
-	.lightbox {
-		position: fixed;
-		inset: 0;
-		z-index: 100;
-		display: grid;
-		place-items: center;
-		padding: clamp(1rem, 4vw, 3rem);
-		overscroll-behavior: contain;
-	}
-	/* 关键：.lightbox 自己设了 display:grid，会盖掉浏览器给 [hidden] 的 display:none，
-	   于是「藏起来」的灯箱仍然铺满屏幕、吃掉所有点击。这里显式兜住。 */
-	.lightbox[hidden] {
-		display: none !important;
-	}
-	.lightbox-veil {
-		position: absolute;
-		inset: 0;
-		background: rgba(38, 32, 26, 0.72);
-		backdrop-filter: blur(14px);
-		opacity: 0;
-		transition: opacity 0.24s var(--ease-out);
-	}
-	.lightbox.is-open .lightbox-veil {
-		opacity: 1;
-	}
-	.lightbox-figure {
-		position: relative;
-		margin: 0;
-		max-width: min(1100px, 92vw);
-		transform: scale(0.96) translateY(10px);
-		opacity: 0;
-		transition:
-			transform 0.3s var(--ease-spring),
-			opacity 0.24s var(--ease-out);
-	}
-	.lightbox.is-open .lightbox-figure {
-		transform: none;
-		opacity: 1;
-	}
-	.lightbox-figure img {
-		display: block;
-		max-height: 78vh;
-		width: auto;
-		border-radius: var(--r-md);
-		box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
-	}
-	.lightbox-figure figcaption {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		margin-top: 0.8rem;
-		font-size: 0.86rem;
-		color: rgba(255, 253, 248, 0.82);
-	}
-	.lightbox-close {
-		flex-shrink: 0;
-		width: 34px;
-		height: 34px;
-		border-radius: 50%;
-		border: 1px solid rgba(255, 255, 255, 0.25);
-		background: rgba(255, 255, 255, 0.1);
-		color: #fff;
-		font-size: 1.1rem;
-		line-height: 1;
-		cursor: pointer;
-		transition: background-color var(--dur-fast) var(--ease-out);
-	}
-	.lightbox-close:hover {
-		background: rgba(255, 255, 255, 0.22);
-	}
-
-	/* 小屏把网格顶边轻雾收矮，底部视口渐隐也收窄，别吃掉太多可视区域。
-	   高度写在组件 inline style 上，需要 !important 才能覆盖。 */
-	@media (max-width: 720px) {
-		:global(.gallery-frame-fade) {
-			height: 6rem !important;
-		}
-		:global(.gallery-fade--bottom) {
-			height: 8rem !important;
-		}
-	}
 </style>
-
-

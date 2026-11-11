@@ -1,0 +1,395 @@
+---
+// DockNav：底部居中磨砂胶囊导航。
+// 版式取自「浮动 dock」：左 wordmark + 竖分隔 + 数字标签页（激活时斜体标签展开、
+// 数字缩小成上标）+ 竖分隔 + 菜单点（面板向上弹出）。
+// 导航项只此一处，页头不再重复；当前页靠 pathname 判定，SPA 换页后由脚本刷新。
+// 运行时在 src/scripts/dock-nav.ts。
+
+// 站内五个板块：num 就是标签页左侧的数字（激活时缩成上标）
+const items = [
+	{ num: '1', label: '文章', href: '/blog' },
+	{ num: '2', label: '知识库', href: '/knowledge' },
+	{ num: '3', label: '照片', href: '/gallery' },
+	{ num: '4', label: '发现', href: '/discover' },
+	{ num: '5', label: '关于', href: '/about' },
+];
+
+// 菜单面板：dock 已经承担导航，这里放工具项（右侧小字是快捷键 / 格式提示）
+const menu = [
+	{ label: '站内搜索', meta: '⌘K', href: null, action: 'search' },
+	{ label: '订阅 RSS', meta: 'xml', href: '/rss.xml', action: null },
+	{ label: '写信给我', meta: 'mailto', href: 'mailto:hello@ystlr.com', action: null },
+];
+---
+
+<div class="dock-root" data-dock-root transition:persist="site-dock">
+	<nav class="dock" data-dock aria-label="主导航">
+		<a class="dock__mark" href="/" aria-label="ystlr 首页">
+			YSTLR<span class="dock__mark-suffix" aria-hidden="true">.ST</span>
+		</a>
+		<span class="dock__rule" aria-hidden="true"></span>
+		<div class="dock__tabs">
+			{
+				items.map((item) => (
+					<a class="dock__tab" href={item.href} data-dock-tab aria-label={item.label}>
+						<span class="dock__label">{item.label}</span>
+						<span class="dock__num">{item.num}</span>
+					</a>
+				))
+			}
+		</div>
+		<span class="dock__rule" aria-hidden="true"></span>
+		<button
+			class="dock__dot"
+			type="button"
+			data-dock-menu
+			aria-expanded="false"
+			aria-controls="dock-panel"
+			aria-label="更多"
+			title="更多"
+		>
+			<i aria-hidden="true"></i>
+		</button>
+	</nav>
+
+	<div class="dock-panel" id="dock-panel" data-dock-panel role="dialog" aria-label="更多入口">
+		<p class="dock-panel__note">随时可以写信，或者从这里跳去别处。</p>
+		<ul class="dock-panel__list">
+			{
+				menu.map((row) => (
+					<li>
+						{row.href ? (
+							<a class="dock-panel__row" href={row.href} data-dock-row>
+								<span>{row.label}</span>
+								<em>{row.meta}</em>
+							</a>
+						) : (
+							<button class="dock-panel__row" type="button" data-dock-action={row.action} data-dock-row>
+								<span>{row.label}</span>
+								<em>{row.meta}</em>
+							</button>
+						)}
+					</li>
+				))
+			}
+		</ul>
+	</div>
+</div>
+
+<style>
+	.dock-root {
+		/* 深色：近黑中性玻璃，和 --bg 同一族；浅色下面整组覆盖 */
+		--dock-bg: rgba(28, 28, 30, 0.66);
+		--dock-brd: rgba(255, 255, 255, 0.06);
+		--dock-rule: rgba(255, 255, 255, 0.1);
+		--dock-hover: rgba(255, 255, 255, 0.06);
+		--dock-active: rgba(255, 255, 255, 0.1);
+		--dock-panel-bg: rgba(22, 22, 24, 0.82);
+		--dock-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+	}
+
+	:global(:root[data-theme='light']) .dock-root {
+		--dock-bg: rgba(255, 253, 250, 0.72);
+		--dock-brd: rgba(90, 76, 60, 0.1);
+		--dock-rule: rgba(90, 76, 60, 0.14);
+		--dock-hover: rgba(90, 76, 60, 0.06);
+		--dock-active: rgba(90, 76, 60, 0.11);
+		--dock-panel-bg: rgba(255, 253, 250, 0.9);
+		--dock-shadow: 0 12px 40px rgba(90, 76, 60, 0.14);
+	}
+
+	.dock {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 18px;
+		z-index: 90;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		width: max-content;
+		margin: 0 auto;
+		padding: 5px;
+		border: 1px solid var(--dock-brd);
+		border-radius: 12px;
+		background: var(--dock-bg);
+		backdrop-filter: blur(16px);
+		box-shadow: var(--dock-shadow);
+		/* 入场：从下方 16px 升起；未就绪时不吃指针 */
+		opacity: 0;
+		transform: translateY(16px);
+		pointer-events: none;
+		transition:
+			opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+			transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.dock.is-in {
+		opacity: 1;
+		transform: none;
+		pointer-events: auto;
+	}
+
+	.dock__mark {
+		display: inline-flex;
+		align-items: baseline;
+		padding: 6px 10px 6px 8px;
+		border-radius: 6px;
+		color: rgb(var(--ink));
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 14px;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		line-height: 1;
+		text-decoration: none;
+		transition: background 0.3s;
+	}
+
+	.dock__mark:hover {
+		background: var(--dock-hover);
+	}
+
+	.dock__mark.is-active {
+		background: var(--dock-active);
+	}
+
+	.dock__mark-suffix {
+		color: rgb(var(--muted));
+		font-weight: 500;
+	}
+
+	.dock__rule {
+		width: 1px;
+		height: 18px;
+		margin: 0 4px;
+		background: var(--dock-rule);
+	}
+
+	.dock__tabs {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.dock__tab {
+		display: flex;
+		align-items: center;
+		height: 30px;
+		padding: 0 9px;
+		border-radius: 5px;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition: background 0.3s;
+	}
+
+	.dock__tab:hover {
+		background: var(--dock-hover);
+		color: rgb(var(--ink));
+	}
+
+	.dock__tab.is-active {
+		background: var(--dock-active);
+		color: rgb(var(--ink));
+	}
+
+	/* 标签：默认收成 0 宽，激活才展开 —— max-width 才能做过渡 */
+	.dock__label {
+		max-width: 0;
+		margin-right: 0;
+		overflow: hidden;
+		opacity: 0;
+		white-space: nowrap;
+		color: rgb(var(--ink));
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+		font-size: 17px;
+		font-weight: 400;
+		line-height: 1;
+		transition:
+			max-width 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+			margin-right 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+			opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.dock__tab.is-active .dock__label {
+		max-width: 120px;
+		margin-right: 3px;
+		opacity: 1;
+	}
+
+	.dock__num {
+		color: rgb(var(--muted));
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1;
+		transform: translateY(-1px);
+		transition:
+			font-size 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+			transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+			color 0.4s;
+	}
+
+	/* 激活时数字缩一档并抬成上标 */
+	.dock__tab.is-active .dock__num {
+		font-size: 10px;
+		transform: translateY(-6px);
+		color: rgb(var(--ink));
+	}
+
+	.dock__dot {
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border: 0;
+		border-radius: 5px;
+		background: none;
+		cursor: pointer;
+		transition: background 0.3s;
+	}
+
+	.dock__dot:hover {
+		background: var(--dock-hover);
+	}
+
+	.dock__dot i {
+		display: block;
+		width: 4px;
+		height: 4px;
+		border-radius: 50%;
+		background: rgb(var(--ink));
+		transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.dock__dot.is-open i {
+		transform: scale(2.2);
+	}
+
+	/* 面板：向上弹出，transform-origin 固定在底边中点 */
+	.dock-panel {
+		position: fixed;
+		left: 50%;
+		bottom: 66px;
+		z-index: 91;
+		width: 220px;
+		margin-left: -110px;
+		padding: 14px;
+		border: 1px solid rgb(var(--line) / 0.9);
+		border-radius: 8px;
+		background: var(--dock-panel-bg);
+		backdrop-filter: blur(18px);
+		box-shadow: var(--dock-shadow);
+		transform: translateY(6px) scale(0.98);
+		transform-origin: bottom center;
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+			transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+			visibility 0.35s;
+	}
+
+	.dock-panel.is-open {
+		transform: none;
+		opacity: 1;
+		visibility: visible;
+	}
+
+	.dock-panel__note {
+		margin: 0 0 10px;
+		color: rgb(var(--muted));
+		font-size: 12px;
+		line-height: 1.5;
+	}
+
+	.dock-panel__list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.dock-panel__list li + li {
+		border-top: 1px solid rgb(var(--line) / 0.9);
+	}
+
+	.dock-panel__row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		padding: 7px 0;
+		border: 0;
+		background: none;
+		color: rgb(var(--ink));
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+		font-size: 17px;
+		line-height: 1.2;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			opacity 0.3s,
+			color 0.3s;
+	}
+
+	.dock-panel__row:hover {
+		color: rgb(var(--accent));
+	}
+
+	.dock-panel__row em {
+		color: rgb(var(--muted));
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 11px;
+		font-style: normal;
+		letter-spacing: 0.01em;
+	}
+
+	@media (max-width: 640px) {
+		.dock {
+			bottom: 14px;
+			gap: 2px;
+			padding: 4px;
+		}
+
+		/* 小屏收掉 wordmark，把宽度留给五个数字标签 */
+		.dock__mark {
+			display: none;
+		}
+
+		.dock__mark + .dock__rule {
+			display: none;
+		}
+
+		.dock__tab {
+			height: 32px;
+			padding: 0 8px;
+		}
+
+		.dock__tab.is-active .dock__label {
+			max-width: 76px;
+		}
+
+		.dock__label {
+			font-size: 15px;
+		}
+
+		.dock-panel {
+			bottom: 62px;
+		}
+	}
+
+	/* 减少动态：不做位移，直接到位 */
+	@media (prefers-reduced-motion: reduce) {
+		.dock,
+		.dock-panel {
+			transition-duration: 0.01ms !important;
+		}
+	}
+</style>
+
+<script>
+	import { initDockNav } from '../scripts/dock-nav';
+	initDockNav();
+</script>

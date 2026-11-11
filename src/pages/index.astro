@@ -782,9 +782,28 @@ const explore = [
 		grid-template-rows: auto 1fr auto;
 		gap: clamp(1.8rem, 4vh, 3.2rem);
 		min-height: 100svh;
-		padding: calc(var(--head-h) + 3rem) var(--gutter) 1.6rem;
+		/* 底部留出 dock 的高度，否则底部索引条会被浮动胶囊压住 */
+		padding: calc(var(--head-h) + 3rem) var(--gutter) 5.6rem;
 		overflow: hidden;
 	}
+	/* 矮视口（≤880px）：整套内容本来就装不满一屏，先收紧间距把索引条留在折叠线内 */
+	@media (max-height: 880px) {
+		.hero {
+			padding-top: calc(var(--head-h) + 1.8rem);
+			padding-bottom: 3.6rem;
+			gap: 1.1rem;
+		}
+	}
+
+	/* 矮视口（≤880px）：整套内容本来就装不满一屏，先收紧间距把索引条留在折叠线内 */
+	@media (max-height: 880px) {
+		.hero {
+			padding-top: calc(var(--head-h) + 1.8rem);
+			padding-bottom: 3.6rem;
+			gap: 1.1rem;
+		}
+	}
+
 	/* 巨型水印字：纯背景纹理，不进无障碍树 */
 	.hero-mark {
 		position: absolute;

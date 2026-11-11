@@ -3,6 +3,7 @@
 // 所有页面都用它包一层，页头页脚只写一遍。
 import BaseHead from '../components/BaseHead.astro';
 import ClickSpark from '../components/ClickSpark.astro';
+import DockNav from '../components/DockNav.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Motion from '../components/Motion.astro';
@@ -45,6 +46,7 @@ const { title, description, image, noindex, bodyClass, hero = false, type, publi
 		<Header />
 		<slot />
 		<Footer />
+		<DockNav />
 		<Motion />
 		<SiteSearch />
 		<ClickSpark size={11} radius={24} count={7} />

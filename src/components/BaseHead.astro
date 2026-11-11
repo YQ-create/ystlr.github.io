@@ -121,6 +121,8 @@ const ogImage = new URL(image.src, Astro.url);
 
 <Font cssVariable="--font-display" preload />
 <Font cssVariable="--font-sans" preload />
+<!-- 编辑体只给短句 / 标签用，不预加载，免得挤占首屏带宽 -->
+<Font cssVariable="--font-editorial" />
 
 <!-- 没有 JS 时把「滚动进场」的初始隐藏关掉，内容照常可见 -->
 <noscript>

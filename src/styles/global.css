@@ -249,6 +249,15 @@
 	text-wrap: balance;
 }
 
+/* 编辑体：Newsreader（衬线、300–500、带斜体）。只给短句用 —— 引文、图注、
+   dock 标签、About 的横向轨道。正文不要换到这里：中文会退回宋体，行高与字重都对不上。 */
+.editorial {
+	font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+	font-optical-sizing: auto;
+	font-weight: 340;
+	letter-spacing: -0.005em;
+}
+
 /* 实心主按钮（米白底 / 反色时为墨底）与文字型次按钮 */
 .btn-solid {
 	display: inline-flex;

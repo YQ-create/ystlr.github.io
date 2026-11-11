@@ -1,43 +1,34 @@
 ---
-// 悬浮页头：PillNav 胶囊导航（圆形 logo + 胶囊条 + 当前页小点），右侧工具组。
+// 悬浮页头：左侧站点标 + 当前板块（跑马页眉），右侧工具组。
+// 主导航不在这里 —— 已移到页面底部的 DockNav（数字标签 + 斜体标签展开），
+// 两处各放一份导航只会互相打架，所以页头只留身份与工具。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
-import PillNav from './PillNav.astro';
 import MusicPlayer from './MusicPlayer.astro';
 import AppearancePanel from './AppearancePanel.astro';
 
-// 主导航：PillNav 的项就是这五个页面
-const primaryNav = [
-	{ label: '文章', href: '/blog' },
-	{ label: '知识库', href: '/knowledge' },
-	{ label: '照片', href: '/gallery' },
-	{ label: '发现', href: '/discover' },
-	{ label: '关于', href: '/about' },
-];
-
-// 首屏就给出正确的当前页，避免 hydration 前高亮闪一下
-const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+// 当前板块名：给左上角做页眉用，取不到就不显示
+const SECTION_LABELS: Record<string, string> = {
+	'/': '首页',
+	'/blog': '文章',
+	'/knowledge': '知识库',
+	'/gallery': '照片',
+	'/discover': '发现',
+	'/about': '关于',
+	'/privacy': '隐私',
+};
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const sectionLabel = SECTION_LABELS[path] ?? '';
 ---
 
 <header class="site-head" transition:persist="site-head" transition:name="site-header">
 	<div class="head-shell">
-		<div class="head-nav">
-			<PillNav
-				items={primaryNav}
-				logoText="Y"
-				logoHref="/"
-				logoAlt={`${SITE_TITLE} 首页`}
-				activeHref={activePath}
-				layout="split"
-				size="md"
-				itemStyle="plain"
-				hoverEffect="glide"
-				indicator="dot"
-				collapse="auto"
-				bounce={0.3}
-				stretch={0.55}
-				intro={true}
-			/>
-		</div>
+		<a class="head-brand" href="/" aria-label={`${SITE_TITLE} 首页`}>
+			<span class="head-brand__mark">ystlr</span>
+			<span class:list={['head-brand__meta', !sectionLabel && 'is-empty']} data-head-meta>
+				<span class="head-brand__rule" aria-hidden="true"></span>
+				<span class="head-brand__here" data-head-here>{sectionLabel}</span>
+			</span>
+		</a>
 		<div class="head-actions">
 			<button class="head-search" type="button" data-search-open aria-label="站内搜索（⌘K）" title="站内搜索 ⌘K">
 				<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
@@ -57,104 +48,52 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 </header>
 
 <script>
-	function currentPath() {
-		const p = location.pathname.replace(/\/+$/, '');
-		return p === '' ? '/' : p;
-	}
-
-	// window 级监听只需绑一次：View Transitions 不会重建 window
+	// 滚动收缩：滚过 16px 后收紧页头内边距，首屏 hero 时脱离文档流。
+	// window 级监听只绑一次（View Transitions 不会重建 window）。
 	let scrollBound = false;
 	let scrollRaf = 0;
-	let headerShell: HTMLElement | null = null;
 
 	function onScroll() {
-		if (!headerShell || scrollRaf) return;
+		if (scrollRaf) return;
 		scrollRaf = requestAnimationFrame(() => {
 			scrollRaf = 0;
-			if (!headerShell) return;
-			headerShell.classList.toggle('is-scrolled', window.scrollY > 16);
-			headerShell.classList.toggle('is-top', document.body.dataset.hero === '1' && window.scrollY < 24);
+			const shell = document.querySelector<HTMLElement>('.site-head');
+			if (!shell) return;
+			shell.classList.toggle('is-scrolled', window.scrollY > 16);
+			shell.classList.toggle('is-top', document.body.dataset.hero === '1' && window.scrollY < 24);
 		});
 	}
 
-	// scroll-spy 的观察目标在页面内容里，换页会整体替换，必须每次 page-load 重建
-	let spyIO: IntersectionObserver | null = null;
+	if (!scrollBound) {
+		scrollBound = true;
+		window.addEventListener('scroll', onScroll, { passive: true });
+	}
+	onScroll();
+	document.addEventListener('astro:page-load', onScroll);
 
-	function init() {
-		headerShell = document.querySelector<HTMLElement>('.site-head');
-		const shell = headerShell;
-		if (!shell) return;
+	// 页头被 persist 保活，左上角的板块名不会随换页重渲染，只能每次手动对一次
+	const SECTION_LABELS: Record<string, string> = {
+		'/': '首页',
+		'/blog': '文章',
+		'/knowledge': '知识库',
+		'/gallery': '照片',
+		'/discover': '发现',
+		'/about': '关于',
+		'/privacy': '隐私',
+	};
 
-		// 滚动收缩：只绑一次，避免换页时监听器越堆越多
-		if (!scrollBound) {
-			scrollBound = true;
-			window.addEventListener('scroll', onScroll, { passive: true });
-		}
-		onScroll();
-
-		// 首页 scroll-spy：视口中线落在哪个板块，就把哪个导航项点亮
-		// （PillNav 自己监听 scroll-spy 事件，这里只负责发现当前板块）
-		spyIO?.disconnect();
-		spyIO = null;
-		const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
-		if (sections.length) {
-			const map: Record<string, string> = {
-				articles: '/blog',
-				knowledge: '/knowledge',
-				discover: '/discover',
-				about: '/about',
-			};
-			let current = '';
-			const io = new IntersectionObserver(
-				(entries) => {
-					const visible = entries
-						.filter((entry) => entry.isIntersecting)
-						.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-					if (!visible) return;
-					const name = (visible.target as HTMLElement).dataset.section ?? '';
-					if (name === current) return;
-					current = name;
-					window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: map[name] ?? '' } }));
-				},
-				{ rootMargin: '-45% 0px -45% 0px', threshold: 0 },
-			);
-			sections.forEach((section) => io.observe(section));
-			spyIO = io;
-		} else {
-			// 非首页：清掉上一页可能残留的高亮
-			window.dispatchEvent(new CustomEvent('scroll-spy', { detail: { href: '' } }));
-		}
-
-		// 首页上点导航：平滑滚到对应板块，而不是跳转页面
-		// 页头通过 transition:persist 保活，导航元素不重建，只绑一次
-		if (!shell.dataset.linkWired) {
-			shell.dataset.linkWired = '1';
-			const links = Array.from(document.querySelectorAll<HTMLElement>('[data-pn-item]'));
-			const sectionByHref: Record<string, string> = {
-				'/blog': 'articles',
-				'/knowledge': 'knowledge',
-				'/discover': 'discover',
-				'/about': 'about',
-			};
-			for (const link of links) {
-				link.addEventListener('click', (e) => {
-					const onHome = currentPath() === '/';
-					if (!onHome) return; // 非首页正常跳转
-					const href = link.dataset.href || '/';
-					const targetId = sectionByHref[href];
-					if (!targetId) return;
-					const sec = document.getElementById(targetId);
-					if (!sec) return; // 首页没有对应板块就正常跳转
-					e.preventDefault();
-					sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-					history.replaceState(null, '', `/#${targetId}`);
-				});
-			}
-		}
+	function syncSection() {
+		const meta = document.querySelector<HTMLElement>('[data-head-meta]');
+		const here = document.querySelector<HTMLElement>('[data-head-here]');
+		if (!meta || !here) return;
+		const path = location.pathname.replace(/\/+$/, '') || '/';
+		const label = SECTION_LABELS[path] ?? '';
+		here.textContent = label;
+		meta.classList.toggle('is-empty', !label);
 	}
 
-	init();
-	document.addEventListener('astro:page-load', init);
+	syncSection();
+	document.addEventListener('astro:page-load', syncSection);
 </script>
 
 <style>
@@ -162,10 +101,12 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		position: sticky;
 		top: 0;
 		z-index: 120;
-		padding: 0.75rem var(--gutter) 0;
+		padding: 1.05rem var(--gutter) 0;
 		pointer-events: none;
+		transition: padding-top var(--dur) var(--ease-out);
 	}
-	/* 版心：左侧胶囊导航，右侧工具组，与正文同宽 */
+
+	/* 版心：左侧页眉，右侧工具组，与正文同宽 */
 	.head-shell {
 		display: flex;
 		align-items: center;
@@ -176,14 +117,54 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		margin: 0 auto;
 		pointer-events: none;
 	}
+
 	.head-shell > * {
 		pointer-events: auto;
 	}
-	.head-nav {
-		display: flex;
+
+	/* 页眉：站点标 + 发丝竖线 + 当前板块 */
+	.head-brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
 		min-width: 0;
-		flex: 1 1 auto;
+		color: rgb(var(--ink));
+		text-decoration: none;
 	}
+
+	.head-brand__mark {
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 0.95rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		line-height: 1;
+	}
+
+	.head-brand__rule {
+		width: 1px;
+		height: 12px;
+		background: rgba(var(--line), 1);
+	}
+
+	/* 页头常驻（transition:persist），板块名得靠脚本换页后重写 */
+	.head-brand__meta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+	}
+
+	.head-brand__meta.is-empty {
+		display: none;
+	}
+
+	.head-brand__here {
+		color: rgb(var(--muted));
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+		font-size: 0.82rem;
+		line-height: 1;
+		white-space: nowrap;
+	}
+
 	.head-actions {
 		display: flex;
 		align-items: center;
@@ -201,29 +182,8 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 	.site-head.is-scrolled {
 		padding-top: 0.4rem;
 	}
-	.site-head {
-		transition: padding-top var(--dur) var(--ease-out);
-	}
 
-	/* 页头条几何：参考 studio 版式——更宽、更扁、更小的圆角、发丝描边 */
-	.site-head {
-		padding-top: 1.05rem;
-	}
-	.site-head :global(.card-nav) {
-		--cn-bar: 56px;
-		--cn-radius: 12px;
-		--cn-inset: 6px;
-		font-size: 13px;
-	}
-	.site-head :global(.card-nav__panel) {
-		backdrop-filter: blur(18px) saturate(1.25);
-		box-shadow:
-			inset 0 0 0 1px var(--glass-brd),
-			0 18px 40px -28px rgba(0, 0, 0, 0.9);
-	}
-
-	/* 右侧主按钮：反色实心，和参考站右上角的 CTA 对应 */
-	/* 站内搜索：与音乐按钮同一套圆形控件（之前样式随主题按钮一起被删了） */
+	/* 站内搜索：与音乐按钮同一套圆形控件 */
 	.head-search {
 		display: grid;
 		place-items: center;
@@ -240,19 +200,23 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 			border-color var(--dur-fast) var(--ease-out),
 			background-color var(--dur-fast) var(--ease-out);
 	}
+
 	.head-search:hover {
 		color: rgb(var(--ink));
 		border-color: rgba(var(--accent), 0.45);
 		background: var(--chip-bg-strong);
 	}
+
 	.head-search:focus-visible {
 		outline: 2px solid rgba(var(--accent), 0.6);
 		outline-offset: 2px;
 	}
+
 	.head-search svg {
 		width: 15px;
 		height: 15px;
 	}
+
 	.head-cta {
 		display: inline-flex;
 		align-items: center;
@@ -273,10 +237,12 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 			transform 0.25s var(--ease-out),
 			filter 0.25s var(--ease-out);
 	}
+
 	.head-cta:hover {
 		transform: translateY(-1px);
 		filter: brightness(1.07);
 	}
+
 	/* 圆形箭头盘：深色底 + 米白箭头 */
 	.head-cta svg {
 		width: 30px;
@@ -288,9 +254,11 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		box-sizing: border-box;
 		transition: transform 0.3s var(--ease-out);
 	}
+
 	.head-cta:hover svg {
 		transform: rotate(-45deg);
 	}
+
 	@media (max-width: 720px) {
 		.head-cta {
 			display: none;
@@ -301,8 +269,13 @@ const activePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 		.site-head {
 			padding: 0.5rem 0.6rem 0;
 		}
-		.brand-name {
-			font-size: 0.95rem;
+
+		.head-brand__mark {
+			font-size: 0.88rem;
+		}
+
+		.head-brand__here {
+			font-size: 0.76rem;
 		}
 	}
 </style>

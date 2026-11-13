@@ -247,10 +247,7 @@ function setup(root: HTMLElement): Instance | null {
 		powerPreference: 'low-power',
 		preserveDrawingBuffer: false,
 	});
-	if (!gl) {
-		root.dataset.seaFallback = '1';
-		return null;
-	}
+	if (!gl) return null;
 
 	const vs = compile(gl, gl.VERTEX_SHADER, VERT);
 	const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
@@ -446,11 +443,19 @@ function mount() {
 	if (mountedToken === pageToken) return;
 	mountedToken = pageToken;
 	for (const item of instances.splice(0)) item.destroy();
+	let live = false;
 	document.querySelectorAll<HTMLElement>('[data-sea-sky]:not([data-sea-ready])').forEach((root) => {
 		const instance = setup(root);
 		root.dataset.seaReady = '1';
-		if (instance) instances.push(instance);
+		if (instance) {
+			instances.push(instance);
+			live = true;
+		}
 	});
+	// 只有真的画出第一帧，海景层才允许显示（见 SeaSky.astro 的 display 规则）。
+	// WebGL2 缺失、着色器编译失败或脚本提前抛错时，这一层保持隐藏，
+	// 首页退回字符光场 —— 否则会变成「静态色带 + 巨大字号水印」的双重曝光。
+	if (live) document.documentElement.dataset.seaLive = '1';
 }
 
 function unmount() {
@@ -459,6 +464,7 @@ function unmount() {
 	document.querySelectorAll<HTMLElement>('[data-sea-ready]').forEach((root) => {
 		delete root.dataset.seaReady;
 	});
+	delete document.documentElement.dataset.seaLive;
 }
 
 export function mountSeaSky() {

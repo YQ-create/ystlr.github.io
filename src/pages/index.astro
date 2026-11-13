@@ -853,6 +853,12 @@ const explore = [
 		color: rgba(var(--ink), 0.022);
 		pointer-events: none;
 		user-select: none;
+		transition: opacity 700ms var(--ease-out);
+	}
+	/* 海景上场后这层水印就是噪点：天空本身已经有层次，不需要再靠它填空，
+	   而且透过半透明的天光会看见字母轮廓，破坏「照片」的感觉。 */
+	:global(html[data-sea-live='1']) .hero-mark {
+		opacity: 0;
 	}
 	.hero-meta {
 		position: relative;

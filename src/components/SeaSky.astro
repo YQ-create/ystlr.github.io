@@ -44,25 +44,35 @@ const { class: className = '', horizon = 0.42, sun = 0.56, veil = 1 } = Astro.pr
 		position: absolute;
 		inset: 0;
 		overflow: hidden;
-		/* WebGL 不可用时的兜底：一条静态的黄昏色带，至少不塌成白屏 */
-		background: linear-gradient(
-			to bottom,
-			#101322 0%,
-			#2a2140 34%,
-			#6a3a44 56%,
-			#c06a42 67%,
-			#2b3a4c 68%,
-			#0d1420 100%
-		);
+		/* 默认不显示，等 sea-sky.ts 真的画出第一帧（html[data-sea-live]）才亮。
+		   WebGL2 缺失、着色器编译失败、脚本提前抛错时这一层保持隐藏，首页退回
+		   原来的字符光场；否则静态色带会和底下的大字水印叠成双重曝光。 */
+		display: none;
 		/* 底边渐隐到页面底色，首屏结束时不留一道横切 */
 		-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%);
 		mask-image: linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%);
+	}
+
+	:global(html[data-sea-live='1']) .sea-sky {
+		display: block;
 	}
 
 	.sea-sky__canvas {
 		display: block;
 		width: 100%;
 		height: 100%;
+		/* 首帧淡入，别让画面生硬地「跳」出来。动画挂在画布上，不与 JS 写在
+		   容器上的滚动淡出 opacity 打架。 */
+		animation: sea-sky-in 460ms var(--ease-out, ease-out) both;
+	}
+
+	@keyframes sea-sky-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.sea-sky__veil {

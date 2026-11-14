@@ -1,0 +1,357 @@
+---
+/**
+ * FileTree — 知识库的「文件浏览器」树。
+ *
+ * 把知识库的分类渲染成文件夹、条目渲染成文件，长成一行行缩进的树。
+ * 视觉核心是一根会随滚动「向下生长」的树干：滚进区块时树干从上往下画，
+ * 文件夹、文件逐行淡入；往回滚则逆向收起。全部由滚动进度驱动（可逆），
+ * 不是一次性进场。
+ *
+ * 实现约定（与 BranchedMenu / Motion 一致）：
+ * - DOM 全在服务端算好，客户端只做「滚动进度 → 行可见性」的量化写入；
+ * - 挂在 astro:page-load + pageToken 重建，View Transitions 往返不累积监听；
+ * - 颜色走站点 token（--ink / --accent / --line / --paper），不硬编码；
+ * - prefers-reduced-motion 下直接全部展开，不做滚动动画。
+ */
+export interface TreeFile {
+	name: string;
+	href: string;
+	/** 已读/置顶等状态，供样式区分 */
+	pinned?: boolean;
+}
+export interface TreeFolder {
+	name: string;
+	count: number;
+	files: TreeFile[];
+	/** 超出展示上限的条数，显示成「+N」占位行 */
+	more?: number;
+	href?: string;
+}
+
+interface Props {
+	folders: TreeFolder[];
+	/** 面板标题（如 EXPLORER / KNOWLEDGE） */
+	title?: string;
+	/** 面板右上角的总数标注 */
+	total?: string;
+	class?: string;
+}
+
+const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro.props;
+---
+
+<div class:list={['file-tree', className]} data-tree>
+	<div class="file-tree__panel">
+		<header class="file-tree__head">
+			<span class="file-tree__head-label">{title}</span>
+			{total && <span class="file-tree__head-total">{total}</span>}
+		</header>
+
+		<div class="file-tree__body">
+			<span class="file-tree__line" data-tree-line aria-hidden="true"></span>
+
+			{folders.map((folder) => (
+				<div class="file-tree__group">
+					<a
+						class="file-tree__folder"
+						data-tree-row
+						href={folder.href ?? '/knowledge/'}
+						aria-label={`${folder.name}（${folder.count} 条）`}
+					>
+						<span class="file-tree__folder-chev" aria-hidden="true">
+							<svg viewBox="0 0 10 10" width="9" height="9"><path d="M3 2.5 6 5l-3 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						</span>
+						<span class="file-tree__folder-icon" aria-hidden="true">
+							<svg viewBox="0 0 16 16" width="14" height="14"><path d="M1.5 3.5h4l1.5 1.6h7.5v7.4h-13z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+						</span>
+						<span class="file-tree__name">{folder.name}</span>
+						<span class="file-tree__count">{folder.count}</span>
+					</a>
+
+					{folder.files.map((file) => (
+						<a class="file-tree__file" data-tree-row href={file.href}>
+							<span class="file-tree__file-icon" aria-hidden="true">
+								<svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 1.5h5.5L12.5 4v10.5h-8.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+							</span>
+							<span class="file-tree__name">{file.name}</span>
+							{file.pinned && <span class="file-tree__pin" aria-hidden="true">◆</span>}
+						</a>
+					))}
+
+					{folder.more ? (
+						<span class="file-tree__more" data-tree-row aria-hidden="true">
+							<span class="file-tree__name">+{folder.more} 更多</span>
+						</span>
+					) : null}
+				</div>
+			))}
+		</div>
+	</div>
+</div>
+
+<style>
+	.file-tree {
+		--ft-ink: rgb(var(--ink));
+		--ft-accent: rgb(var(--accent));
+		--ft-line: rgba(var(--ink), 0.22);
+		--ft-muted: color-mix(in srgb, rgb(var(--ink)) 46%, transparent);
+		--ft-faint: color-mix(in srgb, rgb(var(--ink)) 30%, transparent);
+		--ft-ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+
+		position: relative;
+		width: 100%;
+		min-width: 0;
+	}
+
+	.file-tree__panel {
+		position: relative;
+		overflow: hidden;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-lg);
+		background:
+			linear-gradient(180deg, rgba(var(--paper), 0.96), rgba(var(--paper), 0.88));
+		box-shadow: var(--glass-shine), 0 24px 60px -40px rgba(0, 0, 0, 0.65);
+	}
+
+	.file-tree__head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.62rem 0.95rem;
+		border-bottom: 1px solid rgb(var(--line-soft));
+		background: rgba(var(--bg), 0.35);
+	}
+	.file-tree__head-label {
+		font-size: 0.64rem;
+		font-weight: 600;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--ft-muted);
+	}
+	.file-tree__head-total {
+		font-size: 0.64rem;
+		letter-spacing: 0.1em;
+		color: var(--ft-faint);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.file-tree__body {
+		position: relative;
+		padding: 0.55rem 0.8rem 0.75rem;
+	}
+
+	/* 树干：一条从顶往下的竖线，滚动时 JS 用 scaleY 拉长 */
+	.file-tree__line {
+		position: absolute;
+		top: 0.55rem;
+		left: 1.32rem;
+		bottom: 0.75rem;
+		width: 1.5px;
+		border-radius: 1px;
+		background: linear-gradient(to bottom, var(--ft-accent), var(--ft-line) 82%, transparent);
+		transform-origin: top;
+		transform: scaleY(0);
+		opacity: 0.55;
+		pointer-events: none;
+	}
+
+	.file-tree__group + .file-tree__group {
+		margin-top: 0.15rem;
+	}
+
+	.file-tree__folder,
+	.file-tree__file,
+	.file-tree__more {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		height: 24px;
+		padding: 0 0.45rem;
+		border-radius: 7px;
+		text-decoration: none;
+		color: inherit;
+		opacity: 0;
+		transform: translateY(7px);
+		transition:
+			opacity 0.5s var(--ft-ease),
+			transform 0.5s var(--ft-ease),
+			background-color 0.2s var(--dur-fast) var(--ease-out),
+			color 0.2s var(--dur-fast) var(--ease-out);
+	}
+	.file-tree__folder[data-on='1'],
+	.file-tree__file[data-on='1'],
+	.file-tree__more[data-on='1'] {
+		opacity: 1;
+		transform: none;
+	}
+
+	.file-tree__folder {
+		font-weight: 600;
+	}
+	.file-tree__folder:hover,
+	.file-tree__file:hover {
+		background: rgba(var(--accent), 0.1);
+	}
+	.file-tree__folder:hover {
+		color: var(--ft-accent);
+	}
+
+	.file-tree__folder-chev {
+		display: inline-flex;
+		color: var(--ft-muted);
+	}
+	.file-tree__folder-icon {
+		display: inline-flex;
+		color: var(--ft-accent);
+		opacity: 0.85;
+	}
+	.file-tree__file-icon {
+		display: inline-flex;
+		color: var(--ft-faint);
+		margin-left: 1.15rem;
+	}
+	.file-tree__name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 0.82rem;
+		line-height: 1;
+	}
+	.file-tree__file .file-tree__name {
+		font-weight: 500;
+		color: var(--ft-muted);
+	}
+	.file-tree__file:hover .file-tree__name {
+		color: var(--ft-ink);
+	}
+	.file-tree__count {
+		flex: none;
+		font-size: 0.66rem;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+		color: var(--ft-faint);
+		font-variant-numeric: tabular-nums;
+	}
+	.file-tree__pin {
+		flex: none;
+		font-size: 0.6rem;
+		color: var(--ft-accent);
+	}
+	.file-tree__more {
+		opacity: 0;
+		pointer-events: none;
+	}
+	.file-tree__more[data-on='1'] {
+		opacity: 1;
+	}
+	.file-tree__more .file-tree__name {
+		margin-left: 1.15rem;
+		font-size: 0.74rem;
+		color: var(--ft-faint);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.file-tree__line {
+			transform: scaleY(1);
+		}
+		.file-tree__folder,
+		.file-tree__file,
+		.file-tree__more {
+			opacity: 1;
+			transform: none;
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	// @ts-nocheck
+	// 文件树揭示：滚动进度驱动，可逆、量化写入，只改 transform / opacity / data 属性。
+	const instances = [];
+	let bound = false;
+	let pageToken = 0;
+	let mountedToken = -1;
+
+	function setup(root) {
+		const track = root.closest('[data-tree-track]');
+		const line = root.querySelector('[data-tree-line]');
+		const rows = Array.from(root.querySelectorAll('[data-tree-row]'));
+		if (!track || rows.length === 0) return null;
+
+		const n = rows.length;
+		// 每行的揭示阈值：从 0.06 铺到 0.94，保证顶部先出现、末尾留一点收尾
+		const thresholds = rows.map((_, i) => 0.06 + 0.88 * (i / Math.max(1, n - 1)));
+
+		const reduced =
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+			!('IntersectionObserver' in window);
+
+		if (reduced) {
+			rows.forEach((row) => (row.dataset.on = '1'));
+			if (line) line.style.transform = 'scaleY(1)';
+			return null;
+		}
+
+		const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+		let raf = 0;
+		let lastStep = -1;
+
+		const update = () => {
+			raf = 0;
+			const vh = window.innerHeight;
+			const top = track.getBoundingClientRect().top + window.scrollY;
+			const range = Math.max(1, track.offsetHeight - vh);
+			const p = clamp((window.scrollY - top) / range, 0, 1);
+			// 量化到 1/120，减少对行的重复写入；树干则连续跟随滚动
+			const step = Math.round(p * 120);
+			if (step === lastStep) return;
+			lastStep = step;
+
+			if (line) line.style.transform = `scaleY(${p.toFixed(3)})`;
+			for (let i = 0; i < n; i++) {
+				const on = p >= thresholds[i] ? '1' : '0';
+				if (rows[i].dataset.on !== on) rows[i].dataset.on = on;
+			}
+		};
+
+		const onScroll = () => {
+			if (!raf) raf = requestAnimationFrame(update);
+		};
+
+		update();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll, { passive: true });
+
+		return {
+			destroy() {
+				window.removeEventListener('scroll', onScroll);
+				window.removeEventListener('resize', onScroll);
+				if (raf) cancelAnimationFrame(raf);
+			},
+		};
+	}
+
+	function mount() {
+		if (mountedToken === pageToken) return;
+		mountedToken = pageToken;
+		for (const item of instances.splice(0)) item?.destroy();
+		document.querySelectorAll('[data-tree]:not([data-tree-ready])').forEach((root) => {
+			root.dataset.treeReady = '1';
+			const instance = setup(root);
+			if (instance) instances.push(instance);
+		});
+	}
+
+	if (!bound) {
+		bound = true;
+		document.addEventListener('astro:before-swap', () => {
+			pageToken += 1;
+		});
+		document.addEventListener('astro:page-load', mount);
+	}
+	mount();
+</script>

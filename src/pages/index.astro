@@ -21,6 +21,36 @@ const knowledge = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
+// 知识库分类 → 文件树数据：分类即文件夹、条目即文件，按条数从多到少排。
+// 每类最多展示 3 个文件（置顶优先、其余按时间），超出的记成「+N」占位行。
+const byCategory = new Map<string, typeof knowledge>();
+for (const note of knowledge) {
+	const cat = note.data.category || '未分类';
+	if (!byCategory.has(cat)) byCategory.set(cat, []);
+	byCategory.get(cat)!.push(note);
+}
+const categoryOrder = [...byCategory.entries()].sort((a, b) => {
+	const ap = a[1].filter((n) => n.data.pinned).length;
+	const bp = b[1].filter((n) => n.data.pinned).length;
+	return b[1].length - a[1].length || bp - ap;
+});
+const knowledgeTree = categoryOrder.map(([name, list]) => {
+	const sorted = [...list].sort((a, b) => {
+		if (a.data.pinned !== b.data.pinned) return a.data.pinned ? -1 : 1;
+		return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
+	});
+	return {
+		name,
+		count: list.length,
+		files: sorted.slice(0, 3).map((n) => ({
+			name: n.data.title,
+			href: `/knowledge/${n.id}/`,
+			pinned: n.data.pinned,
+		})),
+		more: list.length > 3 ? list.length - 3 : 0,
+	};
+});
+
 // 标签云 + 最新动态 + 站点统计
 const tagCount = new Map<string, number>();
 for (const post of posts) for (const tag of post.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
@@ -53,7 +83,7 @@ import ScrollExpand from '../components/ScrollExpand.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import AccordionGallery from '../components/AccordionGallery.astro';
-import CircularCarousel from '../components/CircularCarousel.astro';
+import FileTree from '../components/FileTree.astro';
 import Rain from '../components/Rain.astro';
 import discoverData from '../data/discover.json';
 import cover from '../assets/gallery/cover.jpg';
@@ -72,26 +102,6 @@ const galleryItems = await Promise.all(
 			image: img.src,
 			label: p.data.title ?? p.data.caption ?? `照片 ${String(i + 1).padStart(2, '0')}`,
 			alt: p.data.caption ?? p.data.title ?? '',
-		};
-	}),
-);
-
-// 照片环廊：全部照片绕成一圈（圆柱切片 + 惯性拖拽）。标题取「帧 NN」兜底，
-// 因为早期上传的记录只有日期、没有标题/图注，纯数字标题也不适合当字幕。
-const reelItems = await Promise.all(
-	photos.map(async (p, i) => {
-		const img = await getImage({ src: p.data.image as ImageMetadata, width: 900, format: 'webp' });
-		const caption = p.data.caption?.trim() ?? '';
-		const rawTitle = p.data.title?.trim() ?? '';
-		const usableTitle = rawTitle && !/^\d+$/.test(rawTitle) ? rawTitle : '';
-		const label = caption || usableTitle || `帧 ${String(i + 1).padStart(2, '0')}`;
-		const d = p.data.date;
-		return {
-			src: img.src,
-			alt: caption || label,
-			title: label,
-			subtitle: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')} · 归档`,
-			href: '/gallery/',
 		};
 	}),
 );
@@ -254,43 +264,47 @@ const explore = [
 			<a class="se-link" href="/gallery">去看照片墙 →</a>
 		</ScrollExpand>
 
-		<!-- ═══════════ Act 1.6: 照片环廊（CircularCarousel） ═══════════ -->
-		<section class="reel" id="photos" data-section="photos">
-			<div class="wrap reel__head" data-reveal>
-				<div>
-					<span class="eyebrow">GALLERY / 02 · PHOTO REEL</span>
-					<h2 class="display">光影绕成一圈</h2>
-					<p class="reel__lede">把拍下的片段贴成一圈，让它自己慢慢转。拖动、滚轮或方向键都能换一张，点一下就把它带到眼前。</p>
+		<!-- ═══════════ Act 1.6: 知识库（文件树） ═══════════ -->
+		<section class="kb-show" id="knowledge" data-section="knowledge">
+			<div class="kb-show__track" data-tree-track>
+				<div class="kb-show__sticky">
+					<div class="kb-show__grid">
+						<div class="kb-show__copy" data-reveal>
+							<span class="eyebrow kb-show__eyebrow">02 / KNOWLEDGE</span>
+							<h2 class="display kb-show__title">知识库</h2>
+							<p class="kb-show__lede">
+								成体系的笔记，独立于日常随笔。按分类沉淀、按阶段推进，慢慢长成一棵自己的知识树。
+							</p>
+							<p class="kb-show__meta">
+								<span><b>{knowledge.length}</b> 条笔记</span>
+								<span><b>{categoryOrder.length}</b> 个分类</span>
+							</p>
+							<ul class="kb-show__recent">
+								{knowledge.slice(0, 3).map((n) => (
+									<li>
+										<a href={`/knowledge/${n.id}/`}>
+											<span class="kb-show__recent-title">{n.data.title}</span>
+											<span class="kb-show__recent-cat">{n.data.category}</span>
+										</a>
+									</li>
+								))}
+							</ul>
+							<a class="kb-show__cta" href="/knowledge">
+								进入知识库
+								<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+									<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+								</svg>
+							</a>
+						</div>
+
+						<FileTree
+							folders={knowledgeTree}
+							title="Knowledge / 文件树"
+							total={`${knowledge.length} 条`}
+							class="kb-show__tree"
+						/>
+					</div>
 				</div>
-				<a class="reel__more" href="/gallery">
-					进入照片墙
-					<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-						<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-					</svg>
-				</a>
-			</div>
-
-			<div class="reel__stage">
-				<CircularCarousel
-					items={reelItems}
-					preset="cylinder"
-					intro="rise"
-					cardWidth={260}
-					aspectRatio={1}
-					gap={28}
-					autoplay="drift"
-					speed={11}
-					captions
-					depthFade={0.8}
-					fadeColor="#0b0b0c"
-					innerShade={0.12}
-					cornerRadius={12}
-				/>
-			</div>
-
-			<div class="wrap reel__foot">
-				<span class="reel__hint">拖动 / 滚轮 / ← → 切换 · 点按卡片聚焦</span>
-				<span class="reel__frames">{photos.length} FRAMES · ARCHIVE</span>
 			</div>
 		</section>
 
@@ -487,28 +501,6 @@ const explore = [
 				))}
 			</div>
 		</div>
-
-		<!-- 知识库 -->
-		<section class="sec sec--knowledge" id="knowledge" data-section="knowledge">
-			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">02 / KNOWLEDGE</span>
-						<h2>知识库</h2>
-					</div>
-				</header>
-				<a class="portal-entry glass" href="/knowledge" data-reveal data-glow>
-					<div class="portal-entry__body">
-						<span class="portal-entry__kicker">成体系的笔记 · 分类沉淀</span>
-						<h3 class="portal-entry__title">进入知识库</h3>
-						<p class="portal-entry__desc">前端、工具、阅读……把零散的想法整理成结构化的笔记，慢慢累积成自己的知识体系。</p>
-					</div>
-					<span class="portal-entry__arrow" aria-hidden="true">
-						<svg viewBox="0 0 16 16" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
-					</span>
-				</a>
-			</div>
-		</section>
 
 		<!-- 发现 -->
 		<section class="sec sec--discover" id="discover" data-section="discover">
@@ -1063,99 +1055,145 @@ const explore = [
 		font-size: 0.86rem;
 	}
 
-	/* ═══════════ Act 1.6: 照片环廊 ═══════════ */
-	.reel {
+	/* ═══════════ Act 1.6: 知识库（文件树） ═══════════ */
+	.kb-show {
 		position: relative;
 		z-index: 2;
-		padding: clamp(2.6rem, 5vw, 4.4rem) 0 clamp(1.2rem, 2.6vw, 2rem);
-		/* 中心压暗托住照片，边缘仍透出 fixed 字符光场 */
-		background: radial-gradient(
-			ellipse 82% 78% at 50% 52%,
-			rgba(var(--bg), 0.99) 0%,
-			rgba(var(--bg), 0.96) 40%,
-			rgba(var(--bg), 0.7) 74%,
-			rgba(var(--bg), 0.16) 100%
-		);
+		background: rgb(var(--bg));
 		color: rgb(var(--ink));
 	}
-	.reel__head {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 2rem;
-		margin-bottom: clamp(0.6rem, 1.6vw, 1.4rem);
+	.kb-show__track {
+		position: relative;
+		/* 多出一段高度当滚动轨道：树在视口里「钉住」，随滚动向下生长 */
+		height: 165vh;
+		min-height: 100svh;
 	}
-	.reel__head .eyebrow {
+	.kb-show__sticky {
+		position: sticky;
+		top: calc(var(--head-h) + 0.5rem);
+		height: calc(100svh - var(--head-h) - 1rem);
+		display: grid;
+		align-items: center;
+	}
+	.kb-show__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+		gap: clamp(2rem, 5vw, 5rem);
+		align-items: center;
+		width: 100%;
+		max-width: var(--w-wide);
+		margin: 0 auto;
+		padding: 0 var(--gutter);
+	}
+	.kb-show__eyebrow {
 		color: rgb(var(--accent));
 	}
-	.reel__head h2 {
-		margin: 0.65rem 0 0.5rem;
-		font-size: clamp(1.9rem, 3.8vw, 3.1rem);
-		line-height: 1.04;
-		letter-spacing: -0.035em;
+	.kb-show__title {
+		margin: 0.55rem 0 0.9rem;
+		font-size: clamp(2.2rem, 4.6vw, 4rem);
+		line-height: 0.98;
+		letter-spacing: -0.04em;
 	}
-	.reel__lede {
-		max-width: 50ch;
+	.kb-show__lede {
+		max-width: 38ch;
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: 0.98rem;
 		line-height: 1.72;
 		color: rgb(var(--muted));
 	}
-	.reel__more {
-		display: inline-flex;
-		flex-shrink: 0;
-		align-items: center;
-		gap: 0.5rem;
-		padding-bottom: 0.35rem;
-		border-bottom: 1px solid rgba(var(--ink), 0.24);
-		font-size: 0.86rem;
-		color: rgb(var(--ink-soft));
-		text-decoration: none;
-		transition: gap 0.25s var(--ease-out), color 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
-	}
-	.reel__more:hover {
-		gap: 0.8rem;
-		color: rgb(var(--accent));
-		border-color: rgb(var(--accent));
-	}
-	.reel__stage {
-		position: relative;
-		width: 100%;
-		height: clamp(380px, 42vw, 540px);
-	}
-	.reel__stage :global(.cc__caption) {
-		bottom: 0;
-	}
-	.reel__foot {
+	.kb-show__meta {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		/* 右下角常驻的浮动 CTA 会盖住最右侧文字，给它留出通道 */
-		padding-right: 11rem;
-		margin-top: 0.4rem;
-		font-size: 0.7rem;
-		letter-spacing: 0.12em;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.8rem;
+		margin: 1.4rem 0 0;
+		font-size: 0.78rem;
+		letter-spacing: 0.06em;
 		color: rgb(var(--muted-light));
 	}
-	.reel__frames {
+	.kb-show__meta b {
+		margin-right: 0.3em;
+		font-size: 1.08rem;
+		font-weight: 700;
+		color: rgb(var(--ink));
 		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
 	}
-	@media (max-width: 760px) {
-		.reel__head {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 1rem;
+	.kb-show__recent {
+		list-style: none;
+		margin: 1.5rem 0 0;
+		padding: 0;
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.kb-show__recent li a {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.62rem 0;
+		border-bottom: 1px solid rgb(var(--line-soft));
+		text-decoration: none;
+		color: inherit;
+	}
+	.kb-show__recent-title {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 0.86rem;
+		color: rgb(var(--ink-soft));
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.kb-show__recent li a:hover .kb-show__recent-title {
+		color: rgb(var(--accent));
+	}
+	.kb-show__recent-cat {
+		flex: none;
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted-light));
+	}
+	.kb-show__cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin-top: 1.6rem;
+		padding: 0.85rem 1.4rem;
+		border-radius: 999px;
+		background: rgb(var(--accent));
+		color: rgb(11, 11, 12);
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+	}
+	.kb-show__cta:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 12px 30px -12px rgba(var(--accent), 0.7);
+	}
+	.kb-show__tree {
+		max-width: 460px;
+		justify-self: center;
+	}
+
+	@media (max-width: 980px) {
+		.kb-show__track {
+			height: auto;
 		}
-		.reel__stage {
-			height: clamp(330px, 88vw, 430px);
+		.kb-show__sticky {
+			position: static;
+			height: auto;
+			align-items: start;
 		}
-		.reel__frames {
-			display: none;
+		.kb-show__grid {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 2rem;
+			padding-top: 3rem;
+			padding-bottom: 3rem;
 		}
-		.reel__foot {
-			padding-right: 0;
+		.kb-show__tree {
+			max-width: 520px;
+			width: 100%;
+			justify-self: stretch;
 		}
 	}
 

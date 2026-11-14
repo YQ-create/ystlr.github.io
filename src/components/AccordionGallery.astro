@@ -87,7 +87,6 @@ const safeItems = items.map((it, i) => ({
 	key: i,
 }));
 
-const isV = orientation === 'vertical';
 const cfg = JSON.stringify({
 	defaultIndex,
 	duration,
@@ -303,12 +302,13 @@ const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
 			if (root.dataset.agReady === '1') return;
 			root.dataset.agReady = '1';
 
-			let cfg;
-			try {
-				cfg = JSON.parse(root.dataset.cfg || '{}');
-			} catch {
-				cfg = {};
-			}
+			const cfg = (() => {
+				try {
+					return JSON.parse(root.dataset.cfg || '{}');
+				} catch {
+					return {};
+				}
+			})();
 			const trigger = cfg.trigger || 'hover';
 			const defaultIndex = Number(cfg.defaultIndex ?? 0);
 			const expandRatio = clamp(Number(cfg.expandRatio ?? 0.52), 0.2, 0.9);
@@ -330,7 +330,7 @@ const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
 			root.style.setProperty('--ag-active-grow', String(activeGrow));
 			root.style.setProperty('--ag-expand', String(activeGrow));
 
-			const setActive = (idx) => {
+			const setActive = (idx: number) => {
 				if (idx < 0 || idx >= n) return;
 				if (idx === active) {
 					// 仍要确保状态一致（首次调用）
@@ -380,7 +380,7 @@ const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
 				});
 				// 有 link 的点击跳转
 				if (p.dataset.href) {
-					p.addEventListener('click', (e) => {
+					p.addEventListener('click', () => {
 						// trigger=hover 时点击也应能跳转；避免和展开冲突
 						window.location.href = p.dataset.href!;
 					});
@@ -392,7 +392,7 @@ const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
 		});
 	};
 
-	function clamp(v, min, max) {
+	function clamp(v: number, min: number, max: number) {
 		return Math.min(max, Math.max(min, v));
 	}
 

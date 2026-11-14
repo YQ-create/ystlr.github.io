@@ -49,8 +49,6 @@ const {
 			const coarse = window.matchMedia('(pointer: coarse)').matches;
 			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 			const tilt = Number(card.style.getPropertyValue('--sc-tilt').replace('deg', '')) || 0;
-			// 读原始色（可能是 "255,255,255" 或 "#fff"），构造两种用途的颜色
-			const raw = card.style.getPropertyValue('--sc-color').trim();
 
 			const move = (e: PointerEvent) => {
 				const r = card.getBoundingClientRect();

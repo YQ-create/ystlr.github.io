@@ -86,7 +86,6 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 			if (logo.dataset.done === '1') continue;
 			logo.dataset.done = '1';
 			const domain = logo.dataset.domain;
-			const name = logo.dataset.name || '';
 			if (!domain) continue;
 
 			const apply = (src: string) => {

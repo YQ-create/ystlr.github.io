@@ -182,8 +182,8 @@ function setup(host: HTMLElement) {
 			y: fromTop ? rand(-height * 0.6, -20) : rand(0, height),
 			len: clamp(speed * rand(0.055, 0.1), 22, height * 0.22),
 			speed,
-			alpha: rand(0.14, 0.46),
-			width: rand(1.5, 2.9),
+			alpha: rand(0.2, 0.55),
+			width: rand(1.7, 3.1),
 		};
 	};
 
@@ -206,8 +206,8 @@ function setup(host: HTMLElement) {
 	};
 
 	const seed = () => {
-		const streakCount = clamp(Math.round((width * height) / 19000), 36, 180);
-		const beadCount = clamp(Math.round((width * height) / 32000), 12, 60);
+		const streakCount = clamp(Math.round((width * height) / 15000), 40, 200);
+		const beadCount = clamp(Math.round((width * height) / 27000), 14, 70);
 		streaks = Array.from({ length: streakCount }, () => spawnStreak(false));
 		beads = Array.from({ length: beadCount }, () => spawnBead(false));
 	};

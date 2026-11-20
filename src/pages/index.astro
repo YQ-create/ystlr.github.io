@@ -12,10 +12,6 @@ const posts = (await getCollection('blog'))
 const pinned = posts.filter((post) => post.data.featured);
 const featured = [...pinned, ...posts.filter((post) => !post.data.featured)].slice(0, 3);
 
-const photos = (await getCollection('gallery')).sort(
-	(a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
-
 const knowledge = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
@@ -70,19 +66,17 @@ const days = firstDate ? Math.max(1, Math.ceil((Date.now() - firstDate.valueOf()
 
 const stats = [
 	{ label: '文章', value: posts.length, unit: '篇' },
-	{ label: '照片', value: photos.length, unit: '张' },
 	{ label: '知识', value: knowledge.length, unit: '条' },
 	{ label: '总字数', value: totalWords, unit: '字' },
 	{ label: '运行', value: days, unit: '天' },
 ];
 
-import Topography from '../components/Topography.astro';
-import SeaSky from '../components/SeaSky.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import FileTree from '../components/FileTree.astro';
 import Rain from '../components/Rain.astro';
 import discoverData from '../data/discover.json';
+import trending from '../data/github-trending.json';
 
 import { STACK as stack } from '../data/stack';
 
@@ -94,52 +88,13 @@ const discoverPreview = discoverData.collections
 const explore = [
 	{ n: '01', label: '文章', href: '#articles' },
 	{ n: '02', label: '知识', href: '#knowledge' },
-	{ n: '03', label: '照片', href: '/gallery' },
-	{ n: '04', label: '发现', href: '#discover' },
-	{ n: '05', label: '关于', href: '#about' },
+	{ n: '03', label: '发现', href: '#discover' },
+	{ n: '04', label: '关于', href: '#about' },
 ];
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="home">
-	<!-- 全屏固定层：默认是黄昏海景，用户切到「等高线」时退回 Topography。
-	     内容在上面滑，滚动时背景不会错位；海景滚出首屏后自行淡出并停帧。 -->
-	<div class="atmo" aria-hidden="true">
-		<SeaSky class="page__sky" horizon={0.42} sun={0.56} />
-
-		<Topography
-			class="page__topo"
-			color="#ff6a2b"
-			lineCount={20}
-			lineWidth={1.1}
-			majorLines
-			elevation={0.9}
-			foreground={0.18}
-			scale={1}
-			detail={0.3}
-			tilt={34}
-			speed={0.18}
-			direction="forward"
-			morph={0.18}
-			glow={0.5}
-			depthOfField={0.35}
-			fog={0.42}
-			brightness={0.85}
-			opacity={1}
-			mouseInteraction
-			hoverEffect="lift"
-			mouseRadius={1.1}
-			mouseStrength={0.55}
-			trail={0.3}
-			parallax={0.4}
-			clickEffect="pulse"
-			markers="none"
-			glitch={0}
-			intro
-			lightMode={false}
-		/>
-	</div>
-
-	<!-- 首页雨滴层：压在字符光场之上、正文之下；滚出首屏淡出并停帧 -->
+	<!-- 首页雨滴层：压在背景之上、正文之下；滚出首屏淡出并停帧 -->
 	<Rain />
 
 	<main class="home">
@@ -169,7 +124,6 @@ const explore = [
 
 					<ul class="hero-stats">
 						<li><b>{posts.length}</b><span>篇文章</span></li>
-						<li><b>{photos.length}</b><span>张照片</span></li>
 						<li><b>{knowledge.length}</b><span>条知识</span></li>
 					</ul>
 
@@ -193,12 +147,6 @@ const explore = [
 								<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
 							</svg>
 						</StarBorder>
-						<a class="hero-quiet" href="/gallery">
-							看看照片
-							<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-								<path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M8 3v9M4.5 8.5 8 12l3.5-3.5"></path>
-							</svg>
-						</a>
 					</div>
 
 					<p class="hero-note">
@@ -277,14 +225,14 @@ const explore = [
 						记录生活的方式<br>像呼吸一样自然
 					</h2>
 					<p class="split__lede">
-						<strong>文字、照片、不定期更新。</strong>把零散的日常整理成有序的记录，慢慢沉淀成属于自己的空间。
+						<strong>文字、笔记、不定期更新。</strong>把零散的日常整理成有序的记录，慢慢沉淀成属于自己的空间。
 					</p>
 					<ol class="facts" data-split-row>
 						<li>
 							<span class="facts__n">01</span>
 							<div>
 								<h3>记录方式</h3>
-								<p>文字与照片并存，想到就写，看到就拍。</p>
+								<p>文字与笔记并存，想到就写，看到就记。</p>
 							</div>
 						</li>
 						<li>
@@ -466,17 +414,39 @@ const explore = [
 						</a>
 					))}
 				</div>
+			</div>
+		</section>
 
-				<a class="portal-entry portal-entry--photos glass" href="/gallery" data-reveal data-glow>
-					<div class="portal-entry__body">
-						<span class="portal-entry__kicker">生活里的光影 · 按年月整理</span>
-						<h3 class="portal-entry__title">进入照片墙</h3>
-						<p class="portal-entry__desc">记录下的瞬间都收在这里，追光网格里点开看每一张照片。</p>
+		<!-- GitHub 热门仓库 -->
+		<section class="sec sec--github" id="github" data-section="github">
+			<div class="wrap">
+				<header class="sec-head">
+					<div>
+						<span class="sec-head__index">04 / OPEN SOURCE</span>
+						<h2>GitHub 热门</h2>
 					</div>
-					<span class="portal-entry__arrow" aria-hidden="true">
-						<svg viewBox="0 0 16 16" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
-					</span>
-				</a>
+					<a class="sec-head__more" href="https://github.com/trending" target="_blank" rel="noopener noreferrer">
+						去 Trending 看更多
+						<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+							<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
+						</svg>
+					</a>
+				</header>
+
+				<div class="gh-grid">
+					{trending.items.map((repo, i) => (
+						<a class="gh-card glass" href={repo.url} target="_blank" rel="noopener noreferrer" data-reveal data-reveal-delay={i * 50}>
+							<div class="gh-card__top">
+								<h3 class="gh-card__name">{repo.fullName}</h3>
+								<span class="gh-card__stars">★ {repo.stars >= 1000 ? `${(repo.stars / 1000).toFixed(1)}k` : repo.stars}</span>
+							</div>
+							<p class="gh-card__desc">{repo.desc}</p>
+							<div class="gh-card__meta">
+								{repo.language !== '—' && <span class="gh-card__lang">{repo.language}</span>}
+							</div>
+						</a>
+					))}
+				</div>
 			</div>
 		</section>
 
@@ -485,7 +455,7 @@ const explore = [
 			<div class="wrap">
 				<div class="about-card glass" data-reveal data-glow>
 					<div class="about-main">
-						<span class="sec-head__index">04 / ABOUT</span>
+						<span class="sec-head__index">05 / ABOUT</span>
 						<h2>写点关于自己的话</h2>
 						<p>{PROFILE.bio}</p>
 						<a class="about-link" href="/about">
@@ -496,7 +466,7 @@ const explore = [
 						</a>
 					</div>
 					<ul class="about-facts">
-						<li><span>记录方式</span>文字 · 照片</li>
+						<li><span>记录方式</span>文字 · 知识</li>
 						<li><span>更新节奏</span>不定期，想起来就写</li>
 						<li><span>站点技术</span>Astro · GitHub Pages</li>
 						<li><span>留言</span>文章页底部评论区</li>
@@ -678,37 +648,12 @@ const explore = [
 
 <style>
 	/* ═══════════ 首页背景底座 ═══════════ */
-	.atmo {
-		position: fixed;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background: rgb(var(--bg));
-	}
-	/* 首屏背后是动态海景，雨层压到六成，只留氛围 */
-	:global(.home .rain) {
-		--rain-gain: 0.6;
-	}
-	/* 整页唯一的背景层：fixed 在视口里，滚动时内容从它上面滑过 */
-	:global(.page__topo) {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-	}
-	:global(.page__sky) {
-		position: absolute;
-		inset: 0;
-	}
-	/* 用户显式选了自定义图片 / 等高线，就让海景退场，别两个背景打架 */
-	:global(html[data-bg-mode='topo'] .page__sky),
-	:global(html[data-bg-mode='image'] .page__sky) {
+	/* 首页走简洁雨天背景：深色底 + 清晰雨滴；隐藏全局字符光场/图片背景，避免叠层 */
+	:global(body.home .site-bg) {
 		display: none;
 	}
-	/* 首屏是动态海景，底下的字符光场跟着海景做交叉淡化：
-	   海景退到一半以下它才开始浮上来，前半段不给两个背景叠加的机会。 */
-	:global(html[data-bg-mode='ascii']) :global(body.home) :global(.site-bg__ascii) {
-		opacity: clamp(0, calc((0.5 - var(--sea-fade, 0)) * 2.2), 1);
+	:global(.home .rain) {
+		--rain-gain: 1;
 	}
 	.home {
 		position: relative;
@@ -780,11 +725,7 @@ const explore = [
 		user-select: none;
 		transition: opacity 700ms var(--ease-out);
 	}
-	/* 海景上场后这层水印就是噪点：天空本身已经有层次，不需要再靠它填空，
-	   而且透过半透明的天光会看见字母轮廓，破坏「照片」的感觉。 */
-	:global(html[data-sea-live='1']) .hero-mark {
-		opacity: 0;
-	}
+	/* 海景已移除：水印字只作极淡的背景纹理，始终低调 */
 	.hero-meta {
 		position: relative;
 		z-index: 1;
@@ -893,32 +834,7 @@ const explore = [
 		font-weight: 500;
 		line-height: 1;
 	}
-	.hero-quiet {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		height: 48px;
-		padding: 0 1.1rem;
-		border: 1px solid rgba(236, 235, 230, 0.16);
-		border-radius: 999px;
-		/* 透明按钮落在被落日照亮的云上会整块消失，垫一层很薄的底色托住 */
-		background: rgba(var(--bg), 0.34);
-		backdrop-filter: blur(12px) saturate(1.15);
-		-webkit-backdrop-filter: blur(12px) saturate(1.15);
-		font-size: 0.88rem;
-		color: rgb(var(--ink-soft));
-		text-decoration: none;
-		transition:
-			color var(--dur-fast) var(--ease-out),
-			border-color var(--dur-fast) var(--ease-out),
-			background-color var(--dur-fast) var(--ease-out);
-	}
-	.hero-quiet:hover {
-		color: rgb(var(--ink));
-		border-color: rgba(236, 235, 230, 0.3);
-		background: rgba(var(--bg), 0.56);
-	}
-	/* 首屏背后是动态海景：次级文字落到亮区时，靠一层柔影托住 */
+	/* 首屏次级文字靠一层柔影托住，保证在雨幕上可读 */
 	.hero-sub,
 	.hero-trust,
 	.hero-note,
@@ -1615,68 +1531,6 @@ const explore = [
 		to { transform: translateX(-50%); }
 	}
 
-	/* ═══════════ 入口卡片 ═══════════ */
-	.portal-entry {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: clamp(1.2rem, 3vw, 2.4rem);
-		padding: clamp(1.4rem, 3.4vw, 2.2rem);
-		border-radius: var(--card-radius, var(--r-xl));
-		text-decoration: none;
-		color: inherit;
-		transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
-	}
-	.portal-entry:hover {
-		transform: translateY(-3px);
-		box-shadow: var(--glass-shine), var(--shadow-lg);
-		border-color: rgba(var(--accent), 0.4);
-	}
-	.portal-entry__body { min-width: 0; }
-	.portal-entry__kicker {
-		display: block;
-		font-size: 0.68rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: rgb(var(--muted-light));
-		margin-bottom: 0.5rem;
-	}
-	.portal-entry__title {
-		margin: 0 0 0.4rem;
-		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
-		font-weight: 750;
-		transition: color 0.2s;
-	}
-	.portal-entry:hover .portal-entry__title {
-		color: rgb(var(--accent-deep));
-	}
-	.portal-entry__desc {
-		margin: 0;
-		max-width: 52ch;
-		font-size: 0.9rem;
-		line-height: 1.7;
-		color: rgb(var(--muted));
-	}
-	.portal-entry__arrow {
-		flex-shrink: 0;
-		display: grid;
-		place-items: center;
-		width: 52px;
-		height: 52px;
-		border-radius: 50%;
-		border: 0;
-		background: rgb(var(--btn-solid));
-		color: rgb(var(--btn-solid-ink));
-		transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
-	}
-	.portal-entry:hover .portal-entry__arrow {
-		transform: translateX(4px);
-		opacity: 0.9;
-	}
-	.portal-entry--photos {
-		margin-top: clamp(1rem, 2.2vw, 1.6rem);
-	}
-
 	/* ═══════════ 发现 ═══════════ */
 	.discover-grid {
 		display: grid;
@@ -1743,6 +1597,77 @@ const explore = [
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+	}
+
+	/* ═══════════ GitHub 热门 ═══════════ */
+	.gh-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		grid-auto-rows: 1fr;
+		gap: clamp(0.8rem, 1.6vw, 1.1rem);
+	}
+	.gh-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.55rem;
+		padding: clamp(1rem, 2vw, 1.25rem);
+		border-radius: var(--r-lg);
+		text-decoration: none;
+		color: inherit;
+		transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+	}
+	.gh-card:hover {
+		transform: translateY(-3px);
+		border-color: rgba(var(--accent), 0.4);
+	}
+	.gh-card__top {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.8rem;
+	}
+	.gh-card__name {
+		margin: 0;
+		flex: 1;
+		min-width: 0;
+		font-size: 0.92rem;
+		font-weight: 650;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.gh-card:hover .gh-card__name {
+		color: rgb(var(--accent-deep));
+	}
+	.gh-card__stars {
+		flex: none;
+		font-size: 0.76rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+	}
+	.gh-card__desc {
+		margin: 0;
+		flex: 1;
+		font-size: 0.82rem;
+		line-height: 1.55;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.gh-card__meta {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.gh-card__lang {
+		font-size: 0.66rem;
+		letter-spacing: 0.06em;
+		padding: 0.15rem 0.5rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		color: rgb(var(--muted-light));
 	}
 
 	/* ═══════════ 关于 ═══════════ */

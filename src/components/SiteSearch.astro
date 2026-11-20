@@ -16,7 +16,7 @@
 			<input
 				type="search"
 				data-ss-input
-				placeholder="搜索文章、知识库、照片…"
+				placeholder="搜索文章、知识库…"
 				aria-label="站内搜索"
 				autocomplete="off"
 				spellcheck="false"
@@ -204,7 +204,7 @@
 
 <script>
 	type Item = {
-		type: 'article' | 'note' | 'photo';
+		type: 'article' | 'note';
 		title: string;
 		desc: string;
 		body: string;
@@ -214,7 +214,7 @@
 		url: string;
 	};
 
-	const LABEL: Record<Item['type'], string> = { article: '文章', note: '知识库', photo: '照片' };
+	const LABEL: Record<Item['type'], string> = { article: '文章', note: '知识库' };
 
 	let cache: Item[] | null = null;
 	let loading: Promise<Item[]> | null = null;
@@ -255,8 +255,8 @@
 			return;
 		}
 		const groups: { type: Item['type']; items: Item[] }[] = [];
-		for (const type of ['article', 'note', 'photo'] as const) {
-			const group = list.filter((i) => i.type === type).slice(0, type === 'photo' ? 4 : 8);
+		for (const type of ['article', 'note'] as const) {
+			const group = list.filter((i) => i.type === type).slice(0, 8);
 			if (group.length) groups.push({ type, items: group });
 		}
 		let n = 0;

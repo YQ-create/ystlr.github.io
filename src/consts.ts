@@ -1,7 +1,7 @@
 // 站点全局信息：改这一处即可同步到页头、页脚、RSS 与 SEO 元信息。
 
 export const SITE_TITLE = 'ystlr';
-export const SITE_DESCRIPTION = '一个记录写作、生活与日常思考的个人博客 —— 文字、照片与随笔，慢慢沉淀。';
+export const SITE_DESCRIPTION = '一个记录写作、生活与日常思考的个人博客 —— 文字、笔记与随笔，慢慢沉淀。';
 export const SITE_URL = 'https://ystlr.com';
 export const AUTHOR_NAME = 'ystlr';
 
@@ -14,7 +14,7 @@ export const HERO = {
 	title: '在这里记录日常',
 	subtitle: '想法与读过的东西',
 	tagline: '在这里记录日常、想法与读过的东西',
-	tagline2: '把散落的生活片段整理成文字与照片',
+	tagline2: '把散落的生活片段整理成文字与笔记',
 };
 
 // 个人资料：改这里即可同步到首页资料卡、关于页名片、页脚。
@@ -24,7 +24,7 @@ export const PROFILE = {
 	avatar: '',
 	role: 'Notes on life & writing',
 	bio: '奇奇怪怪',
-	topics: ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '照片记录', '慢慢整理'],
+	topics: ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '知识笔记', '慢慢整理'],
 };
 
 // 社交链接（留空字符串则在页头隐藏对应入口）

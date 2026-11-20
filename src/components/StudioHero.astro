@@ -22,7 +22,7 @@ interface Block {
 }
 
 interface Props {
-	stats: { posts: number; photos: number; notes: number; days: number };
+	stats: { posts: number; notes: number; days: number };
 }
 
 const { stats } = Astro.props;
@@ -51,7 +51,7 @@ const blocks: Block[] = [
 		kind: 'quote',
 		heading: '',
 		side: 'bottom',
-		text: '“把散落的生活片段，整理成文字与照片。”',
+		text: '“把散落的生活片段，整理成文字与笔记。”',
 		cite: '— 站点说明',
 	},
 	{
@@ -60,7 +60,6 @@ const blocks: Block[] = [
 		side: 'top',
 		items: [
 			`${String(stats.posts).padStart(2, '0')}  篇文章`,
-			`${String(stats.photos).padStart(2, '0')}  张照片`,
 			`${String(stats.notes).padStart(2, '0')}  条笔记`,
 			`${String(stats.days).padStart(2, '0')}  天记录`,
 		],
@@ -70,7 +69,7 @@ const blocks: Block[] = [
 		heading: 'Part Two · Light',
 		side: 'bottom',
 		numeral: 'II',
-		text: '照片留下光线，文字留下当时的念头。两样凑在一起，才算一次完整的回忆。',
+		text: '文字留下当时的念头，知识慢慢长成一棵树。两样凑在一起，才算一次完整的记录。',
 	},
 	{
 		kind: 'quote',
@@ -99,7 +98,7 @@ const blocks: Block[] = [
 		<h1 class="sh__headline" id="sh-title">
 			<span>把散落的日常</span>
 			<span>整理成可以重读的</span>
-			<span>文字与照片。</span>
+			<span>文字与笔记。</span>
 		</h1>
 		<p class="sh__sub">持续记录中 · 自 2026 年 10 月起</p>
 

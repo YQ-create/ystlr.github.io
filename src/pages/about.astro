@@ -9,7 +9,6 @@ import { getCollection } from 'astro:content';
 import { AUTHOR_NAME, PROFILE, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = await getCollection('blog');
-const photos = await getCollection('gallery');
 
 const published = posts
 	.filter((post) => !post.data.draft)
@@ -22,10 +21,9 @@ const startedAt = posts.reduce<Date | null>((earliest, post) => {
 }, null);
 
 const facts = [
-	{ label: '记录方式', value: '文字 · 照片' },
+	{ label: '记录方式', value: '文字 · 知识' },
 	{ label: '更新节奏', value: '不定期，想起来就写' },
 	{ label: '文章数量', value: `${posts.length} 篇` },
-	{ label: '照片数量', value: `${photos.length} 张` },
 	{ label: '站点技术', value: 'Astro · GitHub Pages' },
 	{ label: '留言', value: '文章页底部评论区' },
 ];
@@ -35,7 +33,7 @@ const topics = PROFILE.topics;
 // 首屏那组数字：文章 / 照片 / 知识笔记 / 已记录天数
 const knowledge = await getCollection('knowledge');
 const days = startedAt ? Math.max(1, Math.round((Date.now() - startedAt.valueOf()) / 86400000)) : 0;
-const stats = { posts: posts.length, photos: photos.length, notes: knowledge.length, days };
+const stats = { posts: posts.length, notes: knowledge.length, days };
 ---
 
 <BaseLayout title={`关于 · ${SITE_TITLE}`} description={SITE_DESCRIPTION} hero={true}>

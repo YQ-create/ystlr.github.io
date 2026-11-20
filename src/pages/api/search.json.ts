@@ -1,4 +1,4 @@
-// 构建期生成站内搜索索引：文章 + 知识库 + 照片标题。
+// 构建期生成站内搜索索引：文章 + 知识库。
 // 只放检索必需字段，体积可控（几十条内容也就几十 KB），前端首次打开搜索时再拉取。
 import { getCollection } from 'astro:content';
 
@@ -17,7 +17,6 @@ const excerpt = (text: string, len = 120) => (text.length > len ? `${text.slice(
 
 const posts = await getCollection('blog');
 const notes = await getCollection('knowledge');
-const photos = await getCollection('gallery');
 
 const items = [
 	...posts
@@ -43,15 +42,6 @@ const items = [
 			category: n.data.category,
 			url: `/knowledge/${n.id}/`,
 		})),
-	...photos.map((p) => ({
-		type: 'photo' as const,
-		title: p.data.title ?? p.data.caption ?? '照片',
-		desc: p.data.caption ?? '',
-		body: '',
-		tags: p.data.tags,
-		date: p.data.date.toISOString().slice(0, 10),
-		url: '/gallery/',
-	})),
 ].sort((a, b) => (a.date < b.date ? 1 : -1));
 
 export const GET = () =>

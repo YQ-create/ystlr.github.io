@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-11-20T16:20:53.656Z",
+  "items": [
+    {
+      "name": "build-your-own-x",
+      "fullName": "codecrafters-io/build-your-own-x",
+      "url": "https://github.com/codecrafters-io/build-your-own-x",
+      "desc": "从零重建你最喜欢的技术的教程合集",
+      "stars": 564093,
+      "language": "Markdown"
+    },
+    {
+      "name": "awesome",
+      "fullName": "sindresorhus/awesome",
+      "url": "https://github.com/sindresorhus/awesome",
+      "desc": "各类主题的精选资源清单",
+      "stars": 539858,
+      "language": "—"
+    },
+    {
+      "name": "public-apis",
+      "fullName": "public-apis/public-apis",
+      "url": "https://github.com/public-apis/public-apis",
+      "desc": "可免费调用的公开 API 清单",
+      "stars": 500455,
+      "language": "Python"
+    },
+    {
+      "name": "rea",
+      "fullName": "morluto/rea",
+      "url": "https://github.com/morluto/rea",
+      "desc": "用 AI 智能体逆向工程任何东西，从应用行为到底层二进制",
+      "stars": 471115,
+      "language": "TypeScript"
+    },
+    {
+      "name": "freeCodeCamp",
+      "fullName": "freeCodeCamp/freeCodeCamp",
+      "url": "https://github.com/freeCodeCamp/freeCodeCamp",
+      "desc": "免费学习编程的在线课程与练手项目",
+      "stars": 459386,
+      "language": "TypeScript"
+    },
+    {
+      "name": "free-programming-books",
+      "fullName": "EbookFoundation/free-programming-books",
+      "url": "https://github.com/EbookFoundation/free-programming-books",
+      "desc": "免费编程书籍大全，多语言",
+      "stars": 401947,
+      "language": "Python"
+    },
+    {
+      "name": "openclaw",
+      "fullName": "openclaw/openclaw",
+      "url": "https://github.com/openclaw/openclaw",
+      "desc": "能真正动手干活的 AI 智能体，跨系统跨平台",
+      "stars": 394904,
+      "language": "TypeScript"
+    },
+    {
+      "name": "system-design-primer",
+      "fullName": "donnemartin/system-design-primer",
+      "url": "https://github.com/donnemartin/system-design-primer",
+      "desc": "系统设计入门与面试准备",
+      "stars": 378631,
+      "language": "Python"
+    },
+    {
+      "name": "developer-roadmap",
+      "fullName": "nilbuild/developer-roadmap",
+      "url": "https://github.com/nilbuild/developer-roadmap",
+      "desc": "开发者学习路线图",
+      "stars": 372437,
+      "language": "TypeScript"
+    },
+    {
+      "name": "coding-interview-university",
+      "fullName": "jwasham/coding-interview-university",
+      "url": "https://github.com/jwasham/coding-interview-university",
+      "desc": "成为软件工程师的完整自学路线",
+      "stars": 364654,
+      "language": "—"
+    }
+  ]
+}

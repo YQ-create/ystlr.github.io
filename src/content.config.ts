@@ -21,19 +21,6 @@ const blog = defineCollection({
 		}),
 });
 
-// 照片墙：每一张照片对应一条记录，date 为拍摄日期，用于按年、月分组排版。
-const gallery = defineCollection({
-	loader: glob({ base: './src/content/gallery', pattern: '**/*.md' }),
-	schema: ({ image }) =>
-		z.object({
-			title: z.string().optional(),
-			date: z.coerce.date(),
-			image: image(),
-			caption: z.string().optional(),
-			tags: z.array(z.string()).default([]),
-		}),
-});
-
 // 知识库：独立于文章的笔记/知识条目，可带分类与标签，用于「知识库」页。
 const knowledge = defineCollection({
 	loader: glob({ base: './src/content/knowledge', pattern: '**/*.{md,mdx}' }),
@@ -54,4 +41,4 @@ const knowledge = defineCollection({
 		}),
 });
 
-export const collections = { blog, gallery, knowledge };
+export const collections = { blog, knowledge };

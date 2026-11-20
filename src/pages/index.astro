@@ -4,7 +4,6 @@ import CountUp from '../components/CountUp.astro';
 import PostCard from '../components/PostCard.astro';
 import SpotlightCard from '../components/SpotlightCard.astro';
 import { getCollection } from 'astro:content';
-import { getImage } from 'astro:assets';
 import { AUTHOR_NAME, HERO, PROFILE, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_LINKS } from '../consts';
 
 const posts = (await getCollection('blog'))
@@ -79,32 +78,17 @@ const stats = [
 
 import Topography from '../components/Topography.astro';
 import SeaSky from '../components/SeaSky.astro';
-import ScrollExpand from '../components/ScrollExpand.astro';
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
-import AccordionGallery from '../components/AccordionGallery.astro';
 import FileTree from '../components/FileTree.astro';
 import Rain from '../components/Rain.astro';
 import discoverData from '../data/discover.json';
-import cover from '../assets/gallery/cover.jpg';
 
 import { STACK as stack } from '../data/stack';
 
 const discoverPreview = discoverData.collections
 	.flatMap((g) => g.links)
 	.slice(0, 6);
-
-// 02 区块右侧的手风琴画廊：取最新 5 张照片
-const galleryItems = await Promise.all(
-	photos.slice(0, 5).map(async (p, i) => {
-		const img = await getImage({ src: p.data.image as ImageMetadata, width: 900, format: 'webp' });
-		return {
-			image: img.src,
-			label: p.data.title ?? p.data.caption ?? `照片 ${String(i + 1).padStart(2, '0')}`,
-			alt: p.data.caption ?? p.data.title ?? '',
-		};
-	}),
-);
 
 // 首页底部的站内索引（参考站 Explore 条的 01—05 编号）
 const explore = [
@@ -240,30 +224,6 @@ const explore = [
 			</nav>
 		</section>
 
-		<!-- ═══════════ Act 1.5: 滚动展开画面（ScrollExpand） ═══════════ -->
-		<ScrollExpand
-			src={cover.src}
-			video="/videos/lake-expand.mp4"
-			alt="雾中的湖面，一只小船停在涟漪中央"
-			title="把瞬间，慢慢铺开"
-			hint="向下滚动 · 展开画面"
-			startWidth={46}
-			startHeight={41}
-			startRadius={26}
-			startWidthMobile={86}
-			startHeightMobile={22}
-			startRadiusMobile={18}
-			fitBox
-			zoomTo={1.18}
-			scrollDistance={1.1}
-			holdDistance={0.3}
-		>
-			<p class="se-kicker">GALLERY / 01</p>
-			<h2>把瞬间留成可以回看的形状</h2>
-			<p>照片、路途，还有日常里那些没被说出口的部分。往下走一点，它们就都在了。</p>
-			<a class="se-link" href="/gallery">去看照片墙 →</a>
-		</ScrollExpand>
-
 		<!-- ═══════════ Act 1.6: 知识库（文件树） ═══════════ -->
 		<section class="kb-show" id="knowledge" data-section="knowledge">
 			<div class="kb-show__track" data-tree-track>
@@ -342,31 +302,6 @@ const explore = [
 							</div>
 						</li>
 					</ol>
-				</div>
-				<div class="split__media">
-					{galleryItems.length > 1 ? (
-						<AccordionGallery
-							class="split__gallery"
-							items={galleryItems}
-							height={460}
-							gap={8}
-							radius={12}
-							expandRatio={0.5}
-							defaultIndex={0}
-							accentColor="rgb(var(--accent))"
-							overlayColor="#0b0b0c"
-							textColor="#ecebe6"
-							grayscale
-							showLabels
-							parallax={0.5}
-							tilt={8}
-							trigger="hover"
-						/>
-					) : galleryItems.length === 1 ? (
-						<img class="split__single" src={galleryItems[0].image} alt={galleryItems[0].alt} loading="lazy" decoding="async" />
-					) : (
-						<div class="split-img-fallback" aria-hidden="true"></div>
-					)}
 				</div>
 			</div>
 		</section>
@@ -1210,7 +1145,7 @@ const explore = [
 		position: relative;
 		z-index: 1;
 		display: grid;
-		grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+		grid-template-columns: minmax(0, 1fr);
 		gap: clamp(2rem, 5vw, 4.5rem);
 		align-items: start;
 		width: 100%;
@@ -1292,24 +1227,6 @@ const explore = [
 		line-height: 1.6;
 		color: rgba(var(--cream-ink), 0.58);
 	}
-	.split__media {
-		margin: 0;
-		width: 100%;
-		min-width: 0;
-	}
-	.split__single {
-		width: 100%;
-		aspect-ratio: 4 / 5;
-		object-fit: cover;
-		border-radius: 14px;
-	}
-	.split-img-fallback {
-		width: 100%;
-		aspect-ratio: 4 / 5;
-		border-radius: 14px;
-		background: linear-gradient(160deg, rgba(var(--cream-ink), 0.16) 0%, rgba(var(--cream-ink), 0.05) 100%);
-	}
-
 	/* ═══════════ 浮动 CTA（声明 40% 时弹入） ═══════════ */
 	.float-cta {
 		position: fixed;
@@ -1951,12 +1868,6 @@ const explore = [
 		}
 		.split__inner {
 			grid-template-columns: minmax(0, 1fr);
-		}
-		.split__media {
-			order: -1;
-		}
-		.split-img-fallback {
-			aspect-ratio: 16 / 10;
 		}
 		.explore ul {
 			grid-template-columns: repeat(3, minmax(0, 1fr));

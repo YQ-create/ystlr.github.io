@@ -21,7 +21,7 @@ const knowledge = (await getCollection('knowledge'))
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 // 知识库分类 → 文件树数据：分类即文件夹、条目即文件，按条数从多到少排。
-// 每类最多展示 3 个文件（置顶优先、其余按时间），超出的记成「+N」占位行。
+// 每类最多展示 2 个文件（置顶优先、其余按时间），超出的记成「+N」占位行。
 const byCategory = new Map<string, typeof knowledge>();
 for (const note of knowledge) {
 	const cat = note.data.category || '未分类';
@@ -41,12 +41,12 @@ const knowledgeTree = categoryOrder.map(([name, list]) => {
 	return {
 		name,
 		count: list.length,
-		files: sorted.slice(0, 3).map((n) => ({
+		files: sorted.slice(0, 2).map((n) => ({
 			name: n.data.title,
 			href: `/knowledge/${n.id}/`,
 			pinned: n.data.pinned,
 		})),
-		more: list.length > 3 ? list.length - 3 : 0,
+		more: list.length > 2 ? list.length - 2 : 0,
 	};
 });
 
@@ -1000,7 +1000,7 @@ const explore = [
 	.kb-show__track {
 		position: relative;
 		/* 多出一段高度当滚动轨道：树在视口里「钉住」，随滚动向下生长 */
-		height: 165vh;
+		height: 145vh;
 		min-height: 100svh;
 	}
 	.kb-show__sticky {

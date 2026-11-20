@@ -173,10 +173,10 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		text-decoration: none;
 		color: inherit;
 		opacity: 0;
-		transform: translateY(7px);
+		transform: translateY(5px);
 		transition:
-			opacity 0.5s var(--ft-ease),
-			transform 0.5s var(--ft-ease),
+			opacity 0.22s var(--ft-ease),
+			transform 0.22s var(--ft-ease),
 			background-color 0.2s var(--dur-fast) var(--ease-out),
 			color 0.2s var(--dur-fast) var(--ease-out);
 	}
@@ -283,8 +283,8 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		if (!track || rows.length === 0) return null;
 
 		const n = rows.length;
-		// 每行的揭示阈值：从 0.06 铺到 0.94，保证顶部先出现、末尾留一点收尾
-		const thresholds = rows.map((_, i) => 0.06 + 0.88 * (i / Math.max(1, n - 1)));
+		// 每行的揭示阈值：从 0.04 铺到 0.74，前段紧凑、末尾留稳定展示区间，避免拖沓
+		const thresholds = rows.map((_, i) => 0.04 + 0.7 * (i / Math.max(1, n - 1)));
 
 		const reduced =
 			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
@@ -299,15 +299,20 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 		let raf = 0;
 		let lastStep = -1;
+		// 缓存轨道绝对位置，避免每帧 getBoundingClientRect 触发回流
+		let trackTop = 0;
+		const measure = () => {
+			trackTop = track.getBoundingClientRect().top + window.scrollY;
+		};
+		measure();
 
 		const update = () => {
 			raf = 0;
 			const vh = window.innerHeight;
-			const top = track.getBoundingClientRect().top + window.scrollY;
 			const range = Math.max(1, track.offsetHeight - vh);
-			const p = clamp((window.scrollY - top) / range, 0, 1);
-			// 量化到 1/120，减少对行的重复写入；树干则连续跟随滚动
-			const step = Math.round(p * 120);
+			const p = clamp((window.scrollY - trackTop) / range, 0, 1);
+			// 量化到 1/160，减少对行的重复写入；树干则连续跟随滚动
+			const step = Math.round(p * 160);
 			if (step === lastStep) return;
 			lastStep = step;
 
@@ -321,15 +326,19 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		const onScroll = () => {
 			if (!raf) raf = requestAnimationFrame(update);
 		};
+		const onResize = () => {
+			measure();
+			onScroll();
+		};
 
 		update();
 		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onScroll, { passive: true });
+		window.addEventListener('resize', onResize, { passive: true });
 
 		return {
 			destroy() {
 				window.removeEventListener('scroll', onScroll);
-				window.removeEventListener('resize', onScroll);
+				window.removeEventListener('resize', onResize);
 				if (raf) cancelAnimationFrame(raf);
 			},
 		};

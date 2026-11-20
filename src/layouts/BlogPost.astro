@@ -256,6 +256,7 @@ const showToc = toc.length >= 2;
 	}
 
 	.post-hero {
+		position: relative;
 		margin: 0 0 1.8rem;
 		border-radius: var(--r-lg);
 		overflow: hidden;
@@ -264,6 +265,32 @@ const showToc = toc.length >= 2;
 	.post-hero img {
 		display: block;
 		width: 100%;
+	}
+	/* 封面图上叠加一层会动的雨丝：让静态照片也有「正在下雨」的动态感，
+	   呼应首页的雨天背景。只用渐变 + transform，不触发回流。 */
+	.post-hero::after {
+		content: '';
+		position: absolute;
+		inset: -15%;
+		pointer-events: none;
+		z-index: 2;
+		opacity: 0.6;
+		background-image:
+			repeating-linear-gradient(100deg,
+				transparent 0px,
+				transparent 46px,
+				rgba(214, 235, 255, 0.55) 47px,
+				transparent 48px,
+				transparent 90px);
+		mix-blend-mode: screen;
+		animation: post-rain 0.55s linear infinite;
+	}
+	@keyframes post-rain {
+		from { transform: translate3d(0, -40px, 0); }
+		to { transform: translate3d(-18px, 90px, 0); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.post-hero::after { animation: none; }
 	}
 
 	.post-excerpt {

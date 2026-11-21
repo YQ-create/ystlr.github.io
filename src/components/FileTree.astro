@@ -141,7 +141,7 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		padding: 0.55rem 0.8rem 0.75rem;
 	}
 
-	/* 树干：一条从顶往下的竖线，滚动时 JS 用 scaleY 拉长 */
+	/* 树干：一条从顶往下的竖线，静态完整显示（动画已移除） */
 	.file-tree__line {
 		position: absolute;
 		top: 0.55rem;
@@ -151,7 +151,7 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		border-radius: 1px;
 		background: linear-gradient(to bottom, var(--ft-accent), var(--ft-line) 82%, transparent);
 		transform-origin: top;
-		transform: scaleY(0);
+		transform: scaleY(1);
 		opacity: 0.55;
 		pointer-events: none;
 	}
@@ -172,19 +172,10 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		border-radius: 7px;
 		text-decoration: none;
 		color: inherit;
-		opacity: 0;
-		transform: translateY(5px);
+		opacity: 1;
 		transition:
-			opacity 0.22s var(--ft-ease),
-			transform 0.22s var(--ft-ease),
 			background-color 0.2s var(--dur-fast) var(--ease-out),
 			color 0.2s var(--dur-fast) var(--ease-out);
-	}
-	.file-tree__folder[data-on='1'],
-	.file-tree__file[data-on='1'],
-	.file-tree__more[data-on='1'] {
-		opacity: 1;
-		transform: none;
 	}
 
 	.file-tree__folder {
@@ -242,11 +233,7 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 		color: var(--ft-accent);
 	}
 	.file-tree__more {
-		opacity: 0;
 		pointer-events: none;
-	}
-	.file-tree__more[data-on='1'] {
-		opacity: 1;
 	}
 	.file-tree__more .file-tree__name {
 		margin-left: 1.15rem;
@@ -268,99 +255,3 @@ const { folders, title = 'EXPLORER', total = '', class: className = '' } = Astro
 	}
 </style>
 
-<script>
-	// @ts-nocheck
-	// 文件树揭示：滚动进度驱动，可逆、量化写入，只改 transform / opacity / data 属性。
-	const instances = [];
-	let bound = false;
-	let pageToken = 0;
-	let mountedToken = -1;
-
-	function setup(root) {
-		const track = root.closest('[data-tree-track]');
-		const line = root.querySelector('[data-tree-line]');
-		const rows = Array.from(root.querySelectorAll('[data-tree-row]'));
-		if (!track || rows.length === 0) return null;
-
-		const n = rows.length;
-		// 每行的揭示阈值：从 0.04 铺到 0.74，前段紧凑、末尾留稳定展示区间，避免拖沓
-		const thresholds = rows.map((_, i) => 0.04 + 0.7 * (i / Math.max(1, n - 1)));
-
-		const reduced =
-			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-			!('IntersectionObserver' in window);
-
-		if (reduced) {
-			rows.forEach((row) => (row.dataset.on = '1'));
-			if (line) line.style.transform = 'scaleY(1)';
-			return null;
-		}
-
-		const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-		let raf = 0;
-		let lastStep = -1;
-		// 缓存轨道绝对位置，避免每帧 getBoundingClientRect 触发回流
-		let trackTop = 0;
-		const measure = () => {
-			trackTop = track.getBoundingClientRect().top + window.scrollY;
-		};
-		measure();
-
-		const update = () => {
-			raf = 0;
-			const vh = window.innerHeight;
-			const range = Math.max(1, track.offsetHeight - vh);
-			const p = clamp((window.scrollY - trackTop) / range, 0, 1);
-			// 量化到 1/160，减少对行的重复写入；树干则连续跟随滚动
-			const step = Math.round(p * 160);
-			if (step === lastStep) return;
-			lastStep = step;
-
-			if (line) line.style.transform = `scaleY(${p.toFixed(3)})`;
-			for (let i = 0; i < n; i++) {
-				const on = p >= thresholds[i] ? '1' : '0';
-				if (rows[i].dataset.on !== on) rows[i].dataset.on = on;
-			}
-		};
-
-		const onScroll = () => {
-			if (!raf) raf = requestAnimationFrame(update);
-		};
-		const onResize = () => {
-			measure();
-			onScroll();
-		};
-
-		update();
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onResize, { passive: true });
-
-		return {
-			destroy() {
-				window.removeEventListener('scroll', onScroll);
-				window.removeEventListener('resize', onResize);
-				if (raf) cancelAnimationFrame(raf);
-			},
-		};
-	}
-
-	function mount() {
-		if (mountedToken === pageToken) return;
-		mountedToken = pageToken;
-		for (const item of instances.splice(0)) item?.destroy();
-		document.querySelectorAll('[data-tree]:not([data-tree-ready])').forEach((root) => {
-			root.dataset.treeReady = '1';
-			const instance = setup(root);
-			if (instance) instances.push(instance);
-		});
-	}
-
-	if (!bound) {
-		bound = true;
-		document.addEventListener('astro:before-swap', () => {
-			pageToken += 1;
-		});
-		document.addEventListener('astro:page-load', mount);
-	}
-	mount();
-</script>

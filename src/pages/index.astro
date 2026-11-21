@@ -74,6 +74,9 @@ const stats = [
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import FileTree from '../components/FileTree.astro';
+import TextType from '../components/TextType.astro';
+import MaskedHeading from '../components/MaskedHeading.astro';
+import GlassIcons from '../components/GlassIcons.astro';
 import Rain from '../components/Rain.astro';
 import discoverData from '../data/discover.json';
 import trending from '../data/github-trending.json';
@@ -117,12 +120,16 @@ const explore = [
 					</p>
 
 					<h1 class="hero-title display" data-hero-letters style="--ac-blur:0px;--ac-dist:0px">
-						在这里<br><span class="hl">记录日常</span>
+						在这里<br><MaskedHeading text="记录日常" src="/wallpaper.jpg" class="hero-title__mask" />
 					</h1>
 
 					<p class="hero-sub" data-hero-sub>{HERO.subtitle}</p>
 
 					<p class="hero-trust">{HERO.tagline2}。</p>
+
+					<p class="hero-typed">
+						<TextType texts={['记录日常的点滴', '慢慢沉淀成自己的空间', '文字 · 笔记 · 思考']} />
+					</p>
 
 					<ul class="hero-stats">
 						<li><b>{posts.length}</b><span>篇文章</span></li>
@@ -207,12 +214,13 @@ const explore = [
 							</a>
 						</div>
 
+					<div class="kb-show__tree" data-reveal data-reveal-delay="120">
 						<FileTree
 							folders={knowledgeTree}
 							title="Knowledge / 文件树"
 							total={`${knowledge.length} 条`}
-							class="kb-show__tree"
 						/>
+					</div>
 					</div>
 				</div>
 			</div>
@@ -294,26 +302,12 @@ const explore = [
 								<span class="profile__role">{PROFILE.role}</span>
 							</div>
 							<p class="profile__bio">{HERO.tagline}</p>
-							<ul class="profile__social">
-								{SOCIAL_LINKS.github && (
-									<li>
-										<a href={SOCIAL_LINKS.github} target="_blank" rel="noopener" aria-label="GitHub">
-											<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-												<path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-											</svg>
-										</a>
-									</li>
-								)}
-								{SOCIAL_LINKS.email && (
-									<li>
-										<a href={SOCIAL_LINKS.email} aria-label="邮箱">
-											<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-												<path fill="currentColor" d="M1.5 3h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Zm.7 1 5.68 4.38a.5.5 0 0 0 .64 0L14.1 4H2.2ZM14 5.62 9.62 8.99a1.5 1.5 0 0 1-1.92 0L3 5.62V12h11V5.62Z"></path>
-											</svg>
-										</a>
-									</li>
-								)}
-							</ul>
+							<GlassIcons
+								items={[
+									...(SOCIAL_LINKS.github ? [{ label: 'GitHub', href: SOCIAL_LINKS.github, icon: 'github' as const, external: true }] : []),
+									...(SOCIAL_LINKS.email ? [{ label: '邮箱', href: SOCIAL_LINKS.email, icon: 'email' as const }] : []),
+								]}
+							/>
 							<div class="profile__links">
 								<a href="/about">关于我</a>
 								<a href="/rss.xml">RSS</a>
@@ -799,8 +793,15 @@ const explore = [
 		max-width: 34ch;
 		font-size: 0.94rem;
 		line-height: 1.7;
-		/* 背景是动态海景，次级文字不能再用纯 muted，否则落在亮区就散了 */
 		color: rgba(var(--ink), 0.76);
+	}
+	.hero-typed {
+		margin: 0.4rem 0 0;
+		min-height: 1.6em;
+		font-size: 0.98rem;
+		letter-spacing: 0.02em;
+		color: rgb(var(--accent));
+		font-variant-numeric: tabular-nums;
 	}
 	.hero-stats {
 		display: flex;
@@ -927,16 +928,11 @@ const explore = [
 	}
 	.kb-show__track {
 		position: relative;
-		/* 多出一段高度当滚动轨道：树在视口里「钉住」，随滚动向下生长 */
-		height: 145vh;
-		min-height: 100svh;
 	}
 	.kb-show__sticky {
-		position: sticky;
-		top: calc(var(--head-h) + 0.5rem);
-		height: calc(100svh - var(--head-h) - 1rem);
 		display: grid;
 		align-items: center;
+		padding: clamp(3rem, 8vw, 6rem) 0;
 	}
 	.kb-show__grid {
 		display: grid;

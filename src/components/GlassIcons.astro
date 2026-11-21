@@ -1,0 +1,95 @@
+---
+/**
+ * GlassIcons — 玻璃拟态图标（无依赖，CSS backdrop-filter）。
+ *
+ * 圆形玻璃底座 + 渐变折射 + 悬浮浮起。图标 SVG 内置（github / email）。
+ * 比 WebGL 版轻量，视觉接近玻璃质感。
+ */
+interface IconItem {
+	label: string;
+	href: string;
+	icon: 'github' | 'email';
+	external?: boolean;
+}
+
+interface Props {
+	items: IconItem[];
+	class?: string;
+}
+
+const { items, class: className = '' } = Astro.props;
+
+const ICONS = {
+	github:
+		'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z',
+	email:
+		'M1.5 3h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5Zm.7 1 5.68 4.38a.5.5 0 0 0 .64 0L14.1 4H2.2ZM14 5.62 9.62 8.99a1.5 1.5 0 0 1-1.92 0L3 5.62V12h11V5.62Z',
+};
+---
+
+<ul class:list={['glass-icons', className]}>
+	{items.map((item) => (
+		<li>
+			<a
+				class="glass-icon"
+				href={item.href}
+				aria-label={item.label}
+				{...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
+			>
+				<span class="glass-icon__plate" aria-hidden="true"></span>
+				<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+					<path fill="currentColor" d={ICONS[item.icon]}></path>
+				</svg>
+			</a>
+		</li>
+	))}
+</ul>
+
+<style>
+	.glass-icons {
+		display: flex;
+		gap: 0.6rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.glass-icons li {
+		margin: 0;
+	}
+	.glass-icon {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		color: rgb(var(--ink));
+		text-decoration: none;
+		overflow: hidden;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		box-shadow:
+			0 10px 28px -10px rgba(0, 0, 0, 0.5),
+			inset 0 1px 0 rgba(255, 255, 255, 0.28);
+		backdrop-filter: blur(12px) saturate(1.4);
+		-webkit-backdrop-filter: blur(12px) saturate(1.4);
+		transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s, border-color 0.3s;
+	}
+	.glass-icon__plate {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.12));
+		pointer-events: none;
+	}
+	.glass-icon svg {
+		position: relative;
+		z-index: 1;
+	}
+	.glass-icon:hover {
+		transform: translateY(-3px);
+		border-color: rgba(var(--accent), 0.5);
+		box-shadow:
+			0 16px 34px -12px rgba(0, 0, 0, 0.6),
+			0 0 0 1px rgba(var(--accent), 0.18),
+			inset 0 1px 0 rgba(255, 255, 255, 0.32);
+	}
+</style>

@@ -1,0 +1,116 @@
+---
+/**
+ * MaskedHeading — 文字蒙版标题（无依赖，background-clip: text）。
+ *
+ * 标题文字的形状里填充一张图片，鼠标移动时图片轻微视差，
+ * 形成「文字窗口」的层次感。图片随 --mh-src 传入。
+ */
+interface Props {
+	/** 标题文字（可含子元素，如高亮 span） */
+	text: string;
+	/** 蒙版图片 URL */
+	src: string;
+	/** 背景放大倍数 */
+	fillScale?: number;
+	/** 鼠标视差强度 px */
+	parallax?: number;
+	class?: string;
+}
+
+const { text, src, fillScale = 1.3, parallax = 16, class: className = '' } = Astro.props;
+---
+
+<span
+	class:list={['masked-heading', className]}
+	data-mh
+	data-src={src}
+	data-parallax={parallax}
+	style={`--mh-src: url('${src}'); --mh-scale: ${fillScale};`}
+>
+	<span class="masked-heading__inner" data-mh-inner>{text}</span>
+</span>
+
+<style>
+	.masked-heading {
+		display: inline-block;
+	}
+	.masked-heading__inner {
+		display: inline-block;
+		background-image: var(--mh-src);
+		background-size: cover;
+		background-position: center;
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		color: transparent;
+		will-change: background-position;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.masked-heading__inner { will-change: auto; }
+	}
+</style>
+
+<script>
+	// @ts-nocheck
+	// 鼠标视差：文字里的图片随鼠标轻微平移，形成「文字窗口」的层次。
+	function setup(host) {
+		const inner = host.querySelector('[data-mh-inner]');
+		if (!inner) return () => {};
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const parallax = Number(host.dataset.parallax) || 0;
+
+		let tx = 0;
+		let ty = 0;
+		let x = 0;
+		let y = 0;
+		let raf = 0;
+
+		const frame = () => {
+			raf = 0;
+			x += (tx - x) * 0.12;
+			y += (ty - y) * 0.12;
+			inner.style.backgroundPosition = `${50 + x}% ${50 + y}%`;
+			if (Math.abs(tx - x) > 0.05 || Math.abs(ty - y) > 0.05) raf = requestAnimationFrame(frame);
+		};
+
+		const onMove = (e) => {
+			if (reduce || !parallax) return;
+			const rect = host.getBoundingClientRect();
+			const nx = ((e.clientX - rect.left) / (rect.width || 1)) * 2 - 1;
+			const ny = ((e.clientY - rect.top) / (rect.height || 1)) * 2 - 1;
+			tx = nx * parallax;
+			ty = ny * parallax;
+			if (!raf) raf = requestAnimationFrame(frame);
+		};
+
+		window.addEventListener('pointermove', onMove, { passive: true });
+		return () => {
+			window.removeEventListener('pointermove', onMove);
+			cancelAnimationFrame(raf);
+		};
+	}
+
+	const instances = new Map();
+	function mount() {
+		document.querySelectorAll('[data-mh]').forEach((host) => {
+			if (host.dataset.mhBound === '1') return;
+			host.dataset.mhBound = '1';
+			instances.set(host, setup(host));
+		});
+	}
+	function unmount() {
+		instances.forEach((destroy) => destroy());
+		instances.clear();
+		document.querySelectorAll('[data-mh]').forEach((host) => { delete host.dataset.mhBound; });
+	}
+	let bound = false;
+	function initMaskedHeading() {
+		if (bound) return;
+		bound = true;
+		document.addEventListener('astro:before-swap', unmount);
+		document.addEventListener('astro:page-load', mount);
+		if (document.readyState !== 'loading') mount();
+		else document.addEventListener('DOMContentLoaded', mount, { once: true });
+	}
+	initMaskedHeading();
+</script>

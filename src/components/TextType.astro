@@ -1,0 +1,160 @@
+---
+/**
+ * TextType — 打字机效果（无依赖，DOM + 定时器）。
+ *
+ * 逐字打出、停顿、删除、循环到下一句。光标用 CSS 闪烁。
+ * 挂 astro:page-load 重建，View Transitions 往返不累积。
+ */
+interface Props {
+	/** 轮播的句子列表 */
+	texts: string[];
+	/** 打字速度 ms/字 */
+	typingSpeed?: number;
+	/** 删除速度 ms/字 */
+	deletingSpeed?: number;
+	/** 每句打完的停顿 ms */
+	pause?: number;
+	/** 循环播放 */
+	loop?: boolean;
+	/** 光标字符 */
+	cursor?: string;
+	class?: string;
+}
+
+const {
+	texts,
+	typingSpeed = 60,
+	deletingSpeed = 30,
+	pause = 2000,
+	loop = true,
+	cursor = '|',
+	class: className = '',
+} = Astro.props;
+---
+
+<span
+	class:list={['text-type', className]}
+	data-text-type
+	data-texts={JSON.stringify(texts)}
+	data-type-speed={typingSpeed}
+	data-delete-speed={deletingSpeed}
+	data-pause={pause}
+	data-loop={loop ? '1' : '0'}
+>
+	<span class="text-type__text" data-tt-text></span>
+	<span class="text-type__cursor" data-tt-cursor aria-hidden="true">{cursor}</span>
+</span>
+
+<style>
+	.text-type {
+		display: inline-flex;
+		align-items: baseline;
+	}
+	.text-type__cursor {
+		display: inline-block;
+		margin-left: 0.08em;
+		animation: tt-blink 0.9s steps(1) infinite;
+	}
+	@keyframes tt-blink {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.text-type__cursor { animation: none; }
+	}
+</style>
+
+<script>
+	// @ts-nocheck
+	// 打字机：逐字打出 → 停顿 → 删除 → 下一句循环。grappheme 安全地按码点切分。
+	function setup(host) {
+		let texts = [];
+		try {
+			const parsed = JSON.parse(host.dataset.texts || '[]');
+			texts = Array.isArray(parsed) ? parsed.filter((t) => String(t).length) : [];
+		} catch {
+			texts = [];
+		}
+		if (texts.length === 0) return () => {};
+
+		const textEl = host.querySelector('[data-tt-text]');
+		const typeSpeed = Number(host.dataset.typeSpeed) || 60;
+		const deleteSpeed = Number(host.dataset.deleteSpeed) || 30;
+		const pause = Number(host.dataset.pause) || 2000;
+		const loop = host.dataset.loop === '1';
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		let index = 0;
+		let count = 0;
+		let deleting = false;
+		let timer = 0;
+		let alive = true;
+
+		const chars = () => Array.from(texts[index]);
+
+		const tick = () => {
+			if (!alive) return;
+			if (reduce) {
+				// 降级：整句直接显示，不删除
+				textEl.textContent = texts[index];
+				if (loop) timer = window.setTimeout(tick, pause);
+				return;
+			}
+			const list = chars();
+			if (!deleting) {
+				if (count < list.length) {
+					count += 1;
+					textEl.textContent = list.slice(0, count).join('');
+					timer = window.setTimeout(tick, typeSpeed + Math.random() * typeSpeed * 0.6);
+				} else {
+					deleting = true;
+					timer = window.setTimeout(tick, pause);
+				}
+			} else {
+				if (count > 0) {
+					count -= 1;
+					textEl.textContent = list.slice(0, count).join('');
+					timer = window.setTimeout(tick, deleteSpeed);
+				} else {
+					deleting = false;
+					index = (index + 1) % texts.length;
+					if (index === 0 && !loop) {
+						alive = false;
+						return;
+					}
+					timer = window.setTimeout(tick, typeSpeed * 3);
+				}
+			}
+		};
+		tick();
+
+		return () => {
+			alive = false;
+			clearTimeout(timer);
+		};
+	}
+
+	const instances = new Map();
+	function mount() {
+		document.querySelectorAll('[data-text-type]').forEach((host) => {
+			if (host.dataset.ttBound === '1') return;
+			host.dataset.ttBound = '1';
+			instances.set(host, setup(host));
+		});
+	}
+	function unmount() {
+		instances.forEach((destroy) => destroy());
+		instances.clear();
+		document.querySelectorAll('[data-text-type]').forEach((host) => { delete host.dataset.ttBound; });
+	}
+	let bound = false;
+	function initTextType() {
+		if (bound) return;
+		bound = true;
+		document.addEventListener('astro:before-swap', unmount);
+		document.addEventListener('astro:page-load', mount);
+		if (document.readyState !== 'loading') mount();
+		else document.addEventListener('DOMContentLoaded', mount, { once: true });
+	}
+	initTextType();
+</script>

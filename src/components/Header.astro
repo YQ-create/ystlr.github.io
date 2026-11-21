@@ -5,6 +5,7 @@
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import MusicPlayer from './MusicPlayer.astro';
 import AppearancePanel from './AppearancePanel.astro';
+import ElectricLogo from './ElectricLogo.astro';
 
 // 当前板块名：给左上角做页眉用，取不到就不显示
 const SECTION_LABELS: Record<string, string> = {
@@ -22,6 +23,7 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 <header class="site-head" transition:persist="site-head" transition:name="site-header">
 	<div class="head-shell">
 		<a class="head-brand" href="/" aria-label={`${SITE_TITLE} 首页`}>
+			<ElectricLogo size={24} class="head-brand__bolt" />
 			<span class="head-brand__mark">ystlr</span>
 			<span class:list={['head-brand__meta', !sectionLabel && 'is-empty']} data-head-meta>
 				<span class="head-brand__rule" aria-hidden="true"></span>

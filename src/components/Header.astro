@@ -1,7 +1,7 @@
 ---
-// 悬浮页头：左侧站点标 + 当前板块（跑马页眉），右侧工具组。
-// 主导航不在这里 —— 已移到页面底部的 DockNav（数字标签 + 斜体标签展开），
-// 两处各放一份导航只会互相打架，所以页头只留身份与工具。
+// 悬浮页头（BubbleMenu 风格 · 液态玻璃）：
+// 左侧品牌气泡 + 右侧工具组 + 汉堡气泡，点击弹出全屏「液态玻璃」胶囊菜单。
+// 主导航底部 DockNav 保留，顶部这份是全屏弹出式导航入口。
 import { SITE_TITLE, SOCIAL_LINKS } from '../consts';
 import MusicPlayer from './MusicPlayer.astro';
 import AppearancePanel from './AppearancePanel.astro';
@@ -18,12 +18,21 @@ const SECTION_LABELS: Record<string, string> = {
 };
 const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const sectionLabel = SECTION_LABELS[path] ?? '';
+
+// 全屏菜单项：num 序号 + label + href + tint（玻璃色调 RGB 三元组）
+const menuItems = [
+	{ num: '01', label: '首页', href: '/', tint: '255, 255, 255' },
+	{ num: '02', label: '文章', href: '/blog', tint: '132, 182, 255' },
+	{ num: '03', label: '知识库', href: '/knowledge', tint: '188, 150, 255' },
+	{ num: '04', label: '发现', href: '/discover', tint: '118, 220, 208' },
+	{ num: '05', label: '关于', href: '/about', tint: '255, 150, 92' },
+];
 ---
 
 <header class="site-head" transition:persist="site-head" transition:name="site-header">
 	<div class="head-shell">
-		<a class="head-brand" href="/" aria-label={`${SITE_TITLE} 首页`}>
-			<ElectricLogo size={24} class="head-brand__bolt" />
+		<a class="head-brand glass" href="/" aria-label={`${SITE_TITLE} 首页`}>
+			<ElectricLogo size={22} class="head-brand__bolt" />
 			<span class="head-brand__mark">ystlr</span>
 			<span class:list={['head-brand__meta', !sectionLabel && 'is-empty']} data-head-meta>
 				<span class="head-brand__rule" aria-hidden="true"></span>
@@ -44,7 +53,28 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 					<path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3.4 8.6 8.6 3.4M4.3 3.4h4.3v4.3"></path>
 				</svg>
 			</a>
+			<button class="head-toggle glass" type="button" data-menu-toggle aria-expanded="false" aria-controls="menu-overlay" aria-label="打开菜单" title="菜单">
+				<span class="head-toggle__line" aria-hidden="true"></span>
+				<span class="head-toggle__line" aria-hidden="true"></span>
+			</button>
 		</div>
+	</div>
+
+	<!-- 全屏液态玻璃菜单 -->
+	<div class="menu-overlay" id="menu-overlay" data-menu-overlay aria-hidden="true">
+		<div class="menu-veil" data-menu-veil aria-hidden="true"></div>
+		<nav class="menu-nav" aria-label="主导航菜单">
+			<ul class="menu-pills" role="menu">
+				{menuItems.map((item) => (
+					<li class="menu-pill-col" role="none">
+						<a class="menu-pill" href={item.href} role="menuitem" style={`--tint: ${item.tint}`} aria-label={item.label}>
+							<span class="menu-pill__num" aria-hidden="true">{item.num}</span>
+							<span class="menu-pill__label">{item.label}</span>
+						</a>
+					</li>
+				))}
+			</ul>
+		</nav>
 	</div>
 </header>
 
@@ -94,6 +124,46 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 
 	syncSection();
 	document.addEventListener('astro:page-load', syncSection);
+
+	// ---- 液态玻璃菜单：开关 / ESC / 点击遮罩 / 换页重置 ----
+	function initMenu() {
+		const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+		const overlay = document.querySelector<HTMLElement>('[data-menu-overlay]');
+		if (!toggle || !overlay) return;
+		const pills = Array.from(overlay.querySelectorAll<HTMLElement>('.menu-pill'));
+
+		const close = () => {
+			toggle.classList.remove('is-open');
+			toggle.setAttribute('aria-expanded', 'false');
+			overlay.classList.remove('is-open');
+			overlay.setAttribute('aria-hidden', 'true');
+			document.body.classList.remove('menu-open');
+			pills.forEach((p) => {
+				p.style.transitionDelay = '0s';
+			});
+		};
+		const open = () => {
+			toggle.classList.add('is-open');
+			toggle.setAttribute('aria-expanded', 'true');
+			overlay.classList.add('is-open');
+			overlay.setAttribute('aria-hidden', 'false');
+			document.body.classList.add('menu-open');
+			pills.forEach((p, i) => {
+				p.style.transitionDelay = `${i * 0.06}s`;
+			});
+		};
+
+		toggle.addEventListener('click', () => {
+			if (overlay.classList.contains('is-open')) close();
+			else open();
+		});
+		overlay.querySelector('[data-menu-veil]')?.addEventListener('click', close);
+		window.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && overlay.classList.contains('is-open')) close();
+		});
+		document.addEventListener('astro:page-load', close);
+	}
+	initMenu();
 </script>
 
 <style>
@@ -104,6 +174,18 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 		padding: 1.05rem var(--gutter) 0;
 		pointer-events: none;
 		transition: padding-top var(--dur) var(--ease-out);
+	}
+
+	/* ── 液态玻璃基础 ── */
+	.glass {
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+		backdrop-filter: blur(16px) saturate(1.4);
+		-webkit-backdrop-filter: blur(16px) saturate(1.4);
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		box-shadow:
+			inset 0 1px 1px rgba(255, 255, 255, 0.35),
+			inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+			0 8px 24px -10px rgba(0, 0, 0, 0.45);
 	}
 
 	/* 版心：左侧页眉，右侧工具组，与正文同宽 */
@@ -122,12 +204,14 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 		pointer-events: auto;
 	}
 
-	/* 页眉：站点标 + 发丝竖线 + 当前板块 */
+	/* 页眉：站点标 + 发丝竖线 + 当前板块（液态玻璃胶囊） */
 	.head-brand {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.55rem;
 		min-width: 0;
+		padding: 7px 16px 7px 10px;
+		border-radius: 999px;
 		color: rgb(var(--ink));
 		text-decoration: none;
 	}
@@ -259,6 +343,211 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 		transform: rotate(-45deg);
 	}
 
+	/* ── 汉堡气泡 ── */
+	.head-toggle {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
+		width: 38px;
+		height: 38px;
+		padding: 0;
+		border-radius: 50%;
+		cursor: pointer;
+	}
+
+	.head-toggle__line {
+		width: 16px;
+		height: 1.6px;
+		border-radius: 1px;
+		background: rgb(var(--ink));
+		transition:
+			transform 0.3s var(--ease-out),
+			opacity 0.3s var(--ease-out);
+	}
+
+	.head-toggle.is-open .head-toggle__line:first-child {
+		transform: translateY(3.3px) rotate(45deg);
+	}
+
+	.head-toggle.is-open .head-toggle__line:last-child {
+		transform: translateY(-3.3px) rotate(-45deg);
+	}
+
+	/* ── 全屏液态玻璃菜单 ── */
+	.menu-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 150;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transition:
+			opacity 0.4s var(--ease-out),
+			visibility 0.4s;
+	}
+
+	.menu-overlay.is-open {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+	}
+
+	.menu-veil {
+		position: absolute;
+		inset: 0;
+		background: radial-gradient(ellipse at center, rgba(24, 24, 30, 0.6), rgba(0, 0, 0, 0.85));
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	.menu-nav {
+		position: relative;
+		z-index: 1;
+		width: 100%;
+		max-width: 1240px;
+		padding: 0 var(--gutter);
+	}
+
+	.menu-pills {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: clamp(12px, 2vw, 20px);
+	}
+
+	.menu-pill-col {
+		flex: 1 1 auto;
+		min-width: 168px;
+	}
+
+	/* 液态玻璃胶囊：半透明白 + 高光 + 流动光泽 + 折射色散 */
+	.menu-pill {
+		position: relative;
+		isolation: isolate;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6em;
+		min-height: clamp(120px, 18vw, 180px);
+		border-radius: 999px;
+		text-decoration: none;
+		color: rgb(var(--ink));
+		background: linear-gradient(120deg, rgba(var(--tint), 0.20), rgba(var(--tint), 0.05) 45%, rgba(var(--tint), 0.15));
+		backdrop-filter: blur(24px) saturate(1.5);
+		-webkit-backdrop-filter: blur(24px) saturate(1.5);
+		border: 1px solid rgba(255, 255, 255, 0.24);
+		box-shadow:
+			inset 0 1px 1px rgba(255, 255, 255, 0.5),
+			inset 0 -1px 1px rgba(255, 255, 255, 0.07),
+			0 14px 44px -12px rgba(0, 0, 0, 0.55);
+		/* 入场：scale 弹性 + 逐项 stagger（JS 设 delay） */
+		opacity: 0;
+		transform: scale(0.55);
+		transition:
+			opacity 0.5s var(--ease-out),
+			transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+			background 0.3s var(--ease-out);
+	}
+
+	.menu-overlay.is-open .menu-pill {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.menu-overlay.is-open .menu-pill:hover {
+		transform: scale(1.045);
+		background: linear-gradient(120deg, rgba(var(--tint), 0.30), rgba(var(--tint), 0.08) 45%, rgba(var(--tint), 0.22));
+	}
+
+	/* 顶部高光条 */
+	.menu-pill::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.06) 22%, transparent 46%);
+		pointer-events: none;
+	}
+
+	/* 流动光泽：斜向光带周期性扫过 */
+	.menu-pill::after {
+		content: '';
+		position: absolute;
+		top: -70%;
+		left: 0;
+		z-index: 2;
+		width: 42%;
+		height: 240%;
+		background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.36) 50%, transparent 80%);
+		filter: blur(8px);
+		pointer-events: none;
+		animation: glass-sheen 6s ease-in-out infinite;
+	}
+
+	@keyframes glass-sheen {
+		0% {
+			transform: translateX(-140%) rotate(18deg);
+		}
+		55%,
+		100% {
+			transform: translateX(380%) rotate(18deg);
+		}
+	}
+
+	.menu-pill__num {
+		font-family: var(--font-sans), system-ui, sans-serif;
+		font-size: 0.72rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted));
+		transform: translateY(-0.5em);
+		transition: color 0.3s var(--ease-out);
+	}
+
+	.menu-pill__label {
+		font-family: var(--font-editorial), 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+		font-size: clamp(1.55rem, 3.4vw, 3.1rem);
+		font-weight: 400;
+		line-height: 1;
+		letter-spacing: 0.01em;
+		/* 折射色散：红/青轻微分离，模拟玻璃折光 */
+		text-shadow:
+			0.6px 0 0 rgba(255, 90, 90, 0.32),
+			-0.6px 0 0 rgba(90, 200, 255, 0.32);
+	}
+
+	.menu-pill:hover .menu-pill__num {
+		color: rgb(var(--ink));
+	}
+
+	/* 打开菜单时锁定背景滚动 */
+	:global(body.menu-open) {
+		overflow: hidden;
+	}
+
+	@media (max-width: 900px) {
+		.menu-pills {
+			flex-direction: column;
+		}
+		.menu-pill-col {
+			min-width: 0;
+			width: 100%;
+		}
+		.menu-pill {
+			min-height: 66px;
+		}
+		.menu-pill__label {
+			font-size: 1.5rem;
+		}
+	}
+
 	@media (max-width: 720px) {
 		.head-cta {
 			display: none;
@@ -276,6 +565,44 @@ const sectionLabel = SECTION_LABELS[path] ?? '';
 
 		.head-brand__here {
 			font-size: 0.76rem;
+		}
+
+		.head-toggle {
+			width: 36px;
+			height: 36px;
+		}
+	}
+
+	/* 浅色主题：玻璃转成白瓷质感，边框换深色发丝 */
+	:global(:root[data-theme='light']) .glass {
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.42));
+		border-color: rgba(90, 76, 60, 0.14);
+		box-shadow:
+			inset 0 1px 1px rgba(255, 255, 255, 0.95),
+			inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+			0 8px 24px -12px rgba(90, 76, 60, 0.28);
+	}
+
+	:global(:root[data-theme='light']) .menu-veil {
+		background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.55), rgba(238, 234, 226, 0.88));
+	}
+
+	:global(:root[data-theme='light']) .menu-pill {
+		border-color: rgba(90, 76, 60, 0.16);
+		background: linear-gradient(120deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.38) 45%, rgba(255, 255, 255, 0.62));
+		box-shadow:
+			inset 0 1px 1px rgba(255, 255, 255, 0.95),
+			inset 0 -1px 1px rgba(255, 255, 255, 0.25),
+			0 14px 44px -14px rgba(90, 76, 60, 0.3);
+	}
+
+	/* 减少动态：关掉光泽扫动，弹入直接到位 */
+	@media (prefers-reduced-motion: reduce) {
+		.menu-pill::after {
+			animation: none;
+		}
+		.menu-pill {
+			transition-duration: 0.01ms;
 		}
 	}
 </style>

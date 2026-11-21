@@ -75,7 +75,6 @@ import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
 import FileTree from '../components/FileTree.astro';
 import Rain from '../components/Rain.astro';
-import HoloMosaic from '../components/HoloMosaic.astro';
 import discoverData from '../data/discover.json';
 import trending from '../data/github-trending.json';
 
@@ -95,13 +94,14 @@ const explore = [
 ---
 
 <BaseLayout title={`${SITE_TITLE} · ${HERO.tagline}`} description={SITE_DESCRIPTION} hero bodyClass="home">
-	<!-- 首页雨滴层：压在背景之上、正文之下；滚出首屏淡出并停帧 -->
+	<!-- 首页壁纸背景层：雪夜小镇壁纸，雨滴叠在其上 -->
+	<div class="home-bg" aria-hidden="true"></div>
+	<!-- 首页雨滴层：压在壁纸之上、正文之下 -->
 	<Rain />
 
 	<main class="home">
 		<!-- ═══════════ Act 1: Hero ═══════════ -->
 		<section class="hero" id="home" data-section="home">
-			<HoloMosaic class="hero__holo" />
 			<span class="hero-mark" aria-hidden="true">YSTLR</span>
 
 			<div class="hero-meta" data-ac data-ac-distance="16" data-ac-blur="4" data-ac-delay="80">
@@ -712,12 +712,15 @@ const explore = [
 		}
 	}
 
-	/* 全息马赛克背景：铺满首屏，压在正文与雨滴之下（提高优先级覆盖子组件默认定位） */
-	:global(.holo-mosaic.hero__holo) {
-		position: absolute;
+	/* 首页壁纸背景：fixed 全屏，雨滴叠在其上 */
+	.home-bg {
+		position: fixed;
 		inset: 0;
 		z-index: 0;
-		height: auto;
+		background-image: url('/wallpaper.jpg');
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
 	}
 	/* 巨型水印字：纯背景纹理，不进无障碍树 */
 	.hero-mark {

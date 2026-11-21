@@ -328,8 +328,8 @@ function setup(host: HTMLElement) {
 
 	const updateFade = () => {
 		const reach = Math.max(1, heroHeight * FADE_AT);
-		// 首屏是马赛克背景，雨滴滚出首屏后才淡入，落到后续滚动区块
-		const progress = clamp(window.scrollY / reach, 0, 1);
+		// 雨滴叠加在首屏壁纸上，滚出首屏后淡出
+		const progress = clamp(1 - window.scrollY / reach, 0, 1);
 		host.style.opacity = (progress * (reduce ? 0.55 : 1) * gain).toFixed(3);
 		const next = progress > 0.02;
 		if (next === active) return;

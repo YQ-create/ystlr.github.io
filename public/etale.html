@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ÉTALE — Yachts for still water</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Geist:wght@100..900&family=Geist+Mono:wght@300..600&display=swap" rel="stylesheet" />
+<style>
+	:root {
+		--nav: 64px;
+		--g-hero: #9fbbd4;
+		--g-strip: #6b8aa6;
+		--g-hull: #1b2733;
+		--g-ink: #0c1116;
+		--g-light: #f4f2ec;
+		--g-muted: #9aa7b2;
+		--ink: var(--g-ink);
+		--light: var(--g-light);
+		--serif: 'Bodoni Moda', serif;
+		--sans: 'Geist', system-ui, sans-serif;
+		--mono: 'Geist Mono', monospace;
+	}
+
+	* { margin: 0; padding: 0; box-sizing: border-box; }
+
+	html { -webkit-font-smoothing: antialiased; }
+
+	body {
+		background: var(--g-hero);
+		color: var(--ink);
+		font-family: var(--sans);
+		overflow-x: hidden;
+	}
+
+	/* Lenis 平滑滚动推荐样式 */
+	html.lenis, html.lenis body { height: auto; }
+	.lenis.lenis-smooth { scroll-behavior: auto !important; }
+	.lenis.lenis-stopped { overflow: hidden; }
+
+	img, video { display: block; max-width: 100%; }
+
+	.cap {
+		font-family: var(--mono);
+		text-transform: uppercase;
+		letter-spacing: 0.22em;
+		font-size: 11px;
+	}
+
+	/* ---------- 占位图 ---------- */
+	.ph {
+		position: relative;
+		overflow: hidden;
+		background: linear-gradient(160deg, #a9c4d8, #6e8ca6);
+	}
+	.ph img, .ph video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	/* ---------- 导航 ---------- */
+	.nav {
+		position: fixed;
+		top: 0; left: 0; right: 0;
+		height: var(--nav);
+		z-index: 40;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 28px;
+		color: var(--light);
+		background: linear-gradient(to bottom, rgba(12,17,22,0.55), transparent);
+		transition: color 0.4s ease;
+	}
+	.nav.ink { color: var(--ink); }
+	.nav__brand {
+		font-family: var(--serif);
+		font-size: 22px;
+		letter-spacing: 0.04em;
+	}
+	.nav__links {
+		display: flex;
+		gap: 26px;
+		align-items: center;
+	}
+	.nav__links a {
+		color: inherit;
+		text-decoration: none;
+		font-size: 12px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+
+	/* ---------- veil ---------- */
+	.veil {
+		position: fixed;
+		inset: 0;
+		z-index: 30;
+		background: rgba(12, 17, 22, 0.9);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	/* ---------- Sheet 系统 ---------- */
+	.sheet {
+		position: sticky;
+		top: 0;
+		height: 100svh;
+		min-height: 620px;
+		overflow: hidden;
+	}
+	.hero { z-index: 2; }
+	.reflect { z-index: 4; }
+	.hull { z-index: 6; }
+	.numbers { z-index: 8; }
+	.atrium { z-index: 10; }
+	.salon { z-index: 12; }
+	.voyages { z-index: 14; }
+	.trials { z-index: 16; }
+
+	/* ============ HERO ============ */
+	.hero {
+		background: var(--g-hero);
+	}
+	.hero__media {
+		position: absolute;
+		inset: 0;
+	}
+	.hero__lede {
+		position: absolute;
+		top: calc(var(--nav) + 6svh);
+		left: 50%;
+		transform: translateX(-50%);
+		width: min(720px, 86vw);
+		text-align: center;
+		font-family: var(--serif);
+		font-style: italic;
+		font-weight: 400;
+		font-size: clamp(22px, 3.4vw, 40px);
+		line-height: 1.35;
+		color: var(--light);
+		text-shadow: 0 1px 24px rgba(12,17,22,0.5);
+		z-index: 3;
+	}
+	.hero__sub {
+		position: absolute;
+		top: calc(var(--nav) + 2svh);
+		left: 0; right: 0;
+		display: flex;
+		justify-content: center;
+		gap: 22px;
+		color: rgba(244,242,236,0.9);
+		z-index: 3;
+	}
+	.hero h1 {
+		position: absolute;
+		bottom: 3svh;
+		left: 0; right: 0;
+		text-align: center;
+		font-family: var(--serif);
+		font-weight: 500;
+		font-size: clamp(90px, 24vw, 340px);
+		line-height: 0.82;
+		letter-spacing: -0.02em;
+		color: var(--light);
+		clip-path: inset(100% 0 -0.2em 0);
+		z-index: 2;
+	}
+	.hero h1 .inner { display: block; will-change: transform; }
+
+	/* ============ REFLECTION ============ */
+	.reflect { background: var(--g-strip); }
+	.reflect__strip {
+		position: sticky;
+		top: 7svh;
+		height: 86svh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.reflect__art {
+		position: relative;
+		width: min(920px, 88vw);
+		height: min(520px, 58svh);
+		overflow: hidden;
+		display: flex;
+	}
+	.reflect__art b {
+		flex: 1 1 0;
+		height: 100%;
+		background-size: auto 100%;
+		background-repeat: no-repeat;
+		will-change: transform;
+	}
+	.reflect__label {
+		position: absolute;
+		bottom: 4svh;
+		left: 50%;
+		transform: translateX(-50%);
+		color: rgba(244,242,236,0.75);
+	}
+
+	/* ============ HULL ============ */
+	.hull { background: var(--g-hull); }
+	.hull__stick {
+		position: sticky;
+		top: 0;
+		height: 100svh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+	}
+	.hull__slices {
+		position: relative;
+		width: min(820px, 90vw);
+		height: min(560px, 66svh);
+		display: flex;
+	}
+	.hull__slice {
+		width: calc(1.4% + 1px);
+		height: 100%;
+		background-size: auto 100%;
+		background-repeat: no-repeat;
+		will-change: transform;
+	}
+	.hull__label {
+		position: absolute;
+		bottom: 5svh;
+		left: 50%;
+		transform: translateX(-50%);
+		color: rgba(244,242,236,0.7);
+		z-index: 2;
+	}
+
+	/* ============ NUMBERS ============ */
+	.numbers { background: #d6e0e6; }
+	.numbers__pan {
+		height: 100svh;
+		display: flex;
+		align-items: center;
+		gap: 4vw;
+		padding: 0 6vw;
+		width: max-content;
+		will-change: transform;
+	}
+	.plate {
+		position: relative;
+		width: 46vw;
+		min-width: 360px;
+		aspect-ratio: 3 / 4;
+		overflow: hidden;
+		border-radius: 4px;
+		background: #b9c9d4;
+		will-change: transform;
+	}
+	.plate__img {
+		position: absolute;
+		inset: -8%;
+		will-change: transform;
+	}
+	.plate__num {
+		position: absolute;
+		bottom: 4%;
+		left: 6%;
+		font-family: var(--serif);
+		font-size: clamp(60px, 10vw, 160px);
+		color: var(--light);
+		text-shadow: 0 2px 20px rgba(12,17,22,0.4);
+	}
+
+	/* ============ ATRIUM ============ */
+	.atrium { background: #2a3a48; }
+	.atrium__relief {
+		position: absolute;
+		inset: 0;
+	}
+	.atrium__sweep {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(100deg, transparent var(--sx, 46%), rgba(255,244,214,0.32) 54%, transparent 68%);
+		mix-blend-mode: soft-light;
+		z-index: 2;
+	}
+	.atrium__label {
+		position: absolute;
+		bottom: 6svh;
+		left: 6vw;
+		color: rgba(244,242,236,0.8);
+		z-index: 3;
+	}
+
+	/* ============ SALON ============ */
+	.salon { background: #cfd8dd; }
+	.salon__eave {
+		position: absolute;
+		top: 0; left: 0; right: 0;
+		height: 34svh;
+		z-index: 2;
+		display: flex;
+		justify-content: space-around;
+		align-items: flex-start;
+		padding: 0 8vw;
+	}
+	.cord {
+		width: 2px;
+		height: 0;
+		background: rgba(12,17,22,0.35);
+		position: relative;
+		transform-origin: top;
+	}
+	.cord::before {
+		content: '';
+		position: absolute;
+		top: 0; left: 0;
+		width: 100%;
+		height: 100%;
+		background: inherit;
+	}
+	.salon__cards {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 2.5vw;
+		padding: 30svh 6vw 0;
+	}
+	.glass-card {
+		width: 26vw;
+		min-width: 240px;
+		aspect-ratio: 3 / 4;
+		border-radius: 6px;
+		background: rgba(244,242,236,0.24);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid rgba(244,242,236,0.4);
+		box-shadow: 0 20px 50px -20px rgba(12,17,22,0.4);
+		opacity: 0;
+		transform: translateY(40px);
+		overflow: hidden;
+	}
+	.glass-card img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	/* ============ VOYAGES ============ */
+	.voyages { background: #16303f; }
+	.voyages__img {
+		position: absolute;
+		inset: 0;
+	}
+	.voyages__label {
+		position: absolute;
+		bottom: 7svh;
+		left: 50%;
+		transform: translateX(-50%);
+		color: rgba(244,242,236,0.85);
+		z-index: 2;
+	}
+
+	/* ============ SEA TRIALS ============ */
+	.trials { background: #0c1116; }
+	.trials__bg { position: absolute; inset: 0; }
+	.trials__rocks { position: absolute; inset: auto 0 0 0; height: 34%; z-index: 2; }
+	.trials__rocks img { width: 100%; height: 100%; object-fit: cover; }
+	.trials__label {
+		position: absolute;
+		bottom: 5svh;
+		left: 50%;
+		transform: translateX(-50%);
+		color: rgba(244,242,236,0.9);
+		z-index: 3;
+	}
+
+	/* ---------- reveal ---------- */
+	.rv {
+		opacity: 0;
+		transform: translateY(20px);
+		transition: opacity 0.9s cubic-bezier(0.22,0.8,0.3,1), transform 0.9s cubic-bezier(0.22,0.8,0.3,1);
+	}
+	.rv.in { opacity: 1; transform: none; }
+
+	@media (prefers-reduced-motion: reduce) {
+		.rv { opacity: 1; transform: none; transition: none; }
+		.hero h1 { clip-path: none; }
+	}
+</style>
+</head>
+<body>
+
+	<!-- ripple SVG filter -->
+	<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+		<defs>
+			<filter id="ripple" x="-20%" y="-20%" width="140%" height="140%">
+				<feTurbulence type="fractalNoise" baseFrequency="0.0025 0.035" numOctaves="2" seed="3" result="noise">
+					<animate attributeName="baseFrequency" dur="18s" values="0.0025 0.035;0.042 0.035;0.0025 0.035" repeatCount="indefinite" />
+				</feTurbulence>
+				<feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+			</filter>
+		</defs>
+	</svg>
+
+	<!-- 导航 -->
+	<nav class="nav" id="nav">
+		<span class="nav__brand">ÉTALE</span>
+		<div class="nav__links">
+			<a href="#reflection">Reflection</a>
+			<a href="#hull">Hull</a>
+			<a href="#numbers">Numbers</a>
+			<a href="#atrium">Atrium</a>
+			<a href="#salon">Salon</a>
+			<a href="#voyages">Voyages</a>
+		</div>
+	</nav>
+
+	<!-- veil 过渡层 -->
+	<div class="veil" id="veil"></div>
+
+	<main id="main">
+		<!-- HERO -->
+		<section class="sheet hero" id="hero">
+			<div class="hero__media ph">
+				<img src="etale/hero.jpg" alt="" onerror="this.remove()" />
+			</div>
+			<div class="hero__sub cap">
+				<span>Still water</span>
+				<span>·</span>
+				<span>Est. 2019</span>
+			</div>
+			<p class="hero__lede" id="heroLede">Quiet lines for the water that never asks to be crossed.</p>
+			<h1 id="heroTitle"><span class="inner">ÉTALE</span></h1>
+		</section>
+
+		<!-- REFLECTION -->
+		<section class="sheet reflect" id="reflection">
+			<div class="reflect__strip">
+				<div class="reflect__art ph" id="stripArt">
+					<img src="etale/strip-art.jpg" alt="" onerror="this.remove()" />
+				</div>
+				<span class="reflect__label cap rv">Reflection</span>
+			</div>
+		</section>
+
+		<!-- HULL -->
+		<section class="sheet hull" id="hull">
+			<div class="hull__stick">
+				<div class="hull__slices ph" id="hullSlices">
+					<img src="etale/hull.jpg" alt="" onerror="this.remove()" />
+				</div>
+				<span class="hull__label cap rv">Hull · 18.4m</span>
+			</div>
+		</section>
+
+		<!-- NUMBERS -->
+		<section class="sheet numbers" id="numbers">
+			<div class="numbers__pan" id="numbersPan">
+				<div class="plate" data-num="52">
+					<div class="plate__img ph"><img src="etale/num52.jpg" alt="" onerror="this.remove()" /><video src="etale/num52-in.mp4" muted loop playsinline style="display:none"></video></div>
+					<span class="plate__num">52</span>
+				</div>
+				<div class="plate" data-num="0">
+					<div class="plate__img ph"><img src="etale/num0.jpg" alt="" onerror="this.remove()" /><video src="etale/num0-in.mp4" muted loop playsinline style="display:none"></video></div>
+					<span class="plate__num">0</span>
+				</div>
+				<div class="plate" data-num="60">
+					<div class="plate__img ph"><img src="etale/num60.jpg" alt="" onerror="this.remove()" /><video src="etale/num60-in.mp4" muted loop playsinline style="display:none"></video></div>
+					<span class="plate__num">60</span>
+				</div>
+			</div>
+		</section>
+
+		<!-- ATRIUM -->
+		<section class="sheet atrium" id="atrium">
+			<div class="atrium__relief ph"><img src="etale/relief.jpg" alt="" onerror="this.remove()" /></div>
+			<div class="atrium__sweep" id="atriumSweep"></div>
+			<span class="atrium__label cap rv">Atrium</span>
+		</section>
+
+		<!-- SALON -->
+		<section class="sheet salon" id="salon">
+			<div class="salon__eave" id="salonEave"></div>
+			<div class="salon__cards" id="salonCards">
+				<div class="glass-card rv"><img src="etale/glass.jpg" alt="" onerror="this.remove()" /></div>
+				<div class="glass-card rv"><img src="etale/glass.jpg" alt="" onerror="this.remove()" /></div>
+				<div class="glass-card rv"><img src="etale/glass.jpg" alt="" onerror="this.remove()" /></div>
+			</div>
+		</section>
+
+		<!-- VOYAGES -->
+		<section class="sheet voyages" id="voyages">
+			<div class="voyages__img ph"><img src="etale/voyages.jpg" alt="" onerror="this.remove()" /></div>
+			<span class="voyages__label cap rv">Voyages</span>
+		</section>
+
+		<!-- SEA TRIALS -->
+		<section class="sheet trials" id="trials">
+			<div class="trials__bg ph"><img src="etale/frame-bg.jpg" alt="" onerror="this.remove()" /></div>
+			<div class="trials__rocks ph"><img src="etale/frame-rocks.webp" alt="" onerror="this.remove()" /></div>
+			<span class="trials__label cap rv">Sea trials · 2026</span>
+		</section>
+	</main>
+
+	<script src="vendor/gsap.min.js"></script>
+	<script src="vendor/ScrollTrigger.min.js"></script>
+	<script src="vendor/lenis.min.js"></script>
+	<script>
+	(function () {
+		'use strict';
+		var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		gsap.registerPlugin(ScrollTrigger);
+
+		/* ---------- Lenis 平滑滚动 ---------- */
+		var lenis = new Lenis({
+			lerp: 0.05,
+			wheelMultiplier: 1,
+			smoothWheel: true,
+		});
+		lenis.on('scroll', ScrollTrigger.update);
+		gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+		gsap.ticker.lagSmoothing(0);
+
+		/* 锚点滚动交给 Lenis */
+		document.querySelectorAll('.nav__links a').forEach(function (a) {
+			a.addEventListener('click', function (e) {
+				e.preventDefault();
+				var el = document.querySelector(a.getAttribute('href'));
+				if (el) lenis.scrollTo(el, { offset: 0, duration: 1.4 });
+			});
+		});
+
+		/* ---------- 导航 ink 颜色切换 ---------- */
+		var nav = document.getElementById('nav');
+		var lightSections = ['#hero', '#reflection', '#hull', '#trials', '#voyages'];
+		function updateNav() {
+			var ink = false;
+			for (var i = 0; i < lightSections.length; i++) {
+				var sec = document.querySelector(lightSections[i]);
+				var r = sec.getBoundingClientRect();
+				if (r.top <= 70 && r.bottom > 70) { ink = ['#numbers', '#atrium', '#salon'].indexOf(lightSections[i]) === -1; break; }
+			}
+			// 浅色底 section（numbers/atrium/salon）下用深色字
+			var deep = false;
+			['#numbers', '#atrium', '#salon'].forEach(function (sel) {
+				var s = document.querySelector(sel);
+				var r = s.getBoundingClientRect();
+				if (r.top <= 70 && r.bottom > 70) deep = true;
+			});
+			nav.classList.toggle('ink', deep);
+		}
+		lenis.on('scroll', updateNav);
+		window.addEventListener('resize', updateNav);
+		updateNav();
+
+		/* ---------- reveal ---------- */
+		var io = new IntersectionObserver(function (entries) {
+			entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+		}, { threshold: 0.2 });
+		document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+
+		/* ---------- Hero 标题上升 + lede ---------- */
+		var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+		tl.fromTo('#heroTitle', { clipPath: 'inset(100% 0 -0.2em 0)' }, { clipPath: 'inset(0% 0 -0.2em 0)', duration: 1.6 }, 0.1)
+		  .fromTo('#heroTitle .inner', { yPercent: 100 }, { yPercent: 0, duration: 1.6 }, 0.1)
+		  .fromTo('#heroLede', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2 }, 0.4)
+		  .fromTo('.hero__sub', { opacity: 0 }, { opacity: 1, duration: 1 }, 0.6);
+
+		/* ---------- Reflection：72 横条 scrub ---------- */
+		var stripArt = document.getElementById('stripArt');
+		stripArt.querySelectorAll('img').forEach(function (im) { im.remove(); });
+		var BANDS = 72;
+		var frag = document.createDocumentFragment();
+		for (var i = 0; i < BANDS; i++) {
+			var b = document.createElement('b');
+			b.style.backgroundImage = 'url("etale/strip-art.jpg")';
+			b.style.backgroundPosition = (i / (BANDS - 1)) * 100 + '% 0';
+			frag.appendChild(b);
+		}
+		stripArt.appendChild(frag);
+		var bands = stripArt.querySelectorAll('b');
+		var off = function (i, t) {
+			var base = Math.sin(i * 0.35 + t * 1.2) * 40 + Math.cos(i * 0.17 - t * 0.8) * 26;
+			return base;
+		};
+		gsap.timeline({
+			scrollTrigger: { trigger: '.reflect', start: 'top top', end: 'bottom bottom', scrub: 0.6 },
+		}).fromTo(bands, { x: function (i) { return off(i, 0); } }, {
+			x: 0, stagger: { each: 0.006 }, ease: 'none',
+		});
+
+		/* ---------- Hull：72 竖片波浪 ---------- */
+		var hullBox = document.getElementById('hullSlices');
+		hullBox.querySelectorAll('img').forEach(function (im) { im.remove(); });
+		var SLICES = 72;
+		var hfrag = document.createDocumentFragment();
+		for (var i = 0; i < SLICES; i++) {
+			var s = document.createElement('div');
+			s.className = 'hull__slice';
+			s.style.backgroundImage = 'url("etale/hull.jpg")';
+			s.style.backgroundPosition = (i / (SLICES - 1)) * 100 + '% 0';
+			hfrag.appendChild(s);
+		}
+		hullBox.appendChild(hfrag);
+		var slices = hullBox.querySelectorAll('.hull__slice');
+		gsap.timeline({
+			scrollTrigger: { trigger: '.hull', start: 'top top', end: '+=170%', scrub: 0.6 },
+		}).fromTo(slices, { y: function (i) { return Math.sin(i * 0.4) * 12; } }, {
+			y: 0, ease: 'none', stagger: { each: 0.005 },
+		});
+		// breathe：时间驱动的轻微浮动
+		if (!reduced) {
+			gsap.ticker.add(function () {
+				var t = performance.now() / 1000;
+				slices.forEach(function (s, i) {
+					var y = Math.sin(t * 1.4 + i * 0.22) * 3;
+					s.style.transform = 'translateY(' + y + 'px)';
+				});
+			});
+		}
+
+		/* ---------- Numbers：横向平移 + 视差 ---------- */
+		var pan = document.getElementById('numbersPan');
+		var plates = pan.querySelectorAll('.plate');
+		gsap.timeline({
+			scrollTrigger: { trigger: '.numbers', start: 'top top', end: '+=220%', scrub: 0.6 },
+		}).to(pan, { x: function () { return -(pan.scrollWidth - window.innerWidth); }, ease: 'none' });
+		plates.forEach(function (p) {
+			var img = p.querySelector('.plate__img');
+			gsap.timeline({
+				scrollTrigger: { trigger: '.numbers', start: 'top top', end: '+=220%', scrub: 0.6 },
+			}).to(img, { xPercent: -12, ease: 'none' });
+		});
+
+		/* numeral 视频：进入视口播放，离开重置 */
+		plates.forEach(function (p) {
+			var v = p.querySelector('video');
+			if (!v) return;
+			var o = new IntersectionObserver(function (es) {
+				es.forEach(function (e) {
+					if (e.isIntersecting) { v.play().catch(function () {}); }
+					else { v.pause(); v.currentTime = 0; }
+				});
+			}, { threshold: 0.5 });
+			o.observe(p);
+		});
+
+		/* ---------- Atrium sweep ---------- */
+		var sweep = document.getElementById('atriumSweep');
+		gsap.timeline({
+			scrollTrigger: { trigger: '.atrium', start: 'top top', end: 'bottom bottom', scrub: 0.6 },
+		}).fromTo(sweep, { '--sx': '46%' }, { '--sx': '68%', ease: 'none' });
+
+		/* ---------- Salon cords + 玻璃卡片 ---------- */
+		var eave = document.getElementById('salonEave');
+		var cards = document.querySelectorAll('.glass-card');
+		for (var c = 0; c < 5; c++) {
+			var cord = document.createElement('div');
+			cord.className = 'cord';
+			eave.appendChild(cord);
+		}
+		var cords = eave.querySelectorAll('.cord');
+		gsap.timeline({
+			scrollTrigger: { trigger: '.salon', start: 'top top', end: 'bottom bottom', scrub: 0.5 },
+		}).to(cords, { height: '62svh', ease: 'none', stagger: 0.08 });
+		gsap.timeline({
+			scrollTrigger: { trigger: '.salon', start: 'top 55%', end: 'center center', scrub: 0.5 },
+		}).to(cards, { opacity: 1, y: 0, ease: 'none', stagger: 0.1 });
+
+		/* ---------- veil：section 过渡 ---------- */
+		var veil = document.getElementById('veil');
+		var sheets = document.querySelectorAll('.sheet');
+		sheets.forEach(function (sec, i) {
+			if (i === sheets.length - 1) return;
+			ScrollTrigger.create({
+				trigger: sec,
+				start: 'bottom bottom',
+				end: 'bottom top',
+				onUpdate: function (self) {
+					var p = self.progress;
+					// 在相邻两个 sheet 交界处短暂变暗
+					var o = p < 0.35 ? 0 : (p < 0.75 ? (p - 0.35) / 0.4 * 0.55 : 0.55 * (1 - (p - 0.75) / 0.25));
+					veil.style.opacity = Math.max(0, Math.min(0.9, o)).toFixed(3);
+					veil.style.zIndex = 2 + (i + 1) * 2 - 1;
+				},
+			});
+		});
+
+		/* ---------- ripple：给 water 相关元素套滤镜 ---------- */
+		if (!reduced) {
+			var hullEl = document.getElementById('hullSlices');
+			if (hullEl) hullEl.style.filter = 'url(#ripple)';
+		}
+	})();
+	</script>
+</body>
+</html>

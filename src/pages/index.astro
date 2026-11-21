@@ -16,36 +16,6 @@ const knowledge = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// 知识库分类 → 文件树数据：分类即文件夹、条目即文件，按条数从多到少排。
-// 每类最多展示 2 个文件（置顶优先、其余按时间），超出的记成「+N」占位行。
-const byCategory = new Map<string, typeof knowledge>();
-for (const note of knowledge) {
-	const cat = note.data.category || '未分类';
-	if (!byCategory.has(cat)) byCategory.set(cat, []);
-	byCategory.get(cat)!.push(note);
-}
-const categoryOrder = [...byCategory.entries()].sort((a, b) => {
-	const ap = a[1].filter((n) => n.data.pinned).length;
-	const bp = b[1].filter((n) => n.data.pinned).length;
-	return b[1].length - a[1].length || bp - ap;
-});
-const knowledgeTree = categoryOrder.map(([name, list]) => {
-	const sorted = [...list].sort((a, b) => {
-		if (a.data.pinned !== b.data.pinned) return a.data.pinned ? -1 : 1;
-		return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
-	});
-	return {
-		name,
-		count: list.length,
-		files: sorted.slice(0, 2).map((n) => ({
-			name: n.data.title,
-			href: `/knowledge/${n.id}/`,
-			pinned: n.data.pinned,
-		})),
-		more: list.length > 2 ? list.length - 2 : 0,
-	};
-});
-
 // 标签云 + 最新动态 + 站点统计
 const tagCount = new Map<string, number>();
 for (const post of posts) for (const tag of post.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
@@ -73,7 +43,6 @@ const stats = [
 
 import StarBorder from '../components/StarBorder.astro';
 import LogoLoop from '../components/LogoLoop.astro';
-import FileTree from '../components/FileTree.astro';
 import TextType from '../components/TextType.astro';
 import MaskedHeading from '../components/MaskedHeading.astro';
 import GlassIcons from '../components/GlassIcons.astro';
@@ -90,9 +59,8 @@ const discoverPreview = discoverData.collections
 // 首页底部的站内索引（参考站 Explore 条的 01—05 编号）
 const explore = [
 	{ n: '01', label: '文章', href: '#articles' },
-	{ n: '02', label: '知识', href: '#knowledge' },
-	{ n: '03', label: '发现', href: '#discover' },
-	{ n: '04', label: '关于', href: '#about' },
+	{ n: '02', label: '发现', href: '#discover' },
+	{ n: '03', label: '关于', href: '#about' },
 ];
 ---
 
@@ -119,8 +87,8 @@ const explore = [
 						{HERO.role}
 					</p>
 
-					<h1 class="hero-title display" data-hero-letters style="--ac-blur:0px;--ac-dist:0px">
-						在这里<br><MaskedHeading text="记录日常" src="/wallpaper.jpg" class="hero-title__mask" />
+					<h1 class="hero-title display">
+						<MaskedHeading text="在这里" src="/wallpaper.jpg" class="hero-title__mask" /><br><MaskedHeading text="记录日常" src="/wallpaper.jpg" class="hero-title__mask" />
 					</h1>
 
 					<p class="hero-sub" data-hero-sub>{HERO.subtitle}</p>
@@ -179,51 +147,6 @@ const explore = [
 					))}
 				</ul>
 			</nav>
-		</section>
-
-		<!-- ═══════════ Act 1.6: 知识库（文件树） ═══════════ -->
-		<section class="kb-show" id="knowledge" data-section="knowledge">
-			<div class="kb-show__track" data-tree-track>
-				<div class="kb-show__sticky">
-					<div class="kb-show__grid">
-						<div class="kb-show__copy" data-reveal>
-							<span class="eyebrow kb-show__eyebrow">02 / KNOWLEDGE</span>
-							<h2 class="display kb-show__title">知识库</h2>
-							<p class="kb-show__lede">
-								成体系的笔记，独立于日常随笔。按分类沉淀、按阶段推进，慢慢长成一棵自己的知识树。
-							</p>
-							<p class="kb-show__meta">
-								<span><b>{knowledge.length}</b> 条笔记</span>
-								<span><b>{categoryOrder.length}</b> 个分类</span>
-							</p>
-							<ul class="kb-show__recent">
-								{knowledge.slice(0, 3).map((n) => (
-									<li>
-										<a href={`/knowledge/${n.id}/`}>
-											<span class="kb-show__recent-title">{n.data.title}</span>
-											<span class="kb-show__recent-cat">{n.data.category}</span>
-										</a>
-									</li>
-								))}
-							</ul>
-							<a class="kb-show__cta" href="/knowledge">
-								进入知识库
-								<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-									<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-								</svg>
-							</a>
-						</div>
-
-					<div class="kb-show__tree" data-reveal data-reveal-delay="120">
-						<FileTree
-							folders={knowledgeTree}
-							title="Knowledge / 文件树"
-							total={`${knowledge.length} 条`}
-						/>
-					</div>
-					</div>
-				</div>
-			</div>
 		</section>
 
 		<!-- ═══════════ Act 2: 关于这里（反色分栏） ═══════════ -->
@@ -706,15 +629,16 @@ const explore = [
 		}
 	}
 
-	/* 首页壁纸背景：fixed 全屏，雨滴叠在其上 */
+	/* 首页壁纸背景：fixed 全屏，高斯模糊后雨滴叠在其上更清晰 */
 	.home-bg {
 		position: fixed;
-		inset: 0;
+		inset: -30px;
 		z-index: 0;
 		background-image: url('/wallpaper.jpg');
 		background-size: cover;
 		background-position: center;
 		background-repeat: no-repeat;
+		filter: blur(14px);
 	}
 	/* 巨型水印字：纯背景纹理，不进无障碍树 */
 	.hero-mark {
@@ -773,9 +697,10 @@ const explore = [
 		box-shadow: 0 0 10px 1px rgba(var(--accent), 0.7);
 	}
 	.hero-title {
-		font-size: clamp(3rem, 7.4vw, 7.4rem);
+		font-size: clamp(3.4rem, 8.4vw, 8.6rem);
 		line-height: 0.98;
 		letter-spacing: -0.026em;
+		font-weight: 800;
 		color: rgb(var(--ink));
 	}
 	/* 标题强调词：逐字动画结束后停在强调橙；JS 未执行时也保持橙色 */
@@ -917,143 +842,6 @@ const explore = [
 	}
 	.explore__label {
 		font-size: 0.86rem;
-	}
-
-	/* ═══════════ Act 1.6: 知识库（文件树） ═══════════ */
-	.kb-show {
-		position: relative;
-		z-index: 2;
-		background: rgb(var(--bg));
-		color: rgb(var(--ink));
-	}
-	.kb-show__track {
-		position: relative;
-	}
-	.kb-show__sticky {
-		display: grid;
-		align-items: center;
-		padding: clamp(3rem, 8vw, 6rem) 0;
-	}
-	.kb-show__grid {
-		display: grid;
-		grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-		gap: clamp(2rem, 5vw, 5rem);
-		align-items: center;
-		width: 100%;
-		max-width: var(--w-wide);
-		margin: 0 auto;
-		padding: 0 var(--gutter);
-	}
-	.kb-show__eyebrow {
-		color: rgb(var(--accent));
-	}
-	.kb-show__title {
-		margin: 0.55rem 0 0.9rem;
-		font-size: clamp(2.2rem, 4.6vw, 4rem);
-		line-height: 0.98;
-		letter-spacing: -0.04em;
-	}
-	.kb-show__lede {
-		max-width: 38ch;
-		margin: 0;
-		font-size: 0.98rem;
-		line-height: 1.72;
-		color: rgb(var(--muted));
-	}
-	.kb-show__meta {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1.8rem;
-		margin: 1.4rem 0 0;
-		font-size: 0.78rem;
-		letter-spacing: 0.06em;
-		color: rgb(var(--muted-light));
-	}
-	.kb-show__meta b {
-		margin-right: 0.3em;
-		font-size: 1.08rem;
-		font-weight: 700;
-		color: rgb(var(--ink));
-		font-variant-numeric: tabular-nums;
-	}
-	.kb-show__recent {
-		list-style: none;
-		margin: 1.5rem 0 0;
-		padding: 0;
-		border-top: 1px solid rgb(var(--line-soft));
-	}
-	.kb-show__recent li a {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 0.62rem 0;
-		border-bottom: 1px solid rgb(var(--line-soft));
-		text-decoration: none;
-		color: inherit;
-	}
-	.kb-show__recent-title {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		font-size: 0.86rem;
-		color: rgb(var(--ink-soft));
-		transition: color var(--dur-fast) var(--ease-out);
-	}
-	.kb-show__recent li a:hover .kb-show__recent-title {
-		color: rgb(var(--accent));
-	}
-	.kb-show__recent-cat {
-		flex: none;
-		font-size: 0.68rem;
-		letter-spacing: 0.08em;
-		color: rgb(var(--muted-light));
-	}
-	.kb-show__cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.6rem;
-		margin-top: 1.6rem;
-		padding: 0.85rem 1.4rem;
-		border-radius: 999px;
-		background: rgb(var(--accent));
-		color: rgb(11, 11, 12);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
-	}
-	.kb-show__cta:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 12px 30px -12px rgba(var(--accent), 0.7);
-	}
-	.kb-show__tree {
-		max-width: 460px;
-		justify-self: center;
-	}
-
-	@media (max-width: 980px) {
-		.kb-show__track {
-			height: auto;
-		}
-		.kb-show__sticky {
-			position: static;
-			height: auto;
-			align-items: start;
-		}
-		.kb-show__grid {
-			grid-template-columns: minmax(0, 1fr);
-			gap: 2rem;
-			padding-top: 3rem;
-			padding-bottom: 3rem;
-		}
-		.kb-show__tree {
-			max-width: 520px;
-			width: 100%;
-			justify-self: stretch;
-		}
 	}
 
 	/* ═══════════ Act 2: 关于这里（跟随主题的面板） ═══════════ */
@@ -1774,7 +1562,7 @@ const explore = [
 	/* ═══════════ 响应式 ═══════════ */
 	@media (max-width: 1180px) {
 		.hero-title {
-			font-size: clamp(2.9rem, 7.2vw, 6rem);
+			font-size: clamp(3.1rem, 8vw, 6.8rem);
 		}
 	}
 	@media (max-width: 980px) {
@@ -1797,7 +1585,7 @@ const explore = [
 			gap: 0.35rem;
 		}
 		.hero-title {
-			font-size: clamp(2.5rem, 9.6vw, 4rem);
+			font-size: clamp(2.7rem, 10.4vw, 4.4rem);
 		}
 		.split__inner {
 			grid-template-columns: minmax(0, 1fr);
@@ -1819,7 +1607,7 @@ const explore = [
 			gap: 1.3rem;
 		}
 		.hero-title {
-			font-size: clamp(2.35rem, 11.5vw, 3rem);
+			font-size: clamp(2.5rem, 12.5vw, 3.3rem);
 		}
 		.hero-stats li {
 			padding: 0 0.85rem;

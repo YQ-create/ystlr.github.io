@@ -4,6 +4,8 @@ description: '从文档骨架到表单：用对的标签，而不是把所有东
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['入门', '前端']
+stage: '入门'
+topics: ['前端']
 pinned: true
 draft: false
 ---

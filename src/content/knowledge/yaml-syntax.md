@@ -4,6 +4,8 @@ description: '缩进、映射、列表、多行字符串与锚点：写 CI 配�
 pubDate: 2026-11-09
 category: '工程实践'
 tags: ['进阶', '工具']
+stage: '进阶'
+topics: ['工具']
 pinned: false
 draft: false
 ---

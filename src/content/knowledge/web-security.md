@@ -4,6 +4,8 @@ description: '浏览器凭什么拦住跨域请求，CORS 响应头怎么配，�
 pubDate: 2026-11-09
 category: 'Web 原理'
 tags: ['实战', '网络']
+stage: '实战'
+topics: ['网络']
 pinned: false
 draft: false
 ---

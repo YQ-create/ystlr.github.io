@@ -4,6 +4,8 @@ description: 'CommonJS 与 ESM 的区别、package.json 的关键字段、以及
 pubDate: 2026-11-20
 category: '后端运行时'
 tags: ['Node.js', '工具']
+stage: '核心'
+topics: ['运行时']
 pinned: false
 draft: false
 ---

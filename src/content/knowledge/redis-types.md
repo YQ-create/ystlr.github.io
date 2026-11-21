@@ -4,6 +4,8 @@ description: 'String / Hash / List / Set / ZSet 各自适合存什么，以及�
 pubDate: 2026-11-03
 category: '数据与存储'
 tags: ['核心', '数据']
+stage: '核心'
+topics: ['数据']
 pinned: false
 draft: false
 ---

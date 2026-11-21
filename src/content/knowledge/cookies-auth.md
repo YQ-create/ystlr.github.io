@@ -4,6 +4,8 @@ description: '三种「记住你是谁」的方案各自把状态放在哪、怎
 pubDate: 2026-11-09
 category: 'Web 原理'
 tags: ['进阶', '网络']
+stage: '进阶'
+topics: ['网络']
 pinned: false
 draft: false
 ---

@@ -4,6 +4,8 @@ description: '一次请求从浏览器到服务器都发生了什么：方法语
 pubDate: 2026-11-06
 category: 'Web 原理'
 tags: ['核心', '网络']
+stage: '核心'
+topics: ['网络']
 pinned: true
 draft: false
 ---

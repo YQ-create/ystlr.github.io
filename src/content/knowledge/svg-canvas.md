@@ -4,6 +4,9 @@ description: '两套绘图模型的差别、常用图形与路径命令，以及
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['进阶', '前端']
+stage: '进阶'
+topics: ['前端']
+prerequisites: ['html-semantics']
 pinned: false
 draft: false
 ---

@@ -1,0 +1,218 @@
+---
+// 主题详情页：聚合该主题下的文章、知识笔记与推荐链接。
+// 主题来自文章/知识/发现三方的 topics 字段，无相关内容时隐藏对应区块。
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import discoverData from '../../data/discover.json';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('blog');
+	const notes = await getCollection('knowledge');
+	const links = discoverData.collections.flatMap((g) => g.links);
+	const topics = new Set<string>();
+	for (const p of posts) for (const t of p.data.topics) topics.add(t);
+	for (const n of notes) for (const t of n.data.topics) topics.add(t);
+	for (const l of links) for (const t of (l as { topics?: string[] }).topics ?? []) topics.add(t);
+	return [...topics].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN')).map((topic) => ({
+		params: { topic },
+		props: { topic },
+	}));
+}
+
+type Props = { topic: string };
+const { topic } = Astro.props;
+
+const posts = (await getCollection('blog'))
+	.filter((p) => !p.data.draft && p.data.topics.includes(topic))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const notes = (await getCollection('knowledge'))
+	.filter((n) => !n.data.draft && n.data.topics.includes(topic))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const links = discoverData.collections
+	.flatMap((g) => g.links)
+	.filter((l) => ((l as { topics?: string[] }).topics ?? []).includes(topic));
+
+const total = posts.length + notes.length + links.length;
+---
+
+<BaseLayout title={`${topic} · 主题 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
+	<main class="topic">
+		<header class="page-head" data-reveal>
+			<span class="sec-head__index">TOPIC / {String(total).padStart(2, '0')}</span>
+			<h1>{topic}</h1>
+			<p>
+				{posts.length > 0 && `${posts.length} 篇文章`}
+				{notes.length > 0 && `${posts.length > 0 ? ' · ' : ''}${notes.length} 条知识`}
+				{links.length > 0 && `${posts.length + notes.length > 0 ? ' · ' : ''}${links.length} 个链接`}
+			</p>
+			<a class="page-head__more" href="/">← 返回首页</a>
+		</header>
+
+		{posts.length > 0 && (
+			<section class="topic-sec">
+				<h2 class="topic-sec__title">文章</h2>
+				<ul class="topic-list">
+					{posts.map((p) => (
+						<li>
+							<a href={`/blog/${p.id}/`}>
+								<span class="topic-list__title">{p.data.title}</span>
+								<time><FormattedDate date={p.data.pubDate} /></time>
+							</a>
+							{p.data.description && <p class="topic-list__desc">{p.data.description}</p>}
+						</li>
+					))}
+				</ul>
+			</section>
+		)}
+
+		{notes.length > 0 && (
+			<section class="topic-sec">
+				<h2 class="topic-sec__title">知识笔记</h2>
+				<ul class="topic-list">
+					{notes.map((n) => (
+						<li>
+							<a href={`/knowledge/${n.id}/`}>
+								<span class="topic-list__title">{n.data.title}</span>
+								{n.data.stage && <span class="topic-list__stage">{n.data.stage}</span>}
+								<time><FormattedDate date={n.data.pubDate} /></time>
+							</a>
+							{n.data.description && <p class="topic-list__desc">{n.data.description}</p>}
+						</li>
+					))}
+				</ul>
+			</section>
+		)}
+
+		{links.length > 0 && (
+			<section class="topic-sec">
+				<h2 class="topic-sec__title">推荐链接</h2>
+				<ul class="topic-links">
+					{links.map((l) => (
+						<li>
+							<a href={l.url} target="_blank" rel="noopener noreferrer">
+								<span class="topic-links__name">{l.name}</span>
+								<span class="topic-links__domain">{new URL(l.url).hostname.replace(/^www\./, '')}</span>
+							</a>
+							<p class="topic-links__reason">{l.reason}</p>
+						</li>
+					))}
+				</ul>
+			</section>
+		)}
+	</main>
+</BaseLayout>
+
+<style>
+	.topic {
+		width: var(--w-page);
+	}
+	.page-head {
+		padding: 1rem 0 1.6rem;
+		border-bottom: 1px solid rgb(var(--line));
+	}
+	.page-head h1 {
+		margin: 0.15em 0 0.3em;
+	}
+	.page-head p {
+		color: rgb(var(--muted));
+		margin: 0;
+	}
+	.page-head__more {
+		display: inline-block;
+		margin-top: 0.9rem;
+		font-size: 0.8rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.page-head__more:hover {
+		color: rgb(var(--accent));
+	}
+
+	.topic-sec {
+		padding-top: 1.6rem;
+	}
+	.topic-sec__title {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0 0 1rem;
+		font-size: 1.05rem;
+		font-weight: 700;
+	}
+	.topic-sec__title::before {
+		content: '';
+		width: 3px;
+		height: 1em;
+		border-radius: 2px;
+		background: rgb(var(--accent));
+	}
+
+	.topic-list,
+	.topic-links {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.3rem;
+	}
+	.topic-list li,
+	.topic-links li {
+		padding: 0.75rem 0.2rem;
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.topic-list li:last-child,
+	.topic-links li:last-child {
+		border-bottom: none;
+	}
+	.topic-list a,
+	.topic-links a {
+		display: flex;
+		align-items: baseline;
+		gap: 0.7rem;
+		text-decoration: none;
+		color: inherit;
+	}
+	.topic-list__title,
+	.topic-links__name {
+		font-size: 0.98rem;
+		font-weight: 600;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.topic-list a:hover .topic-list__title,
+	.topic-links a:hover .topic-links__name {
+		color: rgb(var(--accent));
+	}
+	.topic-list time {
+		margin-left: auto;
+		font-size: 0.76rem;
+		color: rgb(var(--muted-light));
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.topic-list__stage {
+		font-size: 0.68rem;
+		padding: 0.1rem 0.5rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		color: rgb(var(--muted));
+	}
+	.topic-links__domain {
+		margin-left: auto;
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted-light));
+		white-space: nowrap;
+	}
+	.topic-list__desc,
+	.topic-links__reason {
+		margin: 0.3rem 0 0;
+		font-size: 0.84rem;
+		line-height: 1.6;
+		color: rgb(var(--muted));
+	}
+</style>

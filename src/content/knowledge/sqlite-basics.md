@@ -4,6 +4,8 @@ description: '单文件数据库适合放在哪、类型与约束有什么特别
 pubDate: 2026-11-09
 category: '数据与存储'
 tags: ['入门', '数据']
+stage: '入门'
+topics: ['数据']
 pinned: false
 draft: false
 ---

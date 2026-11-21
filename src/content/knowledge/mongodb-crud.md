@@ -4,6 +4,8 @@ description: '集合与文档、查询运算符、更新与聚合：从 SQL 思�
 pubDate: 2026-11-09
 category: '数据与存储'
 tags: ['核心', '数据']
+stage: '核心'
+topics: ['数据']
 pinned: false
 draft: false
 ---

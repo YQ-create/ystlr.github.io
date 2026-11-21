@@ -10,7 +10,7 @@ interface Props {
 	pubDate: Date;
 	updatedDate?: Date;
 	heroImage?: import('astro').ImageMetadata;
-	tags?: string[];
+	topics?: string[];
 	/** 阅读时长（分钟），由页面层估算后传入 */
 	readingMinutes?: number;
 	/** 正文字数（去 Markdown 记号后的字符数） */
@@ -19,8 +19,12 @@ interface Props {
 	headings?: { depth: number; slug: string; text: string }[];
 	prev?: { href: string; title: string };
 	next?: { href: string; title: string };
-	/** 相关文章：优先标签交集，其次最新（排除自己与相邻文章） */
+	/** 相关文章：优先主题交集，其次最新（排除自己与相邻文章） */
 	related?: { href: string; title: string; date: string }[];
+	/** 相关知识：主题有交集才推荐 */
+	relatedNotes?: { href: string; title: string }[];
+	/** 相关发现：主题有交集才推荐 */
+	relatedLinks?: { href: string; title: string }[];
 }
 
 const {
@@ -29,13 +33,15 @@ const {
 	pubDate,
 	updatedDate,
 	heroImage,
-	tags = [],
+	topics = [],
 	readingMinutes,
 	words,
 	headings = [],
 	prev,
 	next,
 	related = [],
+	relatedNotes = [],
+	relatedLinks = [],
 } = Astro.props;
 
 // 目录只收 h2 / h3，且条目太少时不显示
@@ -82,9 +88,11 @@ const showToc = toc.length >= 2;
 
 			<h1 class="post-title">{title}</h1>
 
-			{tags.length > 0 && (
+			{topics.length > 0 && (
 				<div class="post-tags">
-					{tags.map((tag) => <span class="tag">{tag}</span>)}
+					{topics.map((topic) => (
+						<a class="tag" href={`/topics/${topic}/`}>{topic}</a>
+					))}
 				</div>
 			)}
 		</header>
@@ -150,28 +158,57 @@ const showToc = toc.length >= 2;
 			)}
 		</nav>
 
-		{related.length > 0 && (
-			<section class="related" aria-label="相关文章">
+		{(related.length > 0 || relatedNotes.length > 0 || relatedLinks.length > 0) && (
+			<section class="related" aria-label="继续阅读">
 				<h2 class="related__title">继续阅读</h2>
-				<ul class="related__list">
-					{related.map((item) => (
-						<li>
-							<a class="related__item glass" href={item.href}>
-								<span class="related__date">{item.date}</span>
-								<span class="related__name">{item.title}</span>
-								<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-									<path
-										fill="none"
-										stroke="currentColor"
-										stroke-width="1.7"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path>
-								</svg>
-							</a>
-						</li>
-					))}
-				</ul>
+
+				{related.length > 0 && (
+					<>
+						<p class="related__group">相关文章</p>
+						<ul class="related__list">
+							{related.map((item) => (
+								<li>
+									<a class="related__item" href={item.href}>
+										<span class="related__name">{item.title}</span>
+										<span class="related__date">{item.date}</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</>
+				)}
+
+				{relatedNotes.length > 0 && (
+					<>
+						<p class="related__group">相关知识</p>
+						<ul class="related__list">
+							{relatedNotes.map((item) => (
+								<li>
+									<a class="related__item" href={item.href}>
+										<span class="related__name">{item.title}</span>
+										<span class="related__date">知识库</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</>
+				)}
+
+				{relatedLinks.length > 0 && (
+					<>
+						<p class="related__group">相关发现</p>
+						<ul class="related__list">
+							{relatedLinks.map((item) => (
+								<li>
+									<a class="related__item" href={item.href} target="_blank" rel="noopener noreferrer">
+										<span class="related__name">{item.title}</span>
+										<span class="related__date">外链</span>
+									</a>
+								</li>
+							))}
+						</ul>
+					</>
+				)}
 			</section>
 		)}
 
@@ -354,6 +391,12 @@ const showToc = toc.length >= 2;
 		margin: 0 0 0.9rem;
 		text-transform: uppercase;
 	}
+	.related__group {
+		margin: 1rem 0 0.55rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted));
+	}
 	.related__list {
 		list-style: none;
 		margin: 0;
@@ -366,17 +409,18 @@ const showToc = toc.length >= 2;
 		display: flex;
 		align-items: center;
 		gap: 0.9rem;
-		padding: 0.85rem 1.1rem;
+		padding: 0.8rem 1rem;
 		border-radius: var(--r-md);
+		border: 1px solid rgb(var(--line-soft));
 		text-decoration: none;
 		color: inherit;
 		transition:
 			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out);
+			border-color var(--dur) var(--ease-out);
 	}
 	.related__item:hover {
-		transform: translateX(4px);
-		box-shadow: var(--glass-shine), var(--shadow-md);
+		transform: translateX(3px);
+		border-color: rgb(var(--line));
 	}
 	.related__date {
 		font-size: 0.76rem;

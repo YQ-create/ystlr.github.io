@@ -4,6 +4,7 @@ description: '把手机揣进兜里，沿着一条不认识的街一直走。走
 pubDate: 2026-11-09
 heroImage: ../../assets/blog/city-walk.jpg
 tags: ['城市', '生活']
+topics: ['城市', '生活']
 featured: true
 draft: false
 ---

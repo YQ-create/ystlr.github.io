@@ -5,6 +5,7 @@ pubDate: 2026-11-05
 updatedDate: 2026-11-09
 heroImage: ../../assets/blog/old-bookstore.jpg
 tags: ['阅读', '城市']
+topics: ['阅读', '城市']
 featured: true
 draft: false
 ---

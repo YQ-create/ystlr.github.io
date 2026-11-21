@@ -4,6 +4,9 @@ description: '用 --变量 管理颜色、间距、圆角，配合作用域与 f
 pubDate: 2026-11-19
 category: '前端基础'
 tags: ['CSS', '主题']
+stage: '核心'
+topics: ['前端']
+prerequisites: ['css-layout']
 pinned: false
 draft: false
 ---

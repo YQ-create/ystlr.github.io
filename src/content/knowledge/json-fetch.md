@@ -4,6 +4,8 @@ description: '数据交换格式与浏览器发请求的现代写法，含错误
 pubDate: 2026-11-05
 category: 'Web 原理'
 tags: ['入门', '网络']
+stage: '入门'
+topics: ['网络']
 pinned: false
 draft: false
 ---

@@ -4,6 +4,7 @@ description: '记录不是为了留住什么，而是为了在很久以后，还
 pubDate: 2026-10-29
 heroImage: ../../assets/blog/notebook.jpg
 tags: ['日常', '写作']
+topics: ['日常', '写作']
 featured: false
 draft: false
 ---

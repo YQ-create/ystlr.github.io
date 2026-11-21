@@ -4,6 +4,8 @@ description: '岛屿架构、内容集合的 schema 与 getCollection、静态�
 pubDate: 2026-11-09
 category: '后端运行时'
 tags: ['实战', '运行时']
+stage: '实战'
+topics: ['运行时']
 pinned: false
 draft: false
 ---

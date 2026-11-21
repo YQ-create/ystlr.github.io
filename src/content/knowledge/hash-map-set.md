@@ -4,6 +4,8 @@ description: 'Map / Set / WeakMap 的差别、常见去重与分组写法，以�
 pubDate: 2026-11-09
 category: '算法与数据结构'
 tags: ['核心', '算法']
+stage: '核心'
+topics: ['算法']
 pinned: false
 draft: false
 ---

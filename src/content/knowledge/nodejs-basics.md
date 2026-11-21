@@ -4,6 +4,8 @@ description: 'CommonJS 与 ESM、异步任务的执行顺序、Stream 与 Buffer
 pubDate: 2026-11-09
 category: '后端运行时'
 tags: ['核心', '运行时']
+stage: '核心'
+topics: ['运行时']
 pinned: false
 draft: false
 ---

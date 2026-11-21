@@ -2,31 +2,43 @@
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import type { ImageMetadata } from 'astro';
 import BlogPost from '../../layouts/BlogPost.astro';
+import discoverData from '../../data/discover.json';
 
 export async function getStaticPaths() {
 	const posts = (await getCollection('blog'))
 		.filter((post) => !post.data.draft)
 		.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+	const notes = (await getCollection('knowledge')).filter((n) => !n.data.draft);
+	const links = discoverData.collections.flatMap((g) => g.links);
 
 	return posts.map((post, i) => {
-		// posts 是倒序：i+1 更早（上一篇），i-1 更新（下一篇）
 		const older = posts[i + 1];
 		const newer = posts[i - 1];
-		// 相关文章：优先挑标签有交集的（按交集数量降序），不够再用最新的补，
-		// 排除自己、上一篇、下一篇，避免和底部导航重复。
+		const topics = post.data.topics;
+
+		// 相关文章：topics 交集降序，排除自己与相邻文章
 		const exclude = new Set([post.id, older?.id, newer?.id].filter(Boolean));
-		const others = posts.filter((p) => !exclude.has(p.id));
-		const scored = others
-			.map((p) => {
-				const overlap = p.data.tags.filter((t) => post.data.tags.includes(t)).length;
-				return { p, overlap };
-			})
-			.sort((a, b) => b.overlap - a.overlap || b.p.data.pubDate.valueOf() - a.p.data.pubDate.valueOf());
-		const related = scored.slice(0, 3).map(({ p }) => ({
-			href: `/blog/${p.id}/`,
-			title: p.data.title,
-			date: p.data.pubDate.toISOString().slice(0, 10),
-		}));
+		const related = posts
+			.filter((p) => !exclude.has(p.id))
+			.map((p) => ({ p, overlap: p.data.topics.filter((t) => topics.includes(t)).length }))
+			.sort((a, b) => b.overlap - a.overlap || b.p.data.pubDate.valueOf() - a.p.data.pubDate.valueOf())
+			.slice(0, 3)
+			.map(({ p }) => ({ href: `/blog/${p.id}/`, title: p.data.title, date: p.data.pubDate.toISOString().slice(0, 10) }));
+
+		// 相关知识：topics 有交集才推荐
+		const relatedNotes = notes
+			.map((n) => ({ n, overlap: n.data.topics.filter((t) => topics.includes(t)).length }))
+			.filter((x) => x.overlap > 0)
+			.sort((a, b) => b.overlap - a.overlap)
+			.slice(0, 3)
+			.map(({ n }) => ({ href: `/knowledge/${n.id}/`, title: n.data.title }));
+
+		// 相关发现：topics 有交集才推荐
+		const relatedLinks = links
+			.filter((l) => ((l as { topics?: string[] }).topics ?? []).some((t) => topics.includes(t)))
+			.slice(0, 3)
+			.map((l) => ({ href: l.url, title: l.name }));
+
 		return {
 			params: { slug: post.id },
 			props: {
@@ -34,6 +46,8 @@ export async function getStaticPaths() {
 				prev: older && { href: `/blog/${older.id}/`, title: older.data.title },
 				next: newer && { href: `/blog/${newer.id}/`, title: newer.data.title },
 				related,
+				relatedNotes,
+				relatedLinks,
 			},
 		};
 	});
@@ -43,9 +57,11 @@ type Props = {
 	prev?: { href: string; title: string };
 	next?: { href: string; title: string };
 	related?: { href: string; title: string; date: string }[];
+	relatedNotes?: { href: string; title: string }[];
+	relatedLinks?: { href: string; title: string }[];
 };
 
-const { post, prev, next, related = [] } = Astro.props;
+const { post, prev, next, related = [], relatedNotes = [], relatedLinks = [] } = Astro.props;
 const { Content, headings } = await render(post);
 
 // 粗估阅读时长：去掉 Markdown 记号后按 350 字/分钟算
@@ -64,13 +80,15 @@ const readingMinutes = Math.max(1, Math.round(plain.length / 350));
 	pubDate={post.data.pubDate}
 	updatedDate={post.data.updatedDate}
 	heroImage={post.data.heroImage as ImageMetadata}
-	tags={post.data.tags}
+	topics={post.data.topics}
 	readingMinutes={readingMinutes}
 	words={plainChars}
 	headings={headings}
 	prev={prev}
 	next={next}
 	related={related}
+	relatedNotes={relatedNotes}
+	relatedLinks={relatedLinks}
 >
 	<Content />
 </BlogPost>

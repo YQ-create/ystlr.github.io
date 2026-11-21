@@ -19,12 +19,11 @@ export const HERO = {
 
 // 个人资料：改这里即可同步到首页资料卡、关于页名片、页脚。
 export const PROFILE = {
-	// 头像图片：把图片放进 public/ 目录（如 public/avatar.png），这里填 '/avatar.png'；
-	// 留空字符串则显示名字首字母。
-	avatar: '',
-	role: 'Notes on life & writing',
-	bio: '奇奇怪怪',
-	topics: ['日常随笔', '阅读笔记', '生活片段', '随想与思考', '知识笔记', '慢慢整理'],
+	// 头像图片：放在 public/ 目录（/avatar.jpg）。
+	avatar: '/avatar.jpg',
+	role: '记录生活与思考',
+	bio: '喜欢把事情写清楚的人，记录日常、笔记和读到的东西，慢慢沉淀成自己的空间。',
+	topics: ['写作', '生活', '阅读', '前端', '工具'],
 };
 
 // 社交链接（留空字符串则在页头隐藏对应入口）

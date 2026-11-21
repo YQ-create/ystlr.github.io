@@ -4,6 +4,9 @@ description: '一条页面请求的生命周期里，每个阶段可以做什么
 pubDate: 2026-11-19
 category: '工程实践'
 tags: ['性能', '前端']
+stage: '实战'
+topics: ['前端']
+prerequisites: ['browser-rendering']
 pinned: false
 draft: false
 ---

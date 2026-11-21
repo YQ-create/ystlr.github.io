@@ -16,7 +16,7 @@
 			<input
 				type="search"
 				data-ss-input
-				placeholder="搜索文章、知识库…"
+				placeholder="搜索文章、知识库、发现…"
 				aria-label="站内搜索"
 				autocomplete="off"
 				spellcheck="false"
@@ -204,17 +204,18 @@
 
 <script>
 	type Item = {
-		type: 'article' | 'note';
+		type: 'article' | 'note' | 'link' | 'page';
 		title: string;
 		desc: string;
 		body: string;
 		tags: string[];
 		date: string;
 		category?: string;
+		stage?: string;
 		url: string;
 	};
 
-	const LABEL: Record<Item['type'], string> = { article: '文章', note: '知识库' };
+	const LABEL: Record<Item['type'], string> = { article: '文章', note: '知识库', link: '发现', page: '页面' };
 
 	let cache: Item[] | null = null;
 	let loading: Promise<Item[]> | null = null;
@@ -247,6 +248,23 @@
 		return total;
 	};
 
+	/** 命中上下文：从 body/desc 里定位关键词，截取前后片段 */
+	const contextOf = (item: Item, terms: string[]) => {
+		const source = item.body || item.desc || '';
+		if (!source) return '';
+		if (!terms.length) return item.desc ? item.desc.slice(0, 80) : '';
+		const lower = source.toLowerCase();
+		let pos = -1;
+		for (const t of terms) {
+			const i = lower.indexOf(t.toLowerCase());
+			if (i >= 0 && (pos < 0 || i < pos)) pos = i;
+		}
+		if (pos < 0) return (item.desc || item.body || '').slice(0, 80);
+		const start = Math.max(0, pos - 24);
+		const end = Math.min(source.length, pos + 72);
+		return (start > 0 ? '…' : '') + source.slice(start, end) + (end < source.length ? '…' : '');
+	};
+
 	function render(list: Item[], terms: string[]) {
 		const body = document.querySelector<HTMLElement>('[data-ss-body]');
 		if (!body) return;
@@ -255,7 +273,7 @@
 			return;
 		}
 		const groups: { type: Item['type']; items: Item[] }[] = [];
-		for (const type of ['article', 'note'] as const) {
+		for (const type of ['article', 'note', 'link', 'page'] as const) {
 			const group = list.filter((i) => i.type === type).slice(0, 8);
 			if (group.length) groups.push({ type, items: group });
 		}
@@ -274,7 +292,7 @@
 						return `<a class="ss__item" href="${item.url}" data-ss-item="${idx}">
 							<span class="ss__title">${title}</span>
 							<span class="ss__meta">${item.date}${item.type === 'note' && item.category ? ` · ${esc(item.category)}` : ''}</span>
-							${item.desc || item.body ? `<span class="ss__desc">${esc(item.desc || item.body)}</span>` : ''}
+							${(() => { const ctx = contextOf(item, terms); return ctx ? `<span class="ss__desc">${esc(ctx)}</span>` : ''; })()}
 						</a>`;
 					})
 					.join('')}`,
@@ -283,6 +301,28 @@
 		active = -1;
 		// 默认高亮第一条，Enter 直接可用
 		if (list.length) setActive(0);
+	}
+
+	/** 空状态：显示最近阅读与快捷入口 */
+	function renderIdle() {
+		const body = document.querySelector<HTMLElement>('[data-ss-body]');
+		if (!body) return;
+		let recent: { href: string; title: string }[] = [];
+		try {
+			recent = JSON.parse(localStorage.getItem('ystlr:recent-reading') ?? '[]');
+		} catch {}
+		const quick = [
+			{ href: '/', title: '首页' },
+			{ href: '/blog', title: '文章' },
+			{ href: '/knowledge', title: '知识库' },
+			{ href: '/discover', title: '发现' },
+			{ href: '/about', title: '关于' },
+		];
+		const rec = recent.length
+			? `<p class="ss__group">最近阅读</p>${recent.slice(0, 5).map((r) => `<a class="ss__item" href="${esc(r.href)}"><span class="ss__title">${esc(r.title)}</span></a>`).join('')}`
+			: '';
+		const q = `<p class="ss__group">快捷入口</p>${quick.map((x) => `<a class="ss__item" href="${x.href}"><span class="ss__title">${x.title}</span></a>`).join('')}`;
+		body.innerHTML = rec + q;
 	}
 
 	function setActive(next: number) {
@@ -302,6 +342,7 @@
 		const input = root.querySelector<HTMLInputElement>('[data-ss-input]');
 		input?.focus();
 		void load();
+		renderIdle();
 	}
 
 	function close() {
@@ -369,7 +410,7 @@
 			timer = window.setTimeout(async () => {
 				const body = root.querySelector<HTMLElement>('[data-ss-body]');
 				if (!q) {
-					if (body) body.innerHTML = '<p class="ss__hint">输入关键词开始 —— 标题、摘要、标签都会被检索。</p>';
+					renderIdle();
 					return;
 				}
 				const items = await load();

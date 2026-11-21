@@ -4,6 +4,7 @@ description: '雨声是一层很好的白噪音，把人从外面拉回里面。
 pubDate: 2026-11-18
 heroImage: ../../assets/rainy/rain-02.png
 tags: ['日常', '随想']
+topics: ['日常', '随想']
 featured: false
 draft: false
 ---

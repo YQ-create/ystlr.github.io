@@ -4,6 +4,8 @@ description: '大 O 怎么估、常见操作的代价，以及数组/链表/栈/
 pubDate: 2026-11-09
 category: '算法与数据结构'
 tags: ['入门', '算法']
+stage: '入门'
+topics: ['算法']
 pinned: false
 draft: false
 ---

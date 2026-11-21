@@ -4,6 +4,9 @@ description: '类型、数组方法、DOM 事件与 Promise：日常开发真正
 pubDate: 2026-11-07
 category: '前端基础'
 tags: ['入门', '前端']
+stage: '入门'
+topics: ['前端']
+prerequisites: ['html-semantics', 'css-layout']
 pinned: false
 draft: false
 ---

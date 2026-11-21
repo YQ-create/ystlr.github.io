@@ -4,6 +4,8 @@ description: '变量、引号、判断、循环与退出码：把「能跑」的
 pubDate: 2026-11-09
 category: '工程实践'
 tags: ['进阶', '工具']
+stage: '进阶'
+topics: ['工具']
 pinned: false
 draft: false
 ---

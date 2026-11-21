@@ -4,6 +4,8 @@ description: '常用字段、^ 与 ~ 的差别、锁文件与 scripts：把「�
 pubDate: 2026-11-09
 category: '工程实践'
 tags: ['核心', '工具']
+stage: '核心'
+topics: ['工具']
 pinned: false
 draft: false
 ---

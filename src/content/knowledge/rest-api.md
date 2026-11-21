@@ -4,6 +4,8 @@ description: '资源命名、方法语义、状态码与错误体格式：让接
 pubDate: 2026-11-09
 category: '后端运行时'
 tags: ['进阶', '网络']
+stage: '进阶'
+topics: ['网络']
 pinned: false
 draft: false
 ---

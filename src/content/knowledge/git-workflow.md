@@ -4,6 +4,8 @@ description: '工作区 / 暂存区 / 版本库三层模型，以及改错了分
 pubDate: 2026-11-02
 category: '工程实践'
 tags: ['核心', '工具']
+stage: '核心'
+topics: ['工具']
 pinned: true
 draft: false
 ---

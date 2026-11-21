@@ -4,6 +4,9 @@ description: '从 HTML 到像素的几步流水线，哪些属性会触发布局
 pubDate: 2026-11-09
 category: 'Web 原理'
 tags: ['进阶', '前端']
+stage: '进阶'
+topics: ['前端']
+prerequisites: ['html-semantics', 'javascript-core']
 pinned: false
 draft: false
 ---

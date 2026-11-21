@@ -4,6 +4,8 @@ description: '分层模型、域名解析、三次握手与 TLS：把「打开�
 pubDate: 2026-11-09
 category: 'Web 原理'
 tags: ['核心', '网络']
+stage: '核心'
+topics: ['网络']
 pinned: false
 draft: false
 ---

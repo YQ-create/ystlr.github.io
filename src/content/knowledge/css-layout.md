@@ -4,6 +4,9 @@ description: '优先级、盒模型、Flex、Grid 与响应式：把「为什么
 pubDate: 2026-11-08
 category: '前端基础'
 tags: ['入门', '前端']
+stage: '入门'
+topics: ['前端']
+prerequisites: ['html-semantics']
 pinned: false
 draft: false
 ---

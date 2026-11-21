@@ -4,6 +4,8 @@ description: 'SELECT / WHERE / JOIN / GROUP BY 的执行顺序，以及写 UPDAT
 pubDate: 2026-11-04
 category: '数据与存储'
 tags: ['入门', '数据']
+stage: '入门'
+topics: ['数据']
 pinned: false
 draft: false
 ---

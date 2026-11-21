@@ -4,6 +4,9 @@ description: '解构、展开、可选链、模块导入导出与常用数组/�
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['核心', '前端']
+stage: '核心'
+topics: ['前端']
+prerequisites: ['javascript-core']
 pinned: false
 draft: false
 ---

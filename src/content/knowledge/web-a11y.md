@@ -4,6 +4,9 @@ description: '语义、键盘、对比度、替代文本与 ARIA 的使用边界
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['实战', '前端']
+stage: '实战'
+topics: ['前端']
+prerequisites: ['html-semantics']
 pinned: false
 draft: false
 ---

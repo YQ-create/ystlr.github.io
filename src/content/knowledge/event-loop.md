@@ -4,6 +4,9 @@ description: '为什么 setTimeout 不是精确的，Promise 为什么总插队�
 pubDate: 2026-11-20
 category: 'Web 原理'
 tags: ['JavaScript', '核心']
+stage: '核心'
+topics: ['前端']
+prerequisites: ['javascript-core']
 pinned: false
 draft: false
 ---

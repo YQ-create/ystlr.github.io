@@ -4,6 +4,9 @@ description: 'localStorage、sessionStorage、Cookie 各自适合放什么，以
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['核心', '前端']
+stage: '核心'
+topics: ['前端']
+prerequisites: ['javascript-core']
 pinned: false
 draft: false
 ---

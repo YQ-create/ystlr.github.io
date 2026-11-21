@@ -4,6 +4,8 @@ description: '一对多/多对多怎么落表、主键外键怎么选，以及�
 pubDate: 2026-11-09
 category: '数据与存储'
 tags: ['进阶', '数据']
+stage: '进阶'
+topics: ['数据']
 pinned: false
 draft: false
 ---

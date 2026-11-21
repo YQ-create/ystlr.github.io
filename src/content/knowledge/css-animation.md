@@ -4,6 +4,9 @@ description: 'transition、transform、keyframes 的分工，以及哪些属性�
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['进阶', '前端']
+stage: '进阶'
+topics: ['前端']
+prerequisites: ['css-layout']
 pinned: false
 draft: false
 ---

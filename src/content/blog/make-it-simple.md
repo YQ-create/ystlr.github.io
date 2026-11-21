@@ -4,6 +4,7 @@ description: '删掉多余的东西，留下雨声和安静。这个网站终于
 pubDate: 2026-11-21
 heroImage: ../../assets/rainy/rain-01.png
 tags: ['日常', '写作', '网站']
+topics: ['日常', '写作', '网站']
 featured: true
 draft: false
 ---

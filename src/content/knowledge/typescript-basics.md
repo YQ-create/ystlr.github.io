@@ -4,6 +4,9 @@ description: '基础类型标注、接口与联合类型、泛型与常用工具
 pubDate: 2026-11-09
 category: '前端基础'
 tags: ['进阶', '前端']
+stage: '进阶'
+topics: ['前端']
+prerequisites: ['javascript-core']
 pinned: false
 draft: false
 ---

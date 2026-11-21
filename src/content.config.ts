@@ -15,6 +15,8 @@ const blog = defineCollection({
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
 			tags: z.array(z.string()).default([]),
+			// 统一主题：跨文章/知识/发现联动的主题标签
+			topics: z.array(z.string()).default([]),
 			// 首页「精选文章」优先展示 featured: true 的几篇，不够再用最新的补
 			featured: z.boolean().default(false),
 			draft: z.boolean().default(false),
@@ -33,6 +35,12 @@ const knowledge = defineCollection({
 			// 分类（如「前端」「工具」「阅读」），用于知识库页分组
 			category: z.string().default('未分类'),
 			tags: z.array(z.string()).default([]),
+			// 学习阶段（独立受控字段，避免与主题标签顺序混淆）
+			stage: z.enum(['入门', '核心', '进阶', '实战']).optional(),
+			// 统一主题：跨文章/知识/发现联动的主题标签
+			topics: z.array(z.string()).default([]),
+			// 前置知识：学习路径里建议先看的知识条目 id
+			prerequisites: z.array(z.string()).default([]),
 			// 置顶
 			pinned: z.boolean().default(false),
 			draft: z.boolean().default(false),

@@ -4,19 +4,22 @@
       "category": "设计与灵感",
       "links": [
         {
-          "title": "探索设计灵感",
+          "name": "Dribbble",
           "url": "https://dribbble.com",
-          "description": "设计师作品合集，寻找配色与排版参考。"
+          "reason": "设计师作品合集，寻找配色与排版参考。",
+          "topics": ["设计"]
         },
         {
-          "title": "图库与插画",
+          "name": "Unsplash",
           "url": "https://unsplash.com",
-          "description": "高质量免费摄影图片，写作配图常用。"
+          "reason": "高质量免费摄影图片，写作配图常用。",
+          "topics": ["设计"]
         },
         {
-          "title": "高清壁纸库",
+          "name": "Wallhaven",
           "url": "https://wallhaven.cc/",
-          "description": "海量高清壁纸与插画，找视觉素材很方便。"
+          "reason": "海量高清壁纸与插画，找视觉素材很方便。",
+          "topics": ["设计"]
         }
       ]
     },
@@ -24,19 +27,25 @@
       "category": "写作与阅读",
       "links": [
         {
-          "title": "长文与随笔",
+          "name": "Medium",
           "url": "https://medium.com",
-          "description": "各领域作者的深度长文，适合静心阅读。"
+          "reason": "各领域作者的深度长文，适合静心阅读。",
+          "topics": ["写作", "阅读"],
+          "relatedPosts": ["keeping-a-notebook"]
         },
         {
-          "title": "文字记录",
+          "name": "Write.as",
           "url": "https://write.as",
-          "description": "极简写作空间，专注表达本身。"
+          "reason": "极简写作空间，专注表达本身。",
+          "topics": ["写作"],
+          "relatedPosts": ["make-it-simple"]
         },
         {
-          "title": "电子书图书馆",
+          "name": "Z-Library",
           "url": "https://zh.z-library.sk/",
-          "description": "海量中文电子书，找书与读绝版书都靠它。"
+          "reason": "海量电子书，找书与读绝版书都靠它。",
+          "topics": ["阅读"],
+          "relatedPosts": ["old-bookstore"]
         }
       ]
     },
@@ -44,14 +53,18 @@
       "category": "开发者工具",
       "links": [
         {
-          "title": "文档与工具",
+          "name": "GitHub",
           "url": "https://github.com",
-          "description": "开源项目与代码收藏仓库。"
+          "reason": "开源项目与代码收藏仓库。",
+          "topics": ["开发"],
+          "relatedNotes": ["git-workflow"]
         },
         {
-          "title": "站点生成器",
+          "name": "Astro",
           "url": "https://astro.build",
-          "description": "本站使用的现代静态站点框架。"
+          "reason": "本站使用的现代静态站点框架。",
+          "topics": ["开发", "前端"],
+          "relatedNotes": ["astro-basics"]
         }
       ]
     }

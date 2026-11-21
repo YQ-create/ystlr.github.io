@@ -4,6 +4,7 @@ description: '没有行程表，没有打卡点。只有风、潮水，和一整
 pubDate: 2026-11-02
 heroImage: ../../assets/blog/seaside-48h.jpg
 tags: ['旅行', '风景']
+topics: ['旅行', '风景']
 featured: false
 draft: false
 ---

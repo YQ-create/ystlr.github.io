@@ -4,6 +4,8 @@ description: '镜像 / 容器 / 卷三者的关系，一页命令表，以及写
 pubDate: 2026-11-09
 category: '工程实践'
 tags: ['实战', '工具']
+stage: '实战'
+topics: ['工具']
 pinned: false
 draft: false
 ---

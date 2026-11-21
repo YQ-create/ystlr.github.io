@@ -4,6 +4,8 @@ description: '文件操作、权限、查找、管道、进程与网络：服务
 pubDate: 2026-10-30
 category: '工程实践'
 tags: ['入门', '工具']
+stage: '入门'
+topics: ['工具']
 pinned: false
 draft: false
 ---

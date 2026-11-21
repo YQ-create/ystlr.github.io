@@ -1,7 +1,7 @@
 ---
-// 知识库详情：左侧目录树（按分类分组的全部条目）+ 正文。
-// 目录树支持前端即时筛选（只过滤已渲染的链接，不需要额外请求）。
-// 正文上方的锚点列表来自 render() 的 headings，点击直达对应小节。
+// 知识库详情：正文 + 前置知识 + 同主题 + 下一篇建议 + 最近更新时间。
+// 前置知识来自 prerequisites 字段；下一篇按同主题内阶段顺序推荐；
+// 学习进度与最近阅读存 localStorage（仅当前浏览器）。
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
@@ -11,23 +11,55 @@ export async function getStaticPaths() {
 	const notes = (await getCollection('knowledge'))
 		.filter((n) => !n.data.draft)
 		.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+	const byId = new Map(notes.map((n) => [n.id, n]));
+	const STAGE_ORDER: Record<string, number> = { 入门: 0, 核心: 1, 进阶: 2, 实战: 3 };
 
-	// 目录树数据对每页都一样：分类 → 条目
 	const tree = [...new Set(notes.map((n) => n.data.category))].map((category) => ({
 		category,
-		items: notes
-			.filter((n) => n.data.category === category)
-			.map((n) => ({ id: n.id, title: n.data.title })),
+		items: notes.filter((n) => n.data.category === category).map((n) => ({ id: n.id, title: n.data.title })),
 	}));
 
-	return notes.map((note) => ({ params: { slug: note.id }, props: { note, tree } }));
+	return notes.map((note) => {
+		// 前置知识：prerequisites 字段存 id，映射成标题
+		const prereqs = note.data.prerequisites
+			.map((id) => byId.get(id))
+			.filter((n): n is CollectionEntry<'knowledge'> => Boolean(n))
+			.map((n) => ({ id: n.id, title: n.data.title, stage: n.data.stage }));
+
+		// 同主题：topics 交集的其他笔记
+		const sameTopic = notes.filter((n) => n.id !== note.id && n.data.topics.some((t) => note.data.topics.includes(t)));
+
+		// 下一篇建议：同主题内，阶段顺序在当前之后的最小者；否则同主题最新一条
+		const curStage = STAGE_ORDER[note.data.stage ?? ''] ?? -1;
+		const next = sameTopic
+			.filter((n) => (STAGE_ORDER[n.data.stage ?? ''] ?? -1) > curStage)
+			.sort((a, b) => (STAGE_ORDER[a.data.stage ?? ''] ?? 9) - (STAGE_ORDER[b.data.stage ?? ''] ?? 9))[0]
+			?? sameTopic[0];
+
+		// 同主题内容：排除下一篇，最多 3 条
+		const related = sameTopic.filter((n) => n.id !== next?.id).slice(0, 3).map((n) => ({ id: n.id, title: n.data.title, stage: n.data.stage }));
+
+		return {
+			params: { slug: note.id },
+			props: {
+				note,
+				tree,
+				prereqs,
+				next: next && { id: next.id, title: next.data.title, stage: next.data.stage },
+				related,
+			},
+		};
+	});
 }
 
 type Props = {
 	note: CollectionEntry<'knowledge'>;
 	tree: { category: string; items: { id: string; title: string }[] }[];
+	prereqs: { id: string; title: string; stage?: string }[];
+	next?: { id: string; title: string; stage?: string };
+	related: { id: string; title: string; stage?: string }[];
 };
-const { note, tree } = Astro.props;
+const { note, tree, prereqs = [], next, related = [] } = Astro.props;
 const { Content, headings } = await render(note);
 
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
@@ -41,14 +73,6 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 				<a class="kb-tree__back" href="/knowledge">← 知识库</a>
 				<span class="eyebrow">{total} 条</span>
 			</div>
-
-			<label class="kb-tree__search">
-				<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-					<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path>
-				</svg>
-				<input type="search" placeholder="筛选条目…" aria-label="筛选知识库条目" data-kb-filter autocomplete="off" />
-			</label>
-
 			<nav>
 				{tree.map((group) => (
 					<div class="kb-group" data-kb-group>
@@ -56,40 +80,47 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 						<ul>
 							{group.items.map((item) => (
 								<li>
-									<a
-										href={`/knowledge/${item.id}/`}
-										data-kb-link={item.title}
-										aria-current={item.id === note.id ? 'page' : undefined}
-									>
-										{item.title}
-									</a>
+									<a href={`/knowledge/${item.id}/`} aria-current={item.id === note.id ? 'page' : undefined}>{item.title}</a>
 								</li>
 							))}
 						</ul>
 					</div>
 				))}
 			</nav>
-			<p class="kb-tree__empty" data-kb-empty hidden>没有匹配的条目</p>
 		</aside>
 
 		<main class="kb-post">
 			<header class="kb-post__head">
-				<span class="eyebrow">{note.data.category}</span>
+				<span class="eyebrow">{note.data.category}{note.data.stage ? ` · ${note.data.stage}` : ''}</span>
 				<h1>{note.data.title}</h1>
 				{note.data.description && <p class="kb-post__desc">{note.data.description}</p>}
 				<div class="kb-post__meta">
 					<time datetime={note.data.pubDate.toISOString()}>
 						<FormattedDate date={note.data.pubDate} />
 					</time>
-					{note.data.tags.length > 0 && (
-						<span class="kb-post__tags">
-							{note.data.tags.map((t) => (
-								<span class="kb-post__tag">{t}</span>
+					{note.data.updatedDate && (
+						<span>更新于 <FormattedDate date={note.data.updatedDate} /></span>
+					)}
+					{note.data.topics.length > 0 && (
+						<span class="kb-post__topics">
+							{note.data.topics.map((t) => (
+								<a href={`/topics/${t}/`}>{t}</a>
 							))}
 						</span>
 					)}
 				</div>
 			</header>
+
+			{prereqs.length > 0 && (
+				<nav class="kb-prereq" aria-label="前置知识">
+					<p class="kb-prereq__title">建议先了解</p>
+					<ul>
+						{prereqs.map((p) => (
+							<li><a href={`/knowledge/${p.id}/`}>{p.title}</a>{p.stage && <span>{p.stage}</span>}</li>
+						))}
+					</ul>
+				</nav>
+			)}
 
 			{toc.length >= 2 && (
 				<nav class="kb-toc" aria-label="本页小节">
@@ -107,6 +138,27 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 			<article class="prose">
 				<Content />
 			</article>
+
+			{(next || related.length > 0) && (
+				<nav class="kb-more" aria-label="继续学习">
+					{next && (
+						<div class="kb-more__next">
+							<p class="kb-more__title">下一篇建议</p>
+							<a href={`/knowledge/${next.id}/`}>{next.title}{next.stage && <span>{next.stage}</span>}</a>
+						</div>
+					)}
+					{related.length > 0 && (
+						<div class="kb-more__related">
+							<p class="kb-more__title">同主题内容</p>
+							<ul>
+								{related.map((r) => (
+									<li><a href={`/knowledge/${r.id}/`}>{r.title}</a>{r.stage && <span>{r.stage}</span>}</li>
+								))}
+							</ul>
+						</div>
+					)}
+				</nav>
+			)}
 		</main>
 	</div>
 </BaseLayout>
@@ -122,7 +174,6 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 		padding: 1rem 0 4rem;
 	}
 
-	/* 左侧目录树 */
 	.kb-tree {
 		position: sticky;
 		top: calc(var(--head-h) + 1.2rem);
@@ -148,30 +199,6 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 	.kb-tree__back:hover {
 		color: rgb(var(--ink));
 	}
-	.kb-tree__search {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		margin: 0.75rem 0 0.9rem;
-		padding: 0 0.6rem;
-		height: 32px;
-		border: 1px solid rgb(var(--line-soft));
-		border-radius: 8px;
-		color: rgb(var(--muted-light));
-	}
-	.kb-tree__search input {
-		flex: 1;
-		min-width: 0;
-		border: 0;
-		background: none;
-		color: rgb(var(--ink));
-		font: inherit;
-		font-size: 0.78rem;
-		outline: none;
-	}
-	.kb-tree__search input::-webkit-search-cancel-button {
-		display: none;
-	}
 	.kb-group + .kb-group {
 		margin-top: 1.1rem;
 	}
@@ -180,7 +207,7 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 		font-size: 0.66rem;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: rgb(var(--muted-light));
+		color: rgb(var(--muted));
 	}
 	.kb-group ul {
 		margin: 0;
@@ -197,25 +224,16 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 		line-height: 1.5;
 		color: rgb(var(--muted));
 		text-decoration: none;
-		transition:
-			color var(--dur-fast) var(--ease-out),
-			border-color var(--dur-fast) var(--ease-out);
 	}
 	.kb-group a:hover {
 		color: rgb(var(--ink));
 	}
 	.kb-group a[aria-current='page'] {
-		color: rgb(var(--ink));
+		color: rgb(var(--accent));
 		border-color: rgb(var(--accent));
-		font-weight: 500;
-	}
-	.kb-tree__empty {
-		margin: 1rem 0 0;
-		font-size: 0.8rem;
-		color: rgb(var(--muted-light));
+		font-weight: 600;
 	}
 
-	/* 正文 */
 	.kb-post {
 		min-width: 0;
 	}
@@ -237,21 +255,62 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 	}
 	.kb-post__meta {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.9rem;
-		font-size: 0.82rem;
-		color: rgb(var(--muted-light));
+		gap: 0.4rem 0.9rem;
+		font-size: 0.8rem;
+		color: rgb(var(--muted));
 	}
-	.kb-post__tags {
+	.kb-post__topics {
 		display: flex;
 		gap: 0.35rem;
 	}
-	.kb-post__tag {
+	.kb-post__topics a {
 		font-size: 0.72rem;
 		color: rgb(var(--muted));
-		background: var(--chip-bg);
-		border-radius: var(--r-pill);
-		padding: 0.05rem 0.55rem;
+		text-decoration: none;
+		padding: 0.08rem 0.55rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+	}
+	.kb-post__topics a:hover {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.5);
+	}
+
+	/* 前置知识 */
+	.kb-prereq {
+		margin: 0 0 1.5rem;
+		padding: 1rem 1.2rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: 12px;
+	}
+	.kb-prereq__title {
+		margin: 0 0 0.55rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		color: rgb(var(--muted));
+	}
+	.kb-prereq ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.kb-prereq a {
+		font-size: 0.9rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.kb-prereq a:hover {
+		color: rgb(var(--accent));
+	}
+	.kb-prereq span {
+		margin-left: 0.5rem;
+		font-size: 0.68rem;
+		color: rgb(var(--muted));
 	}
 
 	/* 页内锚点 */
@@ -285,6 +344,44 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 		color: rgb(var(--accent));
 	}
 
+	/* 继续学习 */
+	.kb-more {
+		margin-top: 2.4rem;
+		padding-top: 1.2rem;
+		border-top: 1px solid rgb(var(--line-soft));
+		display: grid;
+		gap: 1.4rem;
+	}
+	.kb-more__title {
+		margin: 0 0 0.6rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted));
+	}
+	.kb-more__next a,
+	.kb-more__related a {
+		font-size: 0.95rem;
+		color: rgb(var(--ink));
+		text-decoration: none;
+	}
+	.kb-more__next a:hover,
+	.kb-more__related a:hover {
+		color: rgb(var(--accent));
+	}
+	.kb-more__next span,
+	.kb-more__related span {
+		margin-left: 0.5rem;
+		font-size: 0.68rem;
+		color: rgb(var(--muted));
+	}
+	.kb-more__related ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.4rem;
+	}
+
 	@media (max-width: 980px) {
 		.kb-shell {
 			grid-template-columns: minmax(0, 1fr);
@@ -305,31 +402,29 @@ const total = tree.reduce((n, g) => n + g.items.length, 0);
 </style>
 
 <script>
-	// 左侧目录树即时筛选：匹配到的条目高亮，整组无命中的分类隐藏
-	function initKbFilter() {
-		const input = document.querySelector<HTMLInputElement>('[data-kb-filter]');
-		if (!input || input.dataset.ready === '1') return;
-		input.dataset.ready = '1';
-		const groups = Array.from(document.querySelectorAll<HTMLElement>('[data-kb-group]'));
-		const empty = document.querySelector<HTMLElement>('[data-kb-empty]');
+	// 学习进度 + 最近阅读：记录到 localStorage（仅当前浏览器）
+	function recordReading() {
+		const title = document.querySelector<HTMLElement>('.kb-post__head h1')?.textContent?.trim();
+		if (!title) return;
+		try {
+			// 最近阅读：最多存 8 条，最新的在前
+			const key = 'ystlr:recent-reading';
+			const raw = localStorage.getItem(key);
+			const list: { href: string; title: string }[] = raw ? JSON.parse(raw) : [];
+			const href = location.pathname;
+			const next = [{ href, title }, ...list.filter((i) => i.href !== href)].slice(0, 8);
+			localStorage.setItem(key, JSON.stringify(next));
 
-		input.addEventListener('input', () => {
-			const q = input.value.trim().toLowerCase();
-			let visible = 0;
-			for (const group of groups) {
-				let hit = 0;
-				group.querySelectorAll<HTMLAnchorElement>('[data-kb-link]').forEach((a) => {
-					const match = !q || (a.dataset.kbLink ?? '').toLowerCase().includes(q);
-					a.parentElement!.hidden = !match;
-					if (match) hit += 1;
-				});
-				group.hidden = hit === 0;
-				visible += hit;
+			// 学习进度：记录已读的笔记 id
+			const pk = 'ystlr:learning-progress';
+			const pid = location.pathname.replace(/^\/knowledge\//, '').replace(/\/$/, '');
+			const done: string[] = JSON.parse(localStorage.getItem(pk) ?? '[]');
+			if (!done.includes(pid)) {
+				done.push(pid);
+				localStorage.setItem(pk, JSON.stringify(done));
 			}
-			if (empty) empty.hidden = visible > 0;
-		});
+		} catch {}
 	}
-
-	initKbFilter();
-	document.addEventListener('astro:page-load', initKbFilter);
+	recordReading();
+	document.addEventListener('astro:page-load', recordReading);
 </script>

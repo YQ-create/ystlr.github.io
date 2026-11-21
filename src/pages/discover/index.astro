@@ -1,10 +1,17 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import { getCollection } from 'astro:content';
 import discoverData from '../../data/discover.json';
 
 const collections = discoverData.collections;
 const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
+
+// 相关文章/知识：id → 标题映射
+const allPosts = await getCollection('blog');
+const allNotes = await getCollection('knowledge');
+const postTitle = new Map(allPosts.map((p) => [p.id, p.data.title]));
+const noteTitle = new Map(allNotes.map((n) => [n.id, n.data.title]));
 ---
 
 <BaseLayout title={`发现 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
@@ -38,35 +45,50 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 					</header>
 					<div class="link-grid">
 						{group.links.map((link, i) => (
-							<a
-								class="link-card glass"
-								href={link.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								data-reveal
-								data-reveal-delay={i * 60}
-								data-glow
-							>
-								<span class="link-card__logo" data-logo data-domain={new URL(link.url).hostname.replace(/^www\./, '')} data-name={link.title}>
-									<span class="link-card__logo-fallback" aria-hidden="true">{link.title.slice(0, 1).toUpperCase()}</span>
-								</span>
-								<div class="link-card__body">
-									<span class="link-card__domain">{new URL(link.url).hostname.replace(/^www\./, '')}</span>
-									<h3>{link.title}</h3>
-									<p>{link.description}</p>
-								</div>
-								<span class="link-card__arrow" aria-hidden="true">
-									<svg viewBox="0 0 16 16" width="14" height="14">
-										<path
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.7"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M4.5 11.5 11.5 4.5M5.5 4.5h6v6"></path>
-									</svg>
-								</span>
-							</a>
+							<div class="link-card" data-reveal data-reveal-delay={i * 60}>
+								<a class="link-card__main" href={link.url} target="_blank" rel="noopener noreferrer">
+									<span class="link-card__logo" data-logo data-domain={new URL(link.url).hostname.replace(/^www\./, '')} data-name={link.name}>
+										<span class="link-card__logo-fallback" aria-hidden="true">{link.name.slice(0, 1).toUpperCase()}</span>
+									</span>
+									<div class="link-card__body">
+										<span class="link-card__domain">{new URL(link.url).hostname.replace(/^www\./, '')}</span>
+										<h3>{link.name}</h3>
+										<p>{link.reason}</p>
+									</div>
+									<span class="link-card__arrow" aria-hidden="true">
+										<svg viewBox="0 0 16 16" width="14" height="14">
+											<path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M4.5 11.5 11.5 4.5M5.5 4.5h6v6"></path>
+										</svg>
+									</span>
+								</a>
+								{(link.topics?.length > 0 || (link as { relatedPosts?: string[] }).relatedPosts?.length || (link as { relatedNotes?: string[] }).relatedNotes?.length) && (
+									<div class="link-card__foot">
+										{link.topics?.length > 0 && (
+											<div class="link-card__topics">
+												{link.topics.map((t) => (
+													<a class="link-card__topic" href={`/topics/${t}/`}>{t}</a>
+												))}
+											</div>
+										)}
+										{(link as { relatedPosts?: string[] }).relatedPosts?.length > 0 && (
+											<div class="link-card__related">
+												<span class="link-card__related-label">相关文章</span>
+												{(link as { relatedPosts: string[] }).relatedPosts.map((id) =>
+													postTitle.get(id) ? <a href={`/blog/${id}/`}>{postTitle.get(id)}</a> : null,
+												)}
+											</div>
+										)}
+										{(link as { relatedNotes?: string[] }).relatedNotes?.length > 0 && (
+											<div class="link-card__related">
+												<span class="link-card__related-label">相关知识</span>
+												{(link as { relatedNotes: string[] }).relatedNotes.map((id) =>
+													noteTitle.get(id) ? <a href={`/knowledge/${id}/`}>{noteTitle.get(id)}</a> : null,
+												)}
+											</div>
+										)}
+									</div>
+								)}
+							</div>
 						))}
 					</div>
 				</section>
@@ -236,22 +258,25 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 		gap: clamp(0.7rem, 1.6vw, 1rem);
 	}
 	.link-card {
-		position: relative;
+		display: flex;
+		flex-direction: column;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-lg);
+		background: rgb(var(--paper));
+		overflow: hidden;
+		transition: border-color var(--dur) var(--ease-out);
+	}
+	.link-card:hover {
+		border-color: rgb(var(--line));
+	}
+	.link-card__main {
 		display: flex;
 		flex-direction: row;
 		align-items: flex-start;
 		gap: 0.85rem;
 		padding: 1.1rem 1.2rem 1.15rem;
-		border-radius: var(--r-lg);
 		text-decoration: none;
 		color: rgb(var(--ink));
-		transition:
-			transform var(--dur) var(--ease-out),
-			box-shadow var(--dur) var(--ease-out);
-	}
-	.link-card:hover {
-		transform: translateY(-4px);
-		box-shadow: var(--glass-shine), var(--shadow-lg);
 	}
 	.link-card__logo {
 		flex-shrink: 0;
@@ -301,6 +326,50 @@ const totalLinks = collections.reduce((n, group) => n + group.links.length, 0);
 		font-size: 0.86rem;
 		line-height: 1.6;
 		color: rgb(var(--muted));
+	}
+	.link-card__foot {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.7rem 1.2rem 0.9rem;
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.link-card__topics {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+	.link-card__topic {
+		font-size: 0.72rem;
+		padding: 0.12rem 0.6rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		color: rgb(var(--muted));
+		text-decoration: none;
+		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+	}
+	.link-card__topic:hover {
+		color: rgb(var(--accent));
+		border-color: rgba(var(--accent), 0.5);
+	}
+	.link-card__related {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.25rem 0.6rem;
+		font-size: 0.78rem;
+	}
+	.link-card__related-label {
+		font-size: 0.7rem;
+		letter-spacing: 0.06em;
+		color: rgb(var(--muted));
+	}
+	.link-card__related a {
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.link-card__related a:hover {
+		color: rgb(var(--accent));
 	}
 	.link-card__arrow {
 		position: absolute;

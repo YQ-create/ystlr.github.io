@@ -1,9 +1,9 @@
 ---
-// 知识库总览：左侧「索引」栏（分类 / 标签 / 条目清单）+ 右侧按分类分组的卡片。
-// 索引栏在桌面端常驻吸附，窄屏收成一条可横滑的分类胶囊，节省首屏高度。
+// 知识库总览（内容优先）：
+// 关键词搜索 + 阶段/主题筛选（stage/topics 独立字段）+ 前端学习路径 + 折叠分类。
+// 分类默认折叠，只有含置顶笔记的分类展开；学习进度与最近阅读存 localStorage。
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
-import BranchedMenu from '../../components/BranchedMenu.astro';
 import { getCollection } from 'astro:content';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
@@ -11,14 +11,19 @@ const notes = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// 按分类分组：pinned 置顶排前，其余按时间倒序
+// 阶段与主题（独立受控字段）
+const STAGES = ['入门', '核心', '进阶', '实战'];
+const TOPICS = ['前端', '网络', '数据', '工具', '运行时', '算法'];
+const stageTags = STAGES.filter((s) => notes.some((n) => n.data.stage === s));
+const topicTags = TOPICS.filter((t) => notes.some((n) => n.data.topics.includes(t)));
+
+// 分类分组：置顶多的排前，再按分类名
 const byCategory = new Map<string, typeof notes>();
 for (const note of notes) {
 	const cat = note.data.category || '未分类';
 	if (!byCategory.has(cat)) byCategory.set(cat, []);
 	byCategory.get(cat)!.push(note);
 }
-// 分类顺序：置顶多的分类排前，再按分类名
 const categories = [...byCategory.entries()].sort((a, b) => {
 	const ap = a[1].filter((n) => n.data.pinned).length;
 	const bp = b[1].filter((n) => n.data.pinned).length;
@@ -26,86 +31,14 @@ const categories = [...byCategory.entries()].sort((a, b) => {
 	return a[0].localeCompare(b[0], 'zh-Hans-CN');
 });
 
-// 标签只保留两个维度：阶段（学习顺序）与主题（横向领域），顺序固定，不求全。
-const STAGES = ['入门', '核心', '进阶', '实战'];
-const TOPICS = ['前端', '网络', '数据', '工具', '运行时', '算法'];
-const stageOf = (note: (typeof notes)[number]) =>
-	note.data.tags.find((t) => STAGES.includes(t)) ?? '其他';
-
-// 锚点用序号（cat-01），避免中文分类名进 id；索引栏与正文共用这份编号。
-// 每个大类内部再按阶段分组；分类 section 仍是滚动高亮与筛选的粒度。
-const groups = categories.map(([name, list], i) => {
-	const catId = `cat-${String(i + 1).padStart(2, '0')}`;
-	const byStage = STAGES.map((s, si) => ({
-		id: `${catId}-s${si + 1}`,
-		num: String(si + 1).padStart(2, '0'),
-		name: s,
-		list: list.filter((n) => stageOf(n) === s),
-	})).filter((g) => g.list.length > 0);
-	const rest = list.filter((n) => !STAGES.includes(stageOf(n)));
-	if (rest.length) byStage.push({ id: `${catId}-s0`, num: '00', name: '其他', list: rest });
-	return {
-		id: catId,
-		num: String(i + 1).padStart(2, '0'),
-		name,
-		list,
-		stages: byStage,
-	};
-});
-
-// 标签聚合：只数阶段与主题两组，不把每个技术名词都做成筛选按钮
-const tagCount = new Map<string, number>();
-for (const note of notes) {
-	for (const tag of note.data.tags) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
-}
-const tagGroup = (names: string[]) =>
-	names.filter((n) => tagCount.has(n)).map((n) => ({ name: n, count: tagCount.get(n)! }));
-const stageTags = tagGroup(STAGES);
-const topicTags = tagGroup(TOPICS);
+// 前端入门学习路径：topics 含「前端」的笔记按阶段顺序
+const STAGE_ORDER: Record<string, number> = { 入门: 0, 核心: 1, 进阶: 2, 实战: 3 };
+const frontendPath = notes
+	.filter((n) => n.data.topics.includes('前端'))
+	.sort((a, b) => (STAGE_ORDER[a.data.stage ?? ''] ?? 9) - (STAGE_ORDER[b.data.stage ?? ''] ?? 9) || a.data.pubDate.valueOf() - b.data.pubDate.valueOf());
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const pinnedCount = notes.filter((n) => n.data.pinned).length;
-
-// 分叉导航（BranchedMenu）：分类 → 条目，条目直接指向详情页；
-// data-tags 沿用页面筛选脚本的数据源，不需要另写一套筛选。
-const menuItems = groups.map((group) => ({
-	label: group.name,
-	value: group.id,
-	anchor: group.id,
-	num: group.num,
-	count: pad(group.list.length),
-	children: group.stages.flatMap((stage) => stage.list).map((note) => ({
-		value: note.id,
-		label: note.data.title,
-		href: `/knowledge/${note.id}/`,
-		tags: note.data.tags.join(','),
-	})),
-}));
-
-// 知识库为空时的「导航样式预览」。只用于渲染，不写入 content 集合，
-// 因此不会生成假的详情页；一旦有笔记，下面这个分支就不会被用到。
-const previewItems = [
-	{
-		label: '开始使用',
-		value: 'preview-start',
-		num: '01',
-		children: [
-			{ value: 'p-new', label: '新建第一条笔记' },
-			{ value: 'p-admin', label: '用 /admin 直接上传' },
-			{ value: 'p-fields', label: 'Frontmatter 字段' },
-		],
-	},
-	{
-		label: '内容组织',
-		value: 'preview-organize',
-		num: '02',
-		children: [
-			{ value: 'p-category', label: '分类与编号' },
-			{ value: 'p-tags', label: '标签筛选' },
-			{ value: 'p-pinned', label: '置顶与草稿' },
-		],
-	},
-];
 ---
 
 <BaseLayout title={`知识库 · ${SITE_TITLE}`} description={SITE_DESCRIPTION}>
@@ -113,333 +46,181 @@ const previewItems = [
 		<header class="kb-head" data-reveal>
 			<span class="sec-head__index">KNOWLEDGE / {pad(notes.length)}</span>
 			<h1>知识库</h1>
-			<p class="kb-head__desc">
-				成体系的笔记与心得，独立于日常随笔，按分类沉淀、按阶段推进。
-			</p>
+			<p class="kb-head__desc">成体系的笔记与心得，按分类沉淀、按阶段推进。</p>
 			<p class="kb-head__meta">
-				<span>{pad(groups.length)} 个分类</span>
+				<span>{pad(categories.length)} 个分类</span>
 				<span>{pad(stageTags.length)} 个阶段 / {pad(topicTags.length)} 个主题</span>
 				{pinnedCount > 0 && <span>{pad(pinnedCount)} 条置顶</span>}
 			</p>
+		</header>
+
+		<!-- 搜索 + 筛选 -->
+		<div class="kb-toolbar" data-reveal data-reveal-delay="60">
+			<label class="kb-search">
+				<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path></svg>
+				<input id="kb-search" type="search" placeholder="搜索标题或摘要…" aria-label="搜索知识库" autocomplete="off" />
+			</label>
+			<div class="kb-filter">
+				{stageTags.length > 0 && (
+					<div class="kb-filter__set" role="group" aria-label="按阶段筛选">
+						<span class="kb-filter__label">阶段</span>
+						{stageTags.map((s) => (
+							<button class="kb-chip" type="button" data-kb-tag={s} aria-pressed="false">{s}</button>
+						))}
+					</div>
+				)}
+				{topicTags.length > 0 && (
+					<div class="kb-filter__set" role="group" aria-label="按主题筛选">
+						<span class="kb-filter__label">主题</span>
+						{topicTags.map((t) => (
+							<button class="kb-chip" type="button" data-kb-tag={t} aria-pressed="false">{t}</button>
+						))}
+					</div>
+				)}
+			</div>
 			<p class="kb-filter-note" data-kb-note hidden>
 				<span data-kb-note-text></span>
 				<button type="button" class="kb-filter-note__reset" data-kb-reset>清除筛选</button>
 			</p>
-		</header>
+		</div>
 
-		{notes.length === 0 ? (
-			<div class="kb-empty glass" data-reveal>
-				<span class="sec-head__index">EMPTY / PREVIEW</span>
-				<h2>知识库还空着</h2>
-				<p>
-					在 <code>src/content/knowledge/</code> 目录下新建一个 <code>.md</code> 文件，
-					填上 <code>title / category / pubDate</code>，提交后就会在这里出现。
-				</p>
-				<!-- 没有内容时也把导航效果展示出来：明确标注为预览，不是真实条目 -->
-				<div class="kb-empty__preview">
-					<p class="kb-empty__preview-note">导航样式预览 · 添加笔记后会自动替换为真实目录</p>
-					<BranchedMenu
-						items={previewItems}
-						defaultOpen={[0, 1]}
-						preview
-						forceTree
-						ariaLabel="知识库导航样式预览"
-					/>
-				</div>
-			</div>
-		) : (
-			<div class="kb-shell">
-				<!-- ═══ 左：分类索引树 ═══ -->
-				<aside class="kb-index" aria-label="知识库索引">
-					<div class="kb-index__head">
-						<span class="sec-head__index">INDEX</span>
-						<span class="kb-index__total">{pad(notes.length)} 条</span>
-					</div>
-
-					<BranchedMenu items={menuItems} defaultOpen={0} ariaLabel="按分类跳转" />
-
-					<p class="kb-index__empty" data-kb-empty hidden>没有匹配的条目</p>
-				</aside>
-
-				<!-- ═══ 右端：标签筛选（阶段 / 主题两组） ═══ -->
-				<aside class="kb-tags" aria-label="按标签筛选">
-					<div class="kb-tags__head">
-						<span class="sec-head__index">FILTER</span>
-						<span class="kb-tags__total" data-kb-total>{pad(notes.length)} 条</span>
-					</div>
-
-					{stageTags.length > 0 && (
-						<div class="kb-tags__set">
-							<p class="kb-tags__label">阶段 / STAGE</p>
-							<div class="kb-tags__group" role="group" aria-label="按阶段筛选">
-								{stageTags.map(({ name, count }) => (
-									<button class="kb-tag" type="button" data-kb-tag={name} aria-pressed="false">
-										<span class="kb-tag__name">{name}</span>
-										<span class="kb-tag__count">{count}</span>
-									</button>
-								))}
-							</div>
-						</div>
-					)}
-
-					{topicTags.length > 0 && (
-						<div class="kb-tags__set">
-							<p class="kb-tags__label">主题 / TOPIC</p>
-							<div class="kb-tags__group" role="group" aria-label="按主题筛选">
-								{topicTags.map(({ name, count }) => (
-									<button class="kb-tag" type="button" data-kb-tag={name} aria-pressed="false">
-										<span class="kb-tag__name">{name}</span>
-										<span class="kb-tag__count">{count}</span>
-									</button>
-								))}
-							</div>
-						</div>
-					)}
-
-					<p class="kb-tags__hint">点标签筛选，再点一次取消</p>
-				</aside>
-
-				<!-- ═══ 中：按分类 → 阶段分组 ═══ -->
-				<div class="kb-body">
-					{groups.map((group) => (
-						<section class="kb-cat" id={group.id} data-kb-section={group.id}>
-							<h2 class="kb-cat__title">
-								<span class="kb-cat__n">{group.num}</span>
-								<span class="kb-cat__name">{group.name}</span>
-								<span class="kb-cat__rule" aria-hidden="true"></span>
-								<span class="kb-cat__count" data-kb-count>{pad(group.list.length)} 条</span>
-							</h2>
-							{group.stages.map((stage) => (
-								<div class="kb-stage" data-kb-stage>
-									<h3 class="kb-stage__title">
-										<span class="kb-stage__n">{stage.num}</span>
-										<span class="kb-stage__name">{stage.name}</span>
-										<span class="kb-stage__rule" aria-hidden="true"></span>
-										<span class="kb-stage__count" data-kb-stage-count>{pad(stage.list.length)} 条</span>
-									</h3>
-									<div class="kb-grid">
-										{stage.list.map((note) => (
-											<a
-												class="kb-card"
-												href={`/knowledge/${note.id}/`}
-												data-kb-card
-												data-tags={note.data.tags.join(',')}
-											>
-												<div class="kb-card__top">
-													<span class="kb-card__tags">
-														{note.data.tags.map((t) => (
-															<span class="kb-card__tag">{t}</span>
-														))}
-													</span>
-													{note.data.pinned && (
-														<span class="kb-card__pin" title="置顶">◆</span>
-													)}
-												</div>
-												<h4 class="kb-card__title">{note.data.title}</h4>
-												{note.data.description && (
-													<p class="kb-card__desc">{note.data.description}</p>
-												)}
-												<time class="kb-card__date" datetime={note.data.pubDate.toISOString()}>
-													<FormattedDate date={note.data.pubDate} />
-												</time>
-											</a>
-										))}
-									</div>
-								</div>
-							))}
-						</section>
+		<!-- 前端学习路径 -->
+		{frontendPath.length > 0 && (
+			<section class="kb-path" data-reveal>
+				<h2 class="kb-path__title">前端入门学习路径</h2>
+				<p class="kb-path__desc">按「入门 → 核心 → 进阶 → 实战」的顺序，一步步学完前端主线。</p>
+				<ol class="kb-path__list">
+					{frontendPath.map((n, i) => (
+						<li>
+							<a href={`/knowledge/${n.id}/`} data-kb-card data-tags={`${n.data.stage ?? ''},${n.data.topics.join(',')}`}>
+								<span class="kb-path__n">{String(i + 1).padStart(2, '0')}</span>
+								<span class="kb-path__stage">{n.data.stage}</span>
+								<span class="kb-path__name">{n.data.title}</span>
+							</a>
+						</li>
 					))}
-
-					<p class="kb-body__end">
-						— 共 <span data-kb-end>{pad(notes.length)}</span> 条
-					</p>
-				</div>
-			</div>
+				</ol>
+			</section>
 		)}
+
+		<!-- 最近阅读（localStorage） -->
+		<section class="kb-recent" data-kb-recent hidden data-reveal>
+			<h2 class="kb-recent__title">最近阅读</h2>
+			<ul class="kb-recent__list" data-kb-recent-list></ul>
+		</section>
+
+		<!-- 分类列表（折叠） -->
+		<div class="kb-cats">
+			{categories.map(([cat, list], i) => {
+				const hasPinned = list.some((n) => n.data.pinned);
+				return (
+					<section class="kb-cat" data-kb-cat data-category={cat}>
+						<details class="kb-cat__details" open={hasPinned}>
+							<summary class="kb-cat__summary">
+								<span class="kb-cat__n">{pad(i + 1)}</span>
+								<span class="kb-cat__name">{cat}</span>
+								<span class="kb-cat__count">{pad(list.length)} 条</span>
+							</summary>
+							<ul class="kb-cat__list">
+								{list.map((n) => (
+									<li data-kb-card data-tags={`${n.data.stage ?? ''},${n.data.topics.join(',')}`}>
+										<a href={`/knowledge/${n.id}/`}>
+											<span class="kb-item__title">{n.data.title}</span>
+											{n.data.stage && <span class="kb-item__stage">{n.data.stage}</span>}
+											{n.data.pinned && <span class="kb-item__pin" title="置顶">◆</span>}
+											<time><FormattedDate date={n.data.pubDate} /></time>
+										</a>
+										{n.data.description && <p class="kb-item__desc">{n.data.description}</p>}
+									</li>
+								))}
+							</ul>
+						</details>
+					</section>
+				);
+			})}
+		</div>
+
+		<p class="kb-empty" data-kb-empty hidden>没有匹配的条目，换个关键词试试。</p>
 	</main>
 </BaseLayout>
 
 <script>
-	// 索引栏两件事：标签筛选（同步过滤索引条目与正文卡片）、分类高亮（跟随滚动）。
-	function init() {
+	function initKb() {
 		const main = document.querySelector<HTMLElement>('.kb-main');
 		if (!main || main.dataset.kbWired) return;
 		main.dataset.kbWired = '1';
 
+		const search = document.getElementById('kb-search') as HTMLInputElement | null;
 		const chips = Array.from(main.querySelectorAll<HTMLButtonElement>('[data-kb-tag]'));
 		const cards = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-card]'));
-		const links = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-link]'));
-		const sections = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-section]'));
-		const stages = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-stage]'));
-		const groups = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-group]'));
-		const anchors = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-anchor]'));
+		const cats = Array.from(main.querySelectorAll<HTMLElement>('[data-kb-cat]'));
 		const note = main.querySelector<HTMLElement>('[data-kb-note]');
 		const noteText = main.querySelector<HTMLElement>('[data-kb-note-text]');
 		const reset = main.querySelector<HTMLButtonElement>('[data-kb-reset]');
 		const empty = main.querySelector<HTMLElement>('[data-kb-empty]');
-		const total = main.querySelector<HTMLElement>('[data-kb-total]');
-		const end = main.querySelector<HTMLElement>('[data-kb-end]');
-		const totalLabel = total?.textContent ?? '';
-		const endLabel = end?.textContent ?? '';
 
-		const hasTag = (el: HTMLElement, tag: string) =>
-			(tag ? (el.dataset.tags ?? '') : '')
-				.split(',')
-				.map((t) => t.trim())
-				.filter(Boolean)
-				.includes(tag);
+		let activeTag = '';
 
-		let active = '';
-
-		const apply = (tag: string) => {
-			active = tag;
-			chips.forEach((chip) => {
-				const on = chip.dataset.kbTag === tag;
-				chip.classList.toggle('is-active', on);
-				chip.setAttribute('aria-pressed', String(on));
-			});
-
-			let visibleCards = 0;
+		const apply = () => {
+			const q = search?.value.trim().toLowerCase() ?? '';
+			let visible = 0;
 			cards.forEach((card) => {
-				const on = !tag || hasTag(card, tag);
-				card.hidden = !on;
-				if (on) visibleCards += 1;
+				const tags = (card.dataset.tags ?? '').split(',').filter(Boolean);
+				const matchTag = !activeTag || tags.includes(activeTag);
+				const matchQ = !q || (card.textContent ?? '').toLowerCase().includes(q);
+				const show = matchTag && matchQ;
+				card.hidden = !show;
+				if (show) visible++;
 			});
-
-			links.forEach((link) => {
-				const on = !tag || hasTag(link, tag);
-				// 分叉导航的条目本身就是 <a>，直接隐藏它；
-				// 组件 CSS 里已显式兜住 display:flex 盖掉 [hidden] 的问题
-				link.hidden = !on;
+			cats.forEach((cat) => {
+				const anyVisible = Array.from(cat.querySelectorAll<HTMLElement>('[data-kb-card]')).some((c) => !c.hidden);
+				cat.hidden = !anyVisible;
 			});
-
-			// 阶段小组：筛选后整组没有可见卡片就收起来，计数同步更新
-			stages.forEach((stage) => {
-				const shown = Array.from(stage.querySelectorAll<HTMLElement>('[data-kb-card]')).filter(
-					(c) => !c.hidden,
-				).length;
-				stage.hidden = shown === 0;
-				const count = stage.querySelector<HTMLElement>('[data-kb-stage-count]');
-				if (count) count.textContent = `${String(shown).padStart(2, '0')} 条`;
-			});
-
-			sections.forEach((section) => {
-				const on = Array.from(section.querySelectorAll<HTMLElement>('[data-kb-card]')).some((c) => !c.hidden);
-				section.hidden = !on;
-				const count = section.querySelector<HTMLElement>('[data-kb-count]');
-				if (count) {
-					const n = Array.from(section.querySelectorAll<HTMLElement>('[data-kb-card]')).filter(
-						(c) => !c.hidden,
-					).length;
-					count.textContent = `${String(n).padStart(2, '0')} 条`;
-				}
-			});
-
-			groups.forEach((group) => {
-				const linksInGroup = Array.from(group.querySelectorAll<HTMLElement>('[data-kb-link]'));
-				const shown = linksInGroup.filter((link) => !link.hidden).length;
-				group.hidden = shown === 0;
-				const count = group.querySelector<HTMLElement>('[data-kb-gcount]');
-				if (count) count.textContent = String(shown).padStart(2, '0');
-			});
-
-			if (empty) empty.hidden = visibleCards > 0;
-			if (total) total.textContent = tag ? `${String(visibleCards).padStart(2, '0')} 条` : totalLabel;
-			if (end) end.textContent = tag ? String(visibleCards).padStart(2, '0') : endLabel;
-			if (note) note.hidden = !tag;
-			if (noteText) noteText.textContent = tag ? `筛选「${tag}」· ${visibleCards} 条` : '';
+			if (empty) empty.hidden = visible !== 0;
+			if (note) note.hidden = !activeTag;
+			if (noteText) noteText.textContent = activeTag ? `筛选「${activeTag}」· ${visible} 条` : '';
 		};
 
 		chips.forEach((chip) => {
 			chip.addEventListener('click', () => {
 				const tag = chip.dataset.kbTag ?? '';
-				apply(active === tag ? '' : tag);
+				activeTag = activeTag === tag ? '' : tag;
+				chips.forEach((c) => {
+					const on = c.dataset.kbTag === activeTag;
+					c.classList.toggle('is-active', on);
+					c.setAttribute('aria-pressed', String(on));
+				});
+				apply();
 			});
 		});
-		reset?.addEventListener('click', () => apply(''));
-
-		// 分类高亮：视口上半区（页头下方到约 38% 高处）属于哪个分类
-		if (sections.length && 'IntersectionObserver' in window) {
-			const BAND_TOP = 96;
-			let currentId = '';
-			const setActive = (id: string) => {
-				if (!id || id === currentId) return;
-				currentId = id;
-				anchors.forEach((anchor) => {
-					anchor.classList.toggle('is-active', anchor.dataset.kbAnchor === id);
-				});
-				// 分叉导航：把当前分类的首个可见条目点亮，强调色连线随之绘制
-				main.querySelector('[data-branched]')?.dispatchEvent(
-					new CustomEvent('bm:set-active', { detail: { anchor: id } }),
-				);
-				if (window.matchMedia('(max-width: 980px)').matches) {
-					const activeAnchor = anchors.find((a) => a.dataset.kbAnchor === id);
-					activeAnchor?.scrollIntoView({ block: 'nearest', inline: 'center' });
-				}
-			};
-
-			const isAtBottom = () => {
-				const max = document.documentElement.scrollHeight - window.innerHeight;
-				// 内容还没把高度撑开时 max <= 0，不能误判成「已到底」
-				return max > 0 && window.scrollY >= max - 2;
-			};
-
-			const update = () => {
-				// 不能只从本次 entries 里挑：某个分区「进入」时，会把仍占着观察带的
-				// 分区顶掉（分区变多后尤其明显）。每次都基于所有可见分区的实时位置，
-				// 取与观察带重叠面积最大的那个。
-				const bandBottom = window.innerHeight * 0.38;
-				const visible = sections.filter((section) => !section.hidden);
-				const atBottom = isAtBottom();
-				let best = { id: '', overlap: 0 };
-				for (const section of visible) {
-					const box = section.getBoundingClientRect();
-					const overlap = Math.min(box.bottom, bandBottom) - Math.max(box.top, BAND_TOP);
-					if (overlap > best.overlap) best = { id: section.dataset.kbSection ?? '', overlap };
-				}
-				// 滚到底时最后一个分区往往只露出一小截，直接高亮它
-				if (atBottom && visible.length) {
-					best = { id: visible[visible.length - 1].dataset.kbSection ?? '', overlap: 1 };
-				}
-				if (best.overlap > 0) setActive(best.id);
-			};
-
-			const io = new IntersectionObserver(update, {
-				rootMargin: `-${BAND_TOP}px 0px -62% 0px`,
-				threshold: 0,
+		reset?.addEventListener('click', () => {
+			activeTag = '';
+			chips.forEach((c) => {
+				c.classList.remove('is-active');
+				c.setAttribute('aria-pressed', 'false');
 			});
-			sections.forEach((section) => io.observe(section));
+			apply();
+		});
+		search?.addEventListener('input', apply);
 
-			// 页面较短时「跳到最后一组」会被滚动上限钳制，交叉状态不再变化，观察器
-			// 也就不会再回调。只在滚到底时补一次重算，正常滚动不读布局、不增加开销。
-			const controller = new AbortController();
-			let raf = 0;
-			window.addEventListener(
-				'scroll',
-				() => {
-					if (raf) return;
-					raf = requestAnimationFrame(() => {
-						raf = 0;
-						if (isAtBottom()) update();
-					});
-				},
-				{ passive: true, signal: controller.signal },
-			);
-			// View Transitions 换页时撤掉监听与观察器，避免旧页面残留
-			document.addEventListener(
-				'astro:before-swap',
-				() => {
-					controller.abort();
-					io.disconnect();
-					cancelAnimationFrame(raf);
-				},
-				{ once: true, signal: controller.signal },
-			);
+		// 最近阅读：从 localStorage 读
+		const recentSec = main.querySelector<HTMLElement>('[data-kb-recent]');
+		const recentList = main.querySelector<HTMLElement>('[data-kb-recent-list]');
+		if (recentSec && recentList) {
+			try {
+				const raw = localStorage.getItem('ystlr:recent-reading');
+				const list: { href: string; title: string }[] = raw ? JSON.parse(raw) : [];
+				if (list.length) {
+					recentList.innerHTML = list
+						.map((item) => `<li><a href="${item.href}">${item.title.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c)}</a></li>`)
+						.join('');
+					recentSec.hidden = false;
+				}
+			} catch {}
 		}
 	}
-
-	document.addEventListener('astro:page-load', init);
-	if (document.readyState !== 'loading') init();
+	document.addEventListener('astro:page-load', initKb);
+	if (document.readyState !== 'loading') initKb();
 </script>
 
 <style>
@@ -449,14 +230,13 @@ const previewItems = [
 		margin-inline: auto;
 	}
 
-	/* ── 页头 ── */
 	.kb-head {
-		padding: 1rem 0 clamp(1.4rem, 3vw, 2.2rem);
+		padding: 1rem 0 clamp(1.2rem, 3vw, 1.8rem);
 		border-bottom: 1px solid rgb(var(--line));
 	}
 	.kb-head h1 {
 		margin: 0.16em 0 0.3em;
-		font-size: clamp(2.1rem, 5vw, 3.4rem);
+		font-size: clamp(2rem, 5vw, 3.2rem);
 		letter-spacing: -0.04em;
 	}
 	.kb-head__desc {
@@ -473,14 +253,77 @@ const previewItems = [
 		font-size: 0.72rem;
 		letter-spacing: 0.13em;
 		text-transform: uppercase;
-		color: rgb(var(--muted-light));
+		color: rgb(var(--muted));
 		font-variant-numeric: tabular-nums;
+	}
+
+	/* 工具栏 */
+	.kb-toolbar {
+		padding: 1.2rem 0 0.4rem;
+	}
+	.kb-search {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		max-width: 420px;
+		padding: 0.55rem 0.9rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		color: rgb(var(--muted));
+		background: var(--chip-bg);
+	}
+	.kb-search input {
+		flex: 1;
+		min-width: 0;
+		border: 0;
+		background: none;
+		color: rgb(var(--ink));
+		font: inherit;
+		font-size: 0.92rem;
+		outline: none;
+	}
+	.kb-filter {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		margin-top: 0.9rem;
+	}
+	.kb-filter__set {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.kb-filter__label {
+		font-size: 0.72rem;
+		letter-spacing: 0.1em;
+		color: rgb(var(--muted));
+		margin-right: 0.3rem;
+	}
+	.kb-chip {
+		font-size: 0.78rem;
+		padding: 0.32rem 0.85rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
+		background: none;
+		color: rgb(var(--muted));
+		cursor: pointer;
+		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+	}
+	.kb-chip:hover {
+		color: rgb(var(--ink));
+	}
+	.kb-chip.is-active {
+		background: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+		color: rgb(11, 11, 12);
+		font-weight: 600;
 	}
 	.kb-filter-note {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
-		margin: 1rem 0 0;
+		margin: 0.8rem 0 0;
 		font-size: 0.8rem;
 		color: rgb(var(--ink-soft));
 	}
@@ -488,7 +331,7 @@ const previewItems = [
 		display: none;
 	}
 	.kb-filter-note__reset {
-		padding: 0.16rem 0.6rem;
+		padding: 0.2rem 0.7rem;
 		border: 1px solid rgb(var(--line));
 		border-radius: 999px;
 		background: none;
@@ -496,439 +339,203 @@ const previewItems = [
 		font: inherit;
 		font-size: 0.74rem;
 		cursor: pointer;
-		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 	}
 	.kb-filter-note__reset:hover {
 		color: rgb(var(--ink));
-		border-color: rgb(var(--ink));
 	}
 
-	/* ── 空状态 ── */
-	.kb-empty {
-		margin-top: clamp(1.4rem, 3vw, 2rem);
-		padding: clamp(1.4rem, 3.4vw, 2.4rem);
-		border-radius: var(--card-radius);
-		max-width: 44rem;
+	/* 学习路径 */
+	.kb-path {
+		margin-top: 1.6rem;
+		padding: 1.2rem 1.3rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-lg);
 	}
-	.kb-empty h2 {
-		margin: 0.5rem 0 0.7rem;
-		font-size: clamp(1.25rem, 2.4vw, 1.6rem);
-	}
-	.kb-empty p {
+	.kb-path__title {
 		margin: 0;
+		font-size: 1.05rem;
+		font-weight: 700;
+	}
+	.kb-path__desc {
+		margin: 0.35rem 0 1rem;
+		font-size: 0.82rem;
 		color: rgb(var(--muted));
-		line-height: 1.85;
 	}
-	.kb-empty code {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-		font-size: 0.88em;
-		padding: 0.1em 0.38em;
-		border-radius: 4px;
-		background: rgba(var(--accent), 0.12);
-		color: rgb(var(--accent-deep));
-	}
-
-	/* ── 空状态：导航样式预览 ── */
-	.kb-empty__preview {
-		margin-top: 1.5rem;
-		padding-top: 1.2rem;
-		border-top: 1px solid rgb(var(--line));
-	}
-	.kb-empty p.kb-empty__preview-note {
-		margin: 0 0 1rem;
-		font-size: 0.72rem;
-		letter-spacing: 0.08em;
-		color: rgb(var(--muted-light));
-	}
-	.kb-empty__preview :global(.branched-menu) {
-		width: fit-content;
-		min-width: min(100%, 20rem);
-	}
-
-	/* ── 三栏骨架：左索引 264px + 正文 + 右端标签 152px ── */
-	.kb-shell {
-		display: grid;
-		grid-template-columns: 264px minmax(0, 1fr) 152px;
-		gap: clamp(1.2rem, 2vw, 2rem);
-		align-items: start;
-		padding-top: clamp(1.4rem, 3vw, 2.2rem);
-	}
-	.kb-index { grid-column: 1; grid-row: 1; }
-	.kb-body  { grid-column: 2; grid-row: 1; }
-	.kb-tags  { grid-column: 3; grid-row: 1; }
-
-	/* ── 索引栏 ── */
-	.kb-index {
-		position: sticky;
-		top: calc(72px + 0.6rem);
-		display: flex;
-		flex-direction: column;
-		gap: 1.1rem;
-		max-height: calc(100vh - 96px - 1rem);
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		padding-right: 0.25rem;
-		scrollbar-width: thin;
-	}
-	.kb-index__head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.6rem;
-		padding-bottom: 0.7rem;
-		border-bottom: 1px solid rgb(var(--line));
-	}
-	.kb-index__total {
-		font-size: 0.7rem;
-		letter-spacing: 0.1em;
-		color: rgb(var(--muted-light));
-		font-variant-numeric: tabular-nums;
-	}
-
-	/* ── 右端标签栏：阶段 / 主题两组，竖排撑满一行 ── */
-	.kb-tags {
-		position: sticky;
-		top: calc(72px + 0.6rem);
-		display: flex;
-		flex-direction: column;
-		gap: 0.95rem;
-		max-height: calc(100vh - 96px - 1rem);
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		padding-left: 1rem;
-		border-left: 1px solid rgb(var(--line));
-		scrollbar-width: thin;
-	}
-	.kb-tags__head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 0.5rem;
-		padding-bottom: 0.7rem;
-		border-bottom: 1px solid rgb(var(--line));
-	}
-	.kb-tags__total {
-		font-size: 0.7rem;
-		letter-spacing: 0.1em;
-		color: rgb(var(--muted-light));
-		font-variant-numeric: tabular-nums;
-	}
-	.kb-tags__label {
-		margin: 0 0 0.55rem;
-		font-size: 0.64rem;
-		letter-spacing: 0.14em;
-		color: rgb(var(--muted-light));
-	}
-	.kb-tags__group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-	}
-	.kb-tags .kb-tag {
-		width: 100%;
-		justify-content: space-between;
-		padding: 0.32rem 0.6rem;
-	}
-	.kb-tags__hint {
+	.kb-path__list {
+		list-style: none;
 		margin: 0;
-		font-size: 0.68rem;
-		line-height: 1.6;
-		color: rgb(var(--muted-light));
+		padding: 0;
+		display: grid;
+		gap: 0.15rem;
 	}
-	.kb-tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0.22rem 0.55rem;
+	.kb-path__list a {
+		display: flex;
+		align-items: baseline;
+		gap: 0.7rem;
+		padding: 0.5rem 0.4rem;
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+	}
+	.kb-path__list a:hover {
+		background: var(--chip-bg);
+	}
+	.kb-path__n {
+		font-size: 0.7rem;
+		color: rgb(var(--accent));
+		font-variant-numeric: tabular-nums;
+		flex: none;
+	}
+	.kb-path__stage {
+		font-size: 0.68rem;
+		padding: 0.1rem 0.5rem;
 		border: 1px solid rgb(var(--line));
 		border-radius: 999px;
-		background: none;
 		color: rgb(var(--muted));
-		font: inherit;
-		font-size: 0.72rem;
-		line-height: 1.2;
-		/* 标签名不折行：长标签（如 Markdown）会被数字挤成两行 */
-		white-space: nowrap;
-		cursor: pointer;
-		transition:
-			color var(--dur-fast) var(--ease-out),
-			border-color var(--dur-fast) var(--ease-out),
-			background-color var(--dur-fast) var(--ease-out);
+		flex: none;
 	}
-	.kb-tag__count {
-		font-size: 0.64rem;
-		color: rgb(var(--muted-light));
-		font-variant-numeric: tabular-nums;
-	}
-	.kb-tag:hover {
+	.kb-path__name {
+		font-size: 0.92rem;
+		font-weight: 500;
 		color: rgb(var(--ink));
-		border-color: rgb(var(--line));
-	}
-	.kb-tag.is-active {
-		color: rgb(var(--btn-solid-ink));
-		background: rgb(var(--btn-solid));
-		border-color: rgb(var(--btn-solid));
-	}
-	.kb-tag.is-active .kb-tag__count {
-		color: rgb(var(--btn-solid-ink));
-		opacity: 0.62;
 	}
 
-	/* 左栏只保留分类树（BranchedMenu 自带样式）与空提示；标签筛选在右端 .kb-tags。 */
-	.kb-index__empty {
-		margin: 0;
-		font-size: 0.76rem;
-		color: rgb(var(--muted-light));
+	/* 最近阅读 */
+	.kb-recent {
+		margin-top: 1.6rem;
+		padding: 1.2rem 1.3rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-lg);
 	}
-	.kb-index__empty[hidden] {
+	.kb-recent[hidden] {
 		display: none;
 	}
-
-	/* ── 正文 ── */
-	.kb-body {
-		min-width: 0;
+	.kb-recent__title {
+		margin: 0 0 0.6rem;
+		font-size: 0.9rem;
+		font-weight: 700;
 	}
-	.kb-cat {
-		margin-bottom: clamp(2rem, 4vw, 3rem);
-		scroll-margin-top: 96px;
+	.kb-recent__list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.1rem;
+	}
+	.kb-recent__list a {
+		display: block;
+		padding: 0.4rem 0;
+		font-size: 0.88rem;
+		color: rgb(var(--ink-soft));
+		text-decoration: none;
+	}
+	.kb-recent__list a:hover {
+		color: rgb(var(--accent));
+	}
+
+	/* 分类列表 */
+	.kb-cats {
+		margin-top: 1.8rem;
+		display: grid;
+		gap: 0.6rem;
 	}
 	.kb-cat[hidden] {
 		display: none;
 	}
-	.kb-cat__title {
+	.kb-cat__details {
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-md);
+		overflow: hidden;
+	}
+	.kb-cat__summary {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 0.6rem;
-		margin: 0 0 1.1rem;
-		font-size: 1.02rem;
-		font-weight: 600;
-		letter-spacing: 0;
+		padding: 0.85rem 1.1rem;
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+	.kb-cat__summary::-webkit-details-marker {
+		display: none;
+	}
+	.kb-cat__summary:hover {
+		background: var(--chip-bg);
 	}
 	.kb-cat__n {
-		font-size: 0.66rem;
-		font-weight: 500;
-		letter-spacing: 0.12em;
-		color: rgb(var(--muted-light));
+		font-size: 0.7rem;
+		color: rgb(var(--muted));
 		font-variant-numeric: tabular-nums;
 	}
 	.kb-cat__name {
-		font-size: 1.06rem;
+		font-size: 1rem;
 		font-weight: 650;
 		color: rgb(var(--ink));
 	}
-	.kb-cat__rule {
-		flex: 1;
-		height: 1px;
-		background: rgb(var(--line));
-		transform: translateY(-0.2em);
-	}
 	.kb-cat__count {
-		font-size: 0.68rem;
-		font-weight: 500;
-		letter-spacing: 0.08em;
-		color: rgb(var(--muted-light));
+		margin-left: auto;
+		font-size: 0.72rem;
+		color: rgb(var(--muted));
 		font-variant-numeric: tabular-nums;
 	}
-
-	/* ── 分类内的阶段小组 ── */
-	.kb-stage {
-		margin-bottom: clamp(1.2rem, 2.4vw, 1.9rem);
+	.kb-cat__list {
+		list-style: none;
+		margin: 0;
+		padding: 0 1.1rem 0.5rem;
 	}
-	.kb-stage[hidden] {
+	.kb-cat__list li {
+		padding: 0.6rem 0;
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.kb-cat__list li[hidden] {
 		display: none;
 	}
-	.kb-stage__title {
+	.kb-cat__list a {
 		display: flex;
 		align-items: baseline;
-		gap: 0.5rem;
-		margin: 0 0 0.75rem;
-		font-size: 0.82rem;
-		font-weight: 500;
-	}
-	.kb-stage__n {
-		font-size: 0.62rem;
-		letter-spacing: 0.1em;
-		color: rgb(var(--accent));
-		font-variant-numeric: tabular-nums;
-	}
-	.kb-stage__name {
-		font-size: 0.84rem;
-		font-weight: 600;
-		color: rgb(var(--ink-soft));
-	}
-	.kb-stage__rule {
-		flex: 1;
-		height: 1px;
-		background: rgb(var(--line-soft));
-		transform: translateY(-0.2em);
-	}
-	.kb-stage__count {
-		font-size: 0.66rem;
-		color: rgb(var(--muted-light));
-		font-variant-numeric: tabular-nums;
-	}
-
-	.kb-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-		gap: clamp(0.7rem, 1.4vw, 1rem);
-	}
-	.kb-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.45rem;
-		padding: 1.05rem 1.15rem;
-		border: 1px solid rgb(var(--line-soft));
-		border-radius: var(--card-radius);
-		background: rgb(var(--paper));
+		gap: 0.6rem;
 		text-decoration: none;
 		color: inherit;
-		transition:
-			transform var(--dur) var(--ease-out),
-			border-color var(--dur) var(--ease-out),
-			background-color var(--dur) var(--ease-out);
 	}
-	.kb-card[hidden] {
-		display: none;
+	.kb-item__title {
+		font-size: 0.95rem;
+		font-weight: 500;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
 	}
-	.kb-card:hover {
-		transform: translateY(-2px);
-		border-color: rgb(var(--line));
-		background: rgb(var(--surface));
-	}
-	.kb-card__top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-		min-height: 1.1rem;
-	}
-	.kb-card__tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.3rem;
-	}
-	.kb-card__tag {
-		font-size: 0.66rem;
-		letter-spacing: 0.02em;
-		color: rgb(var(--muted));
-		border: 1px solid rgb(var(--line-soft));
-		border-radius: 999px;
-		padding: 0.06rem 0.45rem;
-	}
-	.kb-card__pin {
-		font-size: 0.64rem;
+	.kb-cat__list a:hover .kb-item__title {
 		color: rgb(var(--accent));
 	}
-	.kb-card__title {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 650;
-		line-height: 1.42;
-		letter-spacing: -0.01em;
-	}
-	.kb-card__desc {
-		margin: 0;
-		font-size: 0.82rem;
+	.kb-item__stage {
+		font-size: 0.68rem;
+		padding: 0.08rem 0.5rem;
+		border: 1px solid rgb(var(--line));
+		border-radius: 999px;
 		color: rgb(var(--muted));
-		line-height: 1.65;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
-	.kb-card__date {
-		margin-top: auto;
-		padding-top: 0.3rem;
-		font-size: 0.7rem;
-		color: rgb(var(--muted-light));
-		letter-spacing: 0.04em;
+	.kb-item__pin {
+		font-size: 0.68rem;
+		color: rgb(var(--accent));
+	}
+	.kb-cat__list time {
+		margin-left: auto;
+		font-size: 0.74rem;
+		color: rgb(var(--muted));
 		font-variant-numeric: tabular-nums;
 	}
-	.kb-body__end {
-		margin: 0;
-		padding-top: 1rem;
-		border-top: 1px solid rgb(var(--line-soft));
-		font-size: 0.68rem;
-		letter-spacing: 0.06em;
-		color: rgb(var(--muted-light));
+	.kb-item__desc {
+		margin: 0.3rem 0 0;
+		font-size: 0.84rem;
+		line-height: 1.6;
+		color: rgb(var(--muted));
 	}
 
-	/* ── 中等宽度：右端标签栏折到正文上方，横向排列 ── */
-	@media (max-width: 1200px) {
-		.kb-shell {
-			grid-template-columns: 264px minmax(0, 1fr);
-		}
-		.kb-index { grid-column: 1; grid-row: 1 / span 2; }
-		.kb-tags {
-			grid-column: 2;
-			grid-row: 1;
-			position: static;
-			max-height: none;
-			overflow: visible;
-			flex-direction: row;
-			align-items: flex-start;
-			flex-wrap: wrap;
-			gap: 0.6rem 1.2rem;
-			margin-bottom: 1.4rem;
-			padding: 0 0 0.9rem;
-			border-left: 0;
-			border-bottom: 1px solid rgb(var(--line));
-		}
-		.kb-tags__head,
-		.kb-tags__hint { display: none; }
-		.kb-tags__set { flex: 1 1 240px; min-width: 0; }
-		.kb-tags__group { flex-direction: row; flex-wrap: wrap; min-width: 0; max-width: 100%; }
-		.kb-tags .kb-tag { width: auto; }
-		.kb-body { grid-column: 2; grid-row: 2; }
+	.kb-empty {
+		margin: 2rem 0 0;
+		text-align: center;
+		color: rgb(var(--muted));
 	}
-
-	/* ── 窄屏：索引栏收成一条可横滑的胶囊 ── */
-	@media (max-width: 980px) {
-		.kb-shell {
-			display: block;
-			padding-top: 1rem;
-		}
-		.kb-index {
-			position: sticky;
-			top: 66px;
-			z-index: 40;
-			flex-direction: row;
-			align-items: center;
-			width: fit-content;
-			max-width: 100%;
-			max-height: none;
-			margin-bottom: 1.4rem;
-			padding: 0.32rem;
-			overflow: hidden;
-			border: 1px solid rgb(var(--line));
-			border-radius: 999px;
-			background: var(--glass-bg-strong);
-			backdrop-filter: blur(16px) saturate(1.3);
-		}
-		.kb-index__head,
-		.kb-index__empty {
-			display: none;
-		}
-		.kb-tags {
-			margin-bottom: 1.2rem;
-		}
-		/* 窄屏下 BranchedMenu 自己退化成横滑胶囊，样式在组件内，不在这里重复 */
-	}
-	@media (max-width: 600px) {
-		.kb-head {
-			padding-top: 0.6rem;
-		}
-		.kb-head__meta {
-			gap: 0.35rem 1rem;
-		}
-		.kb-grid {
-			grid-template-columns: 1fr;
-		}
-		.kb-tags__group {
-			flex-wrap: nowrap;
-			overflow-x: auto;
-			padding-bottom: 0.2rem;
-		}
+	.kb-empty[hidden] {
+		display: none;
 	}
 </style>

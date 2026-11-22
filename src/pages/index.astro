@@ -1,13 +1,13 @@
 ---
-// 首页（内容阅读优先）：
+// 首页（内容阅读优先 + 编辑杂志风精修）：
 // 首屏 → 精选文章 → 主题入口 → 知识库精选 → 全站最近更新 → 简短关于我。
-// 去掉图片遮罩标题、逐字破碎、打字机、GitHub 热门、重复关于区块等装饰，
-// 雨滴仅作首屏轻量签名动效。
+// 去掉图片遮罩标题、逐字破碎、打字机、GitHub 热门等装饰；雨滴仅作首屏轻量签名。
+// 精修：衬线大标题 + 强调色眉题、编号杂志列表、卡片质感、悬停细节。
 import BaseLayout from '../layouts/BaseLayout.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Rain from '../components/Rain.astro';
 import { getCollection } from 'astro:content';
-import { HERO, PROFILE, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import { AUTHOR_NAME, HERO, PROFILE, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import discoverData from '../data/discover.json';
 
 const posts = (await getCollection('blog'))
@@ -20,7 +20,7 @@ const notes = (await getCollection('knowledge'))
 	.filter((n) => !n.data.draft)
 	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const pinnedNotes = notes.filter((n) => n.data.pinned);
-const knowledgePreview = (pinnedNotes.length >= 3 ? pinnedNotes : [...pinnedNotes, ...notes]).slice(0, 4);
+const knowledgePreview = [...pinnedNotes, ...notes.filter((n) => !n.data.pinned)].slice(0, 4);
 
 // 主题聚合：文章 + 知识 + 发现，按出现次数排序
 const topicCount = new Map<string, number>();
@@ -50,44 +50,57 @@ const recent: RecentItem[] = [
 	<main class="home">
 		<!-- 首屏 -->
 		<section class="hero">
-			<h1 class="hero-title">{HERO.title}</h1>
+			<div class="hero-glow" aria-hidden="true"></div>
+			<p class="hero-kicker">{HERO.role}</p>
+			<h1 class="hero-title">{HERO.title}<span class="hero-title__dot">.</span></h1>
 			<p class="hero-desc">{HERO.tagline2}。</p>
 			<div class="hero-actions">
 				<a class="hero-cta" href="/blog">
 					开始阅读
-					<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
+					<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
 				</a>
 				<button class="hero-search" type="button" data-search-open>
-					<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path></svg>
+					<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M7 12.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm4-1.5 3 3"></path></svg>
 					搜索全站
 				</button>
+			</div>
+			<div class="hero-meta">
+				<span>共 {posts.length} 篇文章 · {notes.length} 条笔记</span>
+				<span class="hero-meta__hint">向下浏览
+					<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M8 3v9M4.5 8.5 8 12l3.5-3.5"></path></svg>
+				</span>
 			</div>
 		</section>
 
 		<!-- 01 精选文章 -->
 		<section class="sec" id="articles">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">01 / 精选文章</span>
-						<h2>最近在写</h2>
-					</div>
+				<header class="sec-head" data-reveal>
+					<span class="sec-head__index"><em>01</em> / 精选文章</span>
+					<h2>最近在写</h2>
 					<a class="sec-head__more" href="/blog">全部文章 →</a>
 				</header>
 				{featured.length === 0 ? (
 					<p class="empty-hint">还没有文章。第一篇文章写好后，会出现在这里。</p>
 				) : (
-					<ul class="post-list">
-						{featured.map((p) => (
-							<li>
-								<a href={`/blog/${p.id}/`}>
-									<span class="post-list__title">{p.data.title}</span>
-									<time><FormattedDate date={p.data.pubDate} /></time>
+					<ol class="lede">
+						{featured.map((p, i) => (
+							<li class="lede-item" data-reveal data-reveal-delay={i * 60}>
+								<a class="lede-link" href={`/blog/${p.id}/`}>
+									<span class="lede-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+									<div class="lede-body">
+										<h3 class="lede-title">{p.data.title}</h3>
+										{p.data.description && <p class="lede-desc">{p.data.description}</p>}
+										<div class="lede-meta">
+											<time><FormattedDate date={p.data.pubDate} /></time>
+											{p.data.topics.length > 0 && <span class="lede-topics">{p.data.topics.join(' · ')}</span>}
+										</div>
+									</div>
+									<svg class="lede-arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"></path></svg>
 								</a>
-								<p class="post-list__desc">{p.data.description}</p>
 							</li>
 						))}
-					</ul>
+					</ol>
 				)}
 			</div>
 		</section>
@@ -95,13 +108,11 @@ const recent: RecentItem[] = [
 		<!-- 02 主题入口 -->
 		<section class="sec" id="topics">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">02 / 主题</span>
-						<h2>按主题逛</h2>
-					</div>
+				<header class="sec-head" data-reveal>
+					<span class="sec-head__index"><em>02</em> / 主题</span>
+					<h2>按主题逛</h2>
 				</header>
-				<div class="topic-grid">
+				<div class="topic-grid" data-reveal data-reveal-delay="60">
 					{topics.map((t) => (
 						<a class="topic-chip" href={`/topics/${t.name}/`}>
 							<span>{t.name}</span>
@@ -115,40 +126,36 @@ const recent: RecentItem[] = [
 		<!-- 03 知识库精选 -->
 		<section class="sec" id="knowledge">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">03 / 知识库</span>
-						<h2>知识精选</h2>
-					</div>
+				<header class="sec-head" data-reveal>
+					<span class="sec-head__index"><em>03</em> / 知识库</span>
+					<h2>知识精选</h2>
 					<a class="sec-head__more" href="/knowledge">全部知识 →</a>
 				</header>
-				<ul class="post-list">
-					{knowledgePreview.map((n) => (
-						<li>
-							<a href={`/knowledge/${n.id}/`}>
-								<span class="post-list__title">{n.data.title}</span>
-								{n.data.stage && <span class="post-list__stage">{n.data.stage}</span>}
+				<div class="kb-grid">
+					{knowledgePreview.map((n, i) => (
+						<a class="kb-card" href={`/knowledge/${n.id}/`} data-reveal data-reveal-delay={i * 60}>
+							<span class="kb-card__top">
+								{n.data.stage && <span class="kb-card__stage">{n.data.stage}</span>}
 								<time><FormattedDate date={n.data.pubDate} /></time>
-							</a>
-							{n.data.description && <p class="post-list__desc">{n.data.description}</p>}
-						</li>
+							</span>
+							<h3 class="kb-card__title">{n.data.title}</h3>
+							{n.data.description && <p class="kb-card__desc">{n.data.description}</p>}
+						</a>
 					))}
-				</ul>
+				</div>
 			</div>
 		</section>
 
 		<!-- 04 全站最近更新 -->
 		<section class="sec" id="recent">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">04 / 最近更新</span>
-						<h2>最近更新</h2>
-					</div>
+				<header class="sec-head" data-reveal>
+					<span class="sec-head__index"><em>04</em> / 最近更新</span>
+					<h2>最近更新</h2>
 				</header>
 				<ul class="recent-list">
-					{recent.map((item) => (
-						<li>
+					{recent.map((item, i) => (
+						<li data-reveal data-reveal-delay={i * 40}>
 							<a href={item.href}>
 								<span class="recent-list__type">{item.type}</span>
 								<span class="recent-list__title">{item.title}</span>
@@ -163,14 +170,24 @@ const recent: RecentItem[] = [
 		<!-- 05 简短关于我 -->
 		<section class="sec" id="about">
 			<div class="wrap">
-				<header class="sec-head">
-					<div>
-						<span class="sec-head__index">05 / 关于</span>
-						<h2>关于我</h2>
-					</div>
+				<header class="sec-head" data-reveal>
+					<span class="sec-head__index"><em>05</em> / 关于</span>
+					<h2>关于我</h2>
 				</header>
-				<p class="about-bio">{PROFILE.bio}</p>
-				<a class="sec-head__more" href="/about">了解更多 →</a>
+				<div class="about-card" data-reveal data-reveal-delay="60">
+					<div class="about-card__ava" aria-hidden="true">
+						{PROFILE.avatar ? (
+							<img src={PROFILE.avatar} alt={AUTHOR_NAME} loading="lazy" decoding="async" />
+						) : (
+							<span>{AUTHOR_NAME.slice(0, 1).toUpperCase()}</span>
+						)}
+					</div>
+					<div class="about-card__body">
+						<h3 class="about-card__name">{AUTHOR_NAME}</h3>
+						<p class="about-card__bio">{PROFILE.bio}</p>
+						<a class="about-card__more" href="/about">了解更多 →</a>
+					</div>
+				</div>
 			</div>
 		</section>
 	</main>
@@ -200,6 +217,14 @@ const recent: RecentItem[] = [
 		background-repeat: no-repeat;
 		filter: blur(16px);
 	}
+	/* 壁纸之上垫一层近黑遮罩，保证正文/标题对比度（不遮成死黑，保留雨夜氛围） */
+	.home-bg::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(180deg, rgba(11, 11, 12, 0.58) 0%, rgba(11, 11, 12, 0.5) 42%, rgba(11, 11, 12, 0.7) 100%);
+	}
 
 	/* ── 首屏 ── */
 	.hero {
@@ -207,24 +232,63 @@ const recent: RecentItem[] = [
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: 1.4rem;
-		min-height: 88svh;
-		padding: calc(var(--head-h) + 3rem) var(--gutter) 4rem;
+		min-height: 92svh;
+		padding: calc(var(--head-h) + 2.5rem) var(--gutter) 3.5rem;
 		max-width: var(--w-wide, 1272px);
 		margin: 0 auto;
 	}
+	/* 首屏背后的暖橙光晕：静态、极淡，只做氛围不做动效 */
+	.hero-glow {
+		position: absolute;
+		top: -12%;
+		left: -6%;
+		width: min(720px, 70vw);
+		aspect-ratio: 1;
+		z-index: -1;
+		pointer-events: none;
+		border-radius: 50%;
+		background:
+			radial-gradient(circle at 40% 40%, rgba(var(--accent), 0.14), transparent 60%),
+			radial-gradient(circle at 66% 60%, rgba(var(--ochre), 0.08), transparent 58%);
+		filter: blur(70px);
+		-webkit-mask-image: radial-gradient(closest-side circle, #000 20%, transparent 74%);
+		mask-image: radial-gradient(closest-side circle, #000 20%, transparent 74%);
+	}
+	.hero-kicker {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.65rem;
+		margin: 0 0 1.5rem;
+		font-size: 0.76rem;
+		font-weight: 500;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		color: rgb(var(--muted));
+	}
+	.hero-kicker::before {
+		content: '';
+		width: 34px;
+		height: 2px;
+		border-radius: 2px;
+		background: rgb(var(--accent));
+	}
 	.hero-title {
 		margin: 0;
-		font-size: clamp(2.4rem, 6vw, 4.4rem);
-		font-weight: 800;
-		letter-spacing: -0.03em;
-		line-height: 1.05;
+		font-family: var(--font-display), 'Noto Serif SC', 'Songti SC', STSong, SimSun, Georgia, serif;
+		font-size: clamp(2.7rem, 6.6vw, 4.9rem);
+		font-weight: 700;
+		letter-spacing: -0.035em;
+		line-height: 1.04;
 		color: rgb(var(--ink));
+		text-wrap: balance;
+	}
+	.hero-title__dot {
+		color: rgb(var(--accent));
 	}
 	.hero-desc {
-		margin: 0;
-		max-width: 36ch;
-		font-size: clamp(1rem, 1.6vw, 1.2rem);
+		margin: 1.1rem 0 0;
+		max-width: 40ch;
+		font-size: clamp(1.05rem, 1.7vw, 1.25rem);
 		line-height: 1.75;
 		color: rgb(var(--ink-soft));
 	}
@@ -232,48 +296,69 @@ const recent: RecentItem[] = [
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.9rem;
-		margin-top: 0.6rem;
+		gap: 0.85rem;
+		margin-top: 2rem;
 	}
 	.hero-cta,
 	.hero-search {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		min-height: 44px;
-		padding: 0 1.3rem;
+		gap: 0.55rem;
+		min-height: 46px;
+		padding: 0 1.4rem;
 		border-radius: 999px;
 		font-size: 0.92rem;
 		font-weight: 600;
+		line-height: 1;
 		text-decoration: none;
 		cursor: pointer;
-		transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+		transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 	}
 	.hero-cta {
-		background: rgb(var(--accent));
 		color: rgb(11, 11, 12);
+		background: linear-gradient(135deg, rgb(var(--accent-soft)), rgb(var(--accent)));
 		border: 1px solid rgb(var(--accent));
+		box-shadow: 0 10px 26px -12px rgba(var(--accent), 0.55);
 	}
 	.hero-cta:hover {
-		transform: translateY(-1px);
+		transform: translateY(-2px);
+		box-shadow: 0 16px 34px -14px rgba(var(--accent), 0.7);
 	}
 	.hero-search {
-		background: transparent;
 		color: rgb(var(--ink));
-		border: 1px solid rgb(var(--line));
+		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgba(var(--ink), 0.18);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
 	}
 	.hero-search:hover {
-		border-color: rgb(var(--muted));
+		border-color: rgba(var(--accent), 0.5);
+		color: rgb(var(--accent-soft));
+	}
+	.hero-meta {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 3rem;
+		padding-top: 1.15rem;
+		border-top: 1px solid rgba(var(--ink), 0.12);
+		font-size: 0.8rem;
+		letter-spacing: 0.04em;
+		color: rgb(var(--muted));
+		font-variant-numeric: tabular-nums;
+	}
+	.hero-meta__hint {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 
 	/* ── 区块通用 ── */
 	.sec {
 		position: relative;
-		padding: clamp(2.6rem, 6vw, 4.5rem) 0;
+		padding: clamp(2.8rem, 6.5vw, 4.8rem) 0;
 		border-top: 1px solid rgb(var(--line-soft));
-	}
-	.sec:first-of-type {
-		border-top: none;
 	}
 	.wrap {
 		width: 100%;
@@ -286,26 +371,39 @@ const recent: RecentItem[] = [
 		align-items: flex-end;
 		justify-content: space-between;
 		gap: 1rem;
-		margin-bottom: 1.4rem;
+		margin-bottom: 1.6rem;
 	}
 	.sec-head__index {
 		display: block;
-		font-size: 0.7rem;
-		letter-spacing: 0.14em;
+		margin-bottom: 0.55rem;
+		font-size: 0.72rem;
+		font-weight: 500;
+		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: rgb(var(--muted));
-		margin-bottom: 0.4rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.sec-head__index em {
+		font-style: normal;
+		font-weight: 700;
+		color: rgb(var(--accent));
 	}
 	.sec-head h2 {
 		margin: 0;
-		font-size: clamp(1.4rem, 2.6vw, 1.9rem);
-		letter-spacing: -0.02em;
+		font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+		font-weight: 700;
+		letter-spacing: -0.025em;
+		line-height: 1;
 	}
 	.sec-head__more {
-		font-size: 0.85rem;
-		color: rgb(var(--ink-soft));
+		flex: none;
+		align-self: flex-end;
+		padding-bottom: 0.15rem;
+		font-size: 0.84rem;
+		color: rgb(var(--muted));
 		text-decoration: none;
 		white-space: nowrap;
+		transition: color var(--dur-fast) var(--ease-out);
 	}
 	.sec-head__more:hover {
 		color: rgb(var(--accent));
@@ -314,110 +412,230 @@ const recent: RecentItem[] = [
 		color: rgb(var(--muted));
 	}
 
-	/* ── 文章/知识列表 ── */
-	.post-list {
+	/* ── 精选文章：编号杂志列表 ── */
+	.lede {
 		list-style: none;
 		margin: 0;
 		padding: 0;
+	}
+	.lede-item {
+		border-top: 1px solid rgb(var(--line-soft));
+	}
+	.lede-item:first-child {
+		border-top: none;
+	}
+	.lede-link {
 		display: grid;
-		gap: 0.3rem;
-	}
-	.post-list li {
-		padding: 0.9rem 0;
-		border-bottom: 1px solid rgb(var(--line-soft));
-	}
-	.post-list li:last-child {
-		border-bottom: none;
-	}
-	.post-list a {
-		display: flex;
-		align-items: baseline;
-		gap: 0.7rem;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: start;
+		gap: 1.4rem;
+		padding: 1.45rem 0.6rem;
+		border-radius: var(--r-md);
 		text-decoration: none;
 		color: inherit;
+		transition: background-color var(--dur-fast) var(--ease-out);
 	}
-	.post-list__title {
-		font-size: 1.02rem;
+	.lede-link:hover {
+		background: rgba(var(--paper), 0.55);
+	}
+	.lede-num {
+		padding-top: 0.22em;
+		font-family: var(--font-display), 'Noto Serif SC', 'Songti SC', Georgia, serif;
+		font-size: 1.05rem;
 		font-weight: 600;
+		color: rgb(var(--accent));
+		font-variant-numeric: tabular-nums;
+		opacity: 0.9;
+	}
+	.lede-body {
+		min-width: 0;
+	}
+	.lede-title {
+		margin: 0;
+		font-size: clamp(1.18rem, 2vw, 1.48rem);
+		font-weight: 700;
+		line-height: 1.35;
 		color: rgb(var(--ink));
 		transition: color var(--dur-fast) var(--ease-out);
 	}
-	.post-list a:hover .post-list__title {
+	.lede-link:hover .lede-title {
 		color: rgb(var(--accent));
 	}
-	.post-list time {
-		margin-left: auto;
-		font-size: 0.78rem;
+	.lede-desc {
+		margin: 0.4rem 0 0;
+		max-width: 62ch;
+		font-size: 0.9rem;
+		line-height: 1.68;
 		color: rgb(var(--muted));
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
-	.post-list__stage {
-		font-size: 0.68rem;
-		padding: 0.1rem 0.5rem;
-		border: 1px solid rgb(var(--line));
-		border-radius: 999px;
-		color: rgb(var(--muted));
-		white-space: nowrap;
+	.lede-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem 0.8rem;
+		margin-top: 0.55rem;
+		font-size: 0.76rem;
+		letter-spacing: 0.02em;
+		color: rgb(var(--muted-light));
 	}
-	.post-list__desc {
-		margin: 0.35rem 0 0;
-		font-size: 0.88rem;
-		line-height: 1.65;
-		color: rgb(var(--muted));
-		max-width: 60ch;
+	.lede-topics {
+		color: rgb(var(--accent-deep));
+	}
+	.lede-arrow {
+		margin-top: 0.4em;
+		color: rgb(var(--accent));
+		opacity: 0;
+		transform: translateX(-6px);
+		transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+	}
+	.lede-link:hover .lede-arrow {
+		opacity: 1;
+		transform: none;
 	}
 
 	/* ── 主题入口 ── */
 	.topic-grid {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.6rem;
+		gap: 0.55rem;
 	}
 	.topic-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
-		padding: 0.55rem 1.1rem;
+		gap: 0.5rem;
+		padding: 0.55rem 1.05rem;
 		border: 1px solid rgb(var(--line));
 		border-radius: 999px;
 		font-size: 0.9rem;
 		color: rgb(var(--ink-soft));
 		text-decoration: none;
-		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+		transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 	}
 	.topic-chip em {
+		display: inline-grid;
+		place-items: center;
+		min-width: 20px;
+		height: 20px;
+		padding: 0 0.4rem;
+		border-radius: 999px;
 		font-style: normal;
-		font-size: 0.72rem;
+		font-size: 0.7rem;
 		color: rgb(var(--muted));
+		background: rgba(var(--ink), 0.06);
 		font-variant-numeric: tabular-nums;
+		transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 	}
 	.topic-chip:hover {
-		color: rgb(var(--accent));
-		border-color: rgba(var(--accent), 0.5);
+		color: rgb(11, 11, 12);
+		background: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+		transform: translateY(-1px);
+	}
+	.topic-chip:hover em {
+		color: rgb(11, 11, 12);
+		background: rgba(0, 0, 0, 0.14);
 	}
 
-	/* ── 最近更新 ── */
+	/* ── 知识库精选：卡片 ── */
+	.kb-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.9rem;
+	}
+	.kb-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 1.2rem 1.3rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-lg);
+		background: rgba(var(--paper), 0.4);
+		text-decoration: none;
+		color: inherit;
+		transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+	}
+	.kb-card:hover {
+		transform: translateY(-3px);
+		border-color: rgba(var(--accent), 0.4);
+		background: rgba(var(--paper), 0.72);
+	}
+	.kb-card__top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+	}
+	.kb-card__stage {
+		font-size: 0.68rem;
+		padding: 0.12rem 0.55rem;
+		border: 1px solid rgba(var(--accent), 0.3);
+		border-radius: 999px;
+		color: rgb(var(--accent-deep));
+		white-space: nowrap;
+	}
+	.kb-card time {
+		font-size: 0.74rem;
+		color: rgb(var(--muted));
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.kb-card__title {
+		margin: 0;
+		font-size: 1.08rem;
+		font-weight: 700;
+		line-height: 1.4;
+		color: rgb(var(--ink));
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.kb-card:hover .kb-card__title {
+		color: rgb(var(--accent));
+	}
+	.kb-card__desc {
+		margin: 0;
+		font-size: 0.86rem;
+		line-height: 1.65;
+		color: rgb(var(--muted));
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	/* ── 最近更新：时间线 ── */
 	.recent-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: grid;
-		gap: 0.15rem;
+	}
+	.recent-list li {
+		border-bottom: 1px solid rgb(var(--line-soft));
+	}
+	.recent-list li:last-child {
+		border-bottom: none;
 	}
 	.recent-list a {
 		display: flex;
 		align-items: baseline;
 		gap: 0.7rem;
-		padding: 0.6rem 0;
-		border-bottom: 1px solid rgb(var(--line-soft));
+		padding: 0.72rem 0.4rem;
+		border-radius: 8px;
 		text-decoration: none;
 		color: inherit;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+	.recent-list a:hover {
+		background: rgba(var(--paper), 0.5);
 	}
 	.recent-list__type {
 		flex: none;
 		font-size: 0.68rem;
-		padding: 0.1rem 0.5rem;
+		padding: 0.1rem 0.55rem;
 		border: 1px solid rgb(var(--line));
 		border-radius: 999px;
 		color: rgb(var(--muted));
@@ -438,30 +656,105 @@ const recent: RecentItem[] = [
 		white-space: nowrap;
 	}
 
-	/* ── 关于 ── */
-	.about-bio {
-		margin: 0 0 1.2rem;
-		max-width: 48ch;
-		font-size: 0.98rem;
-		line-height: 1.8;
-		color: rgb(var(--ink-soft));
+	/* ── 关于我：头像卡片 ── */
+	.about-card {
+		display: flex;
+		align-items: center;
+		gap: 1.4rem;
+		padding: 1.5rem 1.6rem;
+		border: 1px solid rgb(var(--line-soft));
+		border-radius: var(--r-xl);
+		background: rgba(var(--paper), 0.4);
+	}
+	.about-card__ava {
+		flex: none;
+		width: 68px;
+		height: 68px;
+		border-radius: 16px;
+		display: grid;
+		place-items: center;
+		overflow: hidden;
+		font-size: 1.3rem;
+		font-weight: 800;
+		color: #fff;
+		background:
+			radial-gradient(120% 90% at 30% 20%, rgba(var(--accent), 0.5), transparent 60%),
+			linear-gradient(160deg, rgba(var(--ochre), 0.4), rgba(var(--sage), 0.3));
+	}
+	.about-card__ava img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	.about-card__body {
+		min-width: 0;
+	}
+	.about-card__name {
+		margin: 0 0 0.25rem;
+		font-size: 1.15rem;
+		font-weight: 700;
+	}
+	.about-card__bio {
+		margin: 0;
+		max-width: 56ch;
+		font-size: 0.92rem;
+		line-height: 1.7;
+		color: rgb(var(--muted));
+	}
+	.about-card__more {
+		display: inline-block;
+		margin-top: 0.7rem;
+		font-size: 0.84rem;
+		color: rgb(var(--accent));
+		text-decoration: none;
+	}
+	.about-card__more:hover {
+		color: rgb(var(--accent-soft));
 	}
 
-	/* 移动端：标题和列表项适配 */
-	@media (max-width: 640px) {
+	/* ── 响应式 ── */
+	@media (max-width: 760px) {
 		.hero {
-			min-height: 82svh;
+			min-height: 86svh;
 			padding-top: calc(var(--head-h) + 2rem);
 		}
-		.post-list a,
+		.hero-meta {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.4rem;
+		}
+		.lede-link {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 0.2rem;
+			padding: 1.1rem 0.3rem;
+		}
+		.lede-num {
+			display: none;
+		}
+		.lede-arrow {
+			display: none;
+		}
+		.kb-grid {
+			grid-template-columns: 1fr;
+		}
+		.about-card {
+			flex-direction: column;
+			align-items: flex-start;
+		}
 		.recent-list a {
 			flex-wrap: wrap;
 			gap: 0.25rem 0.7rem;
 		}
-		.post-list time,
 		.recent-list time {
 			margin-left: 0;
 			width: 100%;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hero-glow {
+			animation: none;
 		}
 	}
 </style>

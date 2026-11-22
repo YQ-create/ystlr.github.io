@@ -239,13 +239,31 @@ const emailHref = SOCIAL_LINKS.email ?? 'mailto:hello@ystlr.com';
 		white-space: nowrap;
 		transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 	}
+	.head-nav__link::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		bottom: 0.14rem;
+		width: 0;
+		height: 2px;
+		border-radius: 2px;
+		background: rgb(var(--accent));
+		transform: translateX(-50%);
+		transition: width 0.25s var(--ease-out);
+	}
 	.head-nav__link:hover {
 		color: rgb(var(--ink));
 		background: var(--chip-bg);
 	}
+	.head-nav__link:hover::after {
+		width: 16px;
+	}
 	.head-nav__link.is-active {
 		color: rgb(var(--accent));
 		font-weight: 600;
+	}
+	.head-nav__link.is-active::after {
+		width: 18px;
 	}
 
 	.head-actions {
